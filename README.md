@@ -77,14 +77,26 @@ npm test
 
 ## Deploy
 
-Any host that runs a Docker container with a persistent disk works (Railway, Render, Fly.io, a VPS).
+Pushing to `main` deploys. The workflow in `.github/workflows/deploy.yml` runs the tests, builds the Docker image, copies it to your server over SSH and starts it with Caddy in front for https (`deploy/compose.yaml`).
 
-1. Build from the `Dockerfile`.
-2. Mount a persistent disk at `/data`. The database lives there.
-3. Set the environment variables above. `WEBAPP_URL` is the https address the host gives you.
-4. Run a single instance. The bot uses long polling, so two copies would fight over updates.
+Set these once in the repository: Settings, Secrets and variables, Actions, New repository secret.
 
-On start the bot sets its own menu button ("Open app") and command list. Nothing to configure in BotFather beyond creating the bot.
+| Secret | Required | What it is |
+| --- | --- | --- |
+| `VPS_HOST` | yes | The server's IP address |
+| `VPS_PASSWORD` or `VPS_SSH_KEY` | yes | The server password, or a private SSH key that can log in |
+| `BOT_TOKEN` | yes | Token from BotFather |
+| `ADMIN_IDS` | yes | Telegram user IDs of the team, comma-separated |
+| `VPS_USER` | no | Login name, default `root` |
+| `VPS_PORT` | no | SSH port, default `22` |
+| `DOMAIN` | no | A domain or subdomain whose A record points at the server, for example `hub.example.com`. Without it the app gets a free `<ip>.sslip.io` address |
+| `ADMIN_CHAT_ID`, `COMMUNITY_CHAT_URL`, `WELCOME_VIDEO` | no | See Configuration |
+
+The server needs ports 80 and 443 free and reachable. Docker is installed on the first deploy if it is missing. The database lives in the `hub-data` Docker volume and survives redeploys.
+
+To start a deploy by hand: Actions, Deploy, Run workflow. Until the required secrets exist the workflow only runs the tests and says which secrets are missing.
+
+Run a single instance. The bot uses long polling, so two copies would fight over updates. On start the bot sets its own menu button ("Open app") and command list.
 
 ## Content
 

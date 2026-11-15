@@ -1,0 +1,31 @@
+# Production stack for one server: the app, and Caddy in front of it for https.
+# The deploy workflow copies this file to the server and writes the .env next to it.
+services:
+  app:
+    image: creators-hub:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WEBAPP_URL: https://${DOMAIN}
+    volumes:
+      - hub-data:/data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  hub-data:
+  caddy-data:
+  caddy-config:

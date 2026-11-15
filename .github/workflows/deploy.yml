@@ -1,0 +1,124 @@
+name: Deploy
+
+# Every push to main is tested, built into an image and shipped to the server.
+# Server access and bot settings come from the repository's Actions secrets.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT }}
+      VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      DOMAIN: ${{ secrets.DOMAIN }}
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      ADMIN_IDS: ${{ secrets.ADMIN_IDS }}
+      ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+      COMMUNITY_CHAT_URL: ${{ secrets.COMMUNITY_CHAT_URL }}
+      WELCOME_VIDEO: ${{ secrets.WELCOME_VIDEO }}
+    steps:
+      - name: Check that the secrets are set
+        id: ready
+        run: |
+          missing=""
+          [ -n "$VPS_HOST" ] || missing="$missing VPS_HOST"
+          [ -n "$VPS_PASSWORD$VPS_SSH_KEY" ] || missing="$missing VPS_PASSWORD(or VPS_SSH_KEY)"
+          [ -n "$BOT_TOKEN" ] || missing="$missing BOT_TOKEN"
+          [ -n "$ADMIN_IDS" ] || missing="$missing ADMIN_IDS"
+          if [ -n "$missing" ]; then
+            echo "::warning::Not deployed. Add these repository secrets (Settings, Secrets and variables, Actions):$missing"
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go == 'true'
+
+      - name: Build the image
+        if: steps.ready.outputs.go == 'true'
+        run: docker build -t creators-hub:latest .
+
+      - name: Ship it to the server and start it
+        if: steps.ready.outputs.go == 'true'
+        run: |
+          set -euo pipefail
+          TARGET="${VPS_USER:-root}@${VPS_HOST}"
+          OPTS="-p ${VPS_PORT:-22} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=30"
+          if [ -n "$VPS_SSH_KEY" ]; then
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+            SSH="ssh -i $HOME/.ssh/deploy_key $OPTS"
+          else
+            sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+            export SSHPASS="$VPS_PASSWORD"
+            SSH="sshpass -e ssh $OPTS"
+          fi
+
+          echo "Preparing the server"
+          $SSH "$TARGET" 'set -e
+            SUDO=""; [ "$(id -u)" = "0" ] || SUDO="sudo"
+            command -v docker >/dev/null 2>&1 || { curl -fsSL https://get.docker.com | $SUDO sh; }
+            docker compose version >/dev/null
+            mkdir -p ~/creators-hub'
+
+          # No domain of your own: use a free address that points at the server's IP.
+          if [ -z "$DOMAIN" ]; then
+            IP=$($SSH "$TARGET" 'curl -4 -fsS https://api.ipify.org')
+            DOMAIN="${IP//./-}.sslip.io"
+          fi
+          echo "DOMAIN=$DOMAIN" >> "$GITHUB_ENV"
+
+          echo "Sending the image"
+          docker save creators-hub:latest | gzip | $SSH "$TARGET" 'gunzip | docker load'
+
+          echo "Writing the configuration"
+          $SSH "$TARGET" 'cat > ~/creators-hub/compose.yaml' < deploy/compose.yaml
+          $SSH "$TARGET" 'cat > ~/creators-hub/Caddyfile' < deploy/Caddyfile
+          {
+            echo "DOMAIN=$DOMAIN"
+            echo "BOT_TOKEN=$BOT_TOKEN"
+            echo "ADMIN_IDS=$ADMIN_IDS"
+            echo "ADMIN_CHAT_ID=$ADMIN_CHAT_ID"
+            echo "COMMUNITY_CHAT_URL=$COMMUNITY_CHAT_URL"
+            echo "WELCOME_VIDEO=$WELCOME_VIDEO"
+          } | $SSH "$TARGET" 'umask 077; cat > ~/creators-hub/.env'
+
+          echo "Starting"
+          $SSH "$TARGET" 'cd ~/creators-hub && docker compose up -d --remove-orphans && docker image prune -f >/dev/null'
+
+          echo "Waiting for https://$DOMAIN"
+          for attempt in $(seq 1 30); do
+            if curl -fsS -m 10 "https://$DOMAIN/healthz" >/dev/null 2>&1; then
+              echo "::notice::Live at https://$DOMAIN"
+              $SSH "$TARGET" 'cd ~/creators-hub && docker compose logs --tail 15 app'
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "::error::The server did not answer at https://$DOMAIN. Logs follow."
+          $SSH "$TARGET" 'cd ~/creators-hub && docker compose ps && docker compose logs --tail 60'
+          exit 1
