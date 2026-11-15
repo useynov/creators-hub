@@ -1,6 +1,12 @@
 # Build the mini app and the server.
 FROM node:22-slim AS build
 WORKDIR /app
+# better-sqlite3 13.x publishes no prebuilt binaries, so npm ci compiles it with
+# node-gyp, which needs Python and a C++ toolchain. Build stage only: the runtime
+# image below copies the compiled node_modules and stays compiler-free.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 COPY server/package.json server/
 COPY web/package.json web/
