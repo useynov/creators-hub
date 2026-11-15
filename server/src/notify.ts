@@ -1,0 +1,94 @@
+import { InlineKeyboard, type Api } from 'grammy';
+import { config } from './config.js';
+
+/**
+ * Everything the bot says on its own initiative goes through here.
+ * Without a bot token (tests, local preview) messages land in `outbox` instead.
+ */
+let api: Api | null = null;
+
+export interface SentMessage {
+  chatId: number;
+  html: string;
+  button?: string;
+}
+export const outbox: SentMessage[] = [];
+
+export function setApi(next: Api | null): void {
+  api = next;
+}
+
+export function esc(text: string | number | null | undefined): string {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** A button that opens the mini app on a given screen. Private chats only. */
+export function appButton(text: string, path = '/'): InlineKeyboard | undefined {
+  if (!config.webappUrl.startsWith('https://')) return undefined;
+  return new InlineKeyboard().webApp(text, config.webappUrl + path);
+}
+
+export async function notifyUser(
+  userId: number,
+  html: string,
+  button?: { text: string; path: string },
+): Promise<void> {
+  if (!api) {
+    outbox.push({ chatId: userId, html, button: button?.path });
+    return;
+  }
+  try {
+    await api.sendMessage(userId, html, {
+      parse_mode: 'HTML',
+      reply_markup: button ? appButton(button.text, button.path) : undefined,
+      link_preview_options: { is_disabled: true },
+    });
+  } catch (error) {
+    // Most often the creator has blocked the bot. Nothing to do about it here.
+    console.warn(`[notify] could not message user ${userId}:`, (error as Error).message);
+  }
+}
+
+/** The chats where the team works: one group, or each admin in private. */
+export function adminChats(): number[] {
+  return config.adminChatId ? [config.adminChatId] : config.adminIds;
+}
+
+export async function notifyAdmins(
+  html: string,
+  keyboard?: InlineKeyboard,
+): Promise<Array<{ chatId: number; messageId: number }>> {
+  const sent: Array<{ chatId: number; messageId: number }> = [];
+  for (const chatId of adminChats()) {
+    if (!api) {
+      outbox.push({ chatId, html });
+      continue;
+    }
+    try {
+      const message = await api.sendMessage(chatId, html, {
+        parse_mode: 'HTML',
+        reply_markup: keyboard,
+        link_preview_options: { is_disabled: true },
+      });
+      sent.push({ chatId, messageId: message.message_id });
+    } catch (error) {
+      console.warn(`[notify] could not message admin chat ${chatId}:`, (error as Error).message);
+    }
+  }
+  return sent;
+}
+
+/** Copies a creator's message (a draft video, for example) to the team. */
+export async function copyToAdmins(fromChatId: number, messageId: number): Promise<void> {
+  if (!api) return;
+  for (const chatId of adminChats()) {
+    try {
+      await api.copyMessage(chatId, fromChatId, messageId);
+    } catch (error) {
+      console.warn(`[notify] could not copy message to ${chatId}:`, (error as Error).message);
+    }
+  }
+}

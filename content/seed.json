@@ -1,0 +1,65 @@
+{
+  "tasks": [
+    {
+      "id": "caravan-shoot",
+      "title": "Shoot the New Year caravan",
+      "summary": "Come to the caravan, shoot it your way and post it.",
+      "reward": 5,
+      "format": "Photo, reel or story",
+      "date": "2026-12-25",
+      "place": "Dostyk, Almaty",
+      "deadline": "2026-12-25T23:59:00+05:00",
+      "reviewMode": "post_first",
+      "viewsBonus": false,
+      "steps": [
+        "Come to the caravan.",
+        "Shoot it your way and post it.",
+        "Tag us in the post, then send us the link."
+      ]
+    },
+    {
+      "id": "new-year-post",
+      "title": "New Year post with Coca-Cola",
+      "summary": "A New Year post in your own style with Coca-Cola in the frame.",
+      "reward": 15,
+      "format": "Reel or post",
+      "deadline": "2026-12-31T23:59:00+05:00",
+      "reviewMode": "post_first",
+      "viewsBonus": true,
+      "steps": [
+        "Make a New Year reel or post with Coca-Cola in the frame.",
+        "Post it and tag us.",
+        "Send us the link."
+      ]
+    },
+    {
+      "id": "new-year-table-reel",
+      "title": "New Year table reel",
+      "summary": "Show your New Year table with Coca-Cola on it. One reel, your own style.",
+      "reward": 15,
+      "format": "Reel",
+      "deadline": "2026-12-28T23:59:00+05:00",
+      "reviewMode": "draft_first",
+      "viewsBonus": false,
+      "steps": []
+    }
+  ],
+  "events": [
+    {
+      "id": "new-year-caravan",
+      "title": "New Year Caravan",
+      "date": "2026-12-25",
+      "time": null,
+      "place": "Dostyk, Almaty",
+      "description": "Come, meet the team and other creators.",
+      "taskId": "caravan-shoot"
+    }
+  ],
+  "shop": [
+    { "id": "t-shirt", "title": "T-shirt", "price": 30, "category": "merch", "needsSize": true },
+    { "id": "tote-bag", "title": "Tote bag", "price": 20, "category": "merch", "needsSize": false },
+    { "id": "hoodie", "title": "Hoodie", "price": 60, "category": "merch", "needsSize": true },
+    { "id": "cinema-tickets", "title": "Cinema tickets for two", "price": 45, "category": "gift", "needsSize": false }
+  ],
+  "news": []
+}

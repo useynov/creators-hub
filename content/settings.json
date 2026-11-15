@@ -1,0 +1,13 @@
+{
+  "brandName": "Coca-Cola Creators Hub",
+  "brandInitials": "CH",
+  "timeZone": "Asia/Almaty",
+  "currencySign": "₸",
+  "reviewTime": null,
+  "cities": ["Almaty", "Astana", "Shymkent"],
+  "levels": { "pro": 150, "partner": 400 },
+  "rating": { "perPublication": 5, "perScorePoint": 1, "viewsPerPoint": 250 },
+  "cashout": { "rateKzt": null, "minCoins": null, "method": null },
+  "topPerformerBonus": null,
+  "checkinCoins": 0
+}
