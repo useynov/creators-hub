@@ -77,26 +77,32 @@ npm test
 
 ## Deploy
 
-Pushing to `main` deploys. The workflow in `.github/workflows/deploy.yml` runs the tests, builds the Docker image, copies it to your server over SSH and starts it with Caddy in front for https (`deploy/compose.yaml`).
+The app runs as one Docker container. `deploy/compose.yaml` starts it together with Caddy, which gets the https certificate for `DOMAIN` on its own.
 
-Set these once in the repository: Settings, Secrets and variables, Actions, New repository secret.
+On the server, in a clone of this repository:
 
-| Secret | Required | What it is |
-| --- | --- | --- |
-| `VPS_HOST` | yes | The server's IP address |
-| `VPS_PASSWORD` or `VPS_SSH_KEY` | yes | The server password, or a private SSH key that can log in |
-| `BOT_TOKEN` | yes | Token from BotFather |
-| `ADMIN_IDS` | yes | Telegram user IDs of the team, comma-separated |
-| `VPS_USER` | no | Login name, default `root` |
-| `VPS_PORT` | no | SSH port, default `22` |
-| `DOMAIN` | no | A domain or subdomain whose A record points at the server, for example `hub.example.com`. Without it the app gets a free `<ip>.sslip.io` address |
-| `ADMIN_CHAT_ID`, `COMMUNITY_CHAT_URL`, `WELCOME_VIDEO` | no | See Configuration |
+1. Create `deploy/.env` (mode 600) with `DOMAIN`, `BOT_TOKEN`, `ADMIN_IDS` and any optional variables from Configuration. `DOMAIN` is the address without `https://`; compose sets `WEBAPP_URL` from it.
+2. Build the image from the repository root:
 
-The server needs ports 80 and 443 free and reachable. Docker is installed on the first deploy if it is missing. The database lives in the `hub-data` Docker volume and survives redeploys.
+   ```bash
+   docker build -t creators-hub:latest .
+   ```
 
-To start a deploy by hand: Actions, Deploy, Run workflow. Until the required secrets exist the workflow only runs the tests and says which secrets are missing.
+3. Start it from the `deploy` folder:
+
+   ```bash
+   docker compose up -d
+   ```
+
+If the server already has a reverse proxy on ports 80 and 443, keep the bundled Caddy off with a local `deploy/compose.override.yaml` and point the existing proxy at the app on port 3000. That is how the production server is set up.
+
+To update, run `git pull`, then steps 2 and 3 again. The database lives in the `hub-data` Docker volume and survives updates.
 
 Run a single instance. The bot uses long polling, so two copies would fight over updates. On start the bot sets its own menu button ("Open app") and command list.
+
+### Updating from GitHub
+
+The Deploy workflow tests every push and builds the image. It can also run the update on the server for you after each push to `main`. For that, add these repository secrets (Settings, Secrets and variables, Actions): `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` or `VPS_PASSWORD`. Optional: `VPS_PORT` (default 22) and `VPS_PATH` (the clone's folder, default `projects/creators-hub` in the user's home). Without them the workflow only tests and builds.
 
 ## Content
 
