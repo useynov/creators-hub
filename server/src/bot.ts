@@ -10,15 +10,21 @@ import {
   checkIn,
   createOffer,
   creatorLine,
+  disableInviteLink,
   draftKeyboard,
   findUser,
   grantCoins,
   HubError,
+  INVITE_LINK_NOTE,
+  INVITE_LINK_PREFIX,
+  inviteLinkCode,
   isInvited,
   levelName,
   receiveDraftFile,
+  redeemInviteLink,
   removeInvite,
   requestChanges,
+  resetInviteLink,
   reviewKeyboard,
   setLevelOverride,
   setViews,
@@ -34,6 +40,7 @@ const ADMIN_HELP = [
   '/invite @username or ID: add creators to the invite list (several at once is fine)',
   '/uninvite @username or ID: remove from the list',
   '/invites: show the invite list',
+  '/invitelink: one link that lets in whoever opens it (add "new" to replace it, "off" to turn it off)',
   '/pending: submissions waiting for review',
   '/tasks: tasks and their IDs',
   '/announce task-id: tell every creator about a task',
@@ -92,6 +99,11 @@ export function createBot(db: DB): Bot {
       );
     }
 
+    // The shared invite link: whoever opens it while it is live goes on the invite list.
+    if (ctx.match.startsWith(INVITE_LINK_PREFIX) && !redeemInviteLink(db, ctx.from, ctx.match.slice(INVITE_LINK_PREFIX.length))) {
+      return ctx.reply('🔒 <b>This invite link is no longer active</b>\n\nAsk our team for a new one.', HTML);
+    }
+
     if (!isInvited(db, ctx.from)) return notInvited(ctx);
     const user = upsertUser(db, ctx.from);
 
@@ -135,17 +147,51 @@ export function createBot(db: DB): Bot {
   admin.command('invites', (ctx) => {
     const rows = db
       .prepare(
-        `SELECT i.telegram_id, i.username, u.first_name, u.onboarded_at FROM invites i
+        `SELECT i.telegram_id, i.username, i.note, u.first_name, u.onboarded_at FROM invites i
          LEFT JOIN users u ON u.id = i.telegram_id ORDER BY i.id DESC LIMIT 100`,
       )
-      .all() as Array<{ telegram_id: number | null; username: string | null; first_name: string | null; onboarded_at: string | null }>;
+      .all() as Array<{
+      telegram_id: number | null;
+      username: string | null;
+      note: string | null;
+      first_name: string | null;
+      onboarded_at: string | null;
+    }>;
     if (!rows.length) return ctx.reply('The invite list is empty. Add someone with /invite @username');
     const lines = rows.map((row) => {
       const who = row.username ? `@${row.username}` : String(row.telegram_id);
       const state = row.onboarded_at ? 'in the Hub' : row.first_name ? 'started the bot' : 'has not opened the bot yet';
-      return `${esc(who)}${row.first_name ? ` (${esc(row.first_name)})` : ''}: ${state}`;
+      const via = row.note === INVITE_LINK_NOTE ? ', came by the invite link' : '';
+      return `${esc(who)}${row.first_name ? ` (${esc(row.first_name)})` : ''}: ${state}${via}`;
     });
     return ctx.reply(lines.join('\n'), HTML);
+  });
+
+  admin.command('invitelink', (ctx) => {
+    const action = ctx.match.trim().toLowerCase();
+    if (action === 'off') {
+      return ctx.reply(
+        disableInviteLink(db)
+          ? 'The invite link is off. Everyone who already came in stays on the list.'
+          : 'There was no invite link to turn off.',
+      );
+    }
+    if (action && action !== 'new') return ctx.reply('Use /invitelink, /invitelink new or /invitelink off');
+
+    const code = action === 'new' ? resetInviteLink(db) : (inviteLinkCode(db) ?? resetInviteLink(db));
+    return ctx.reply(
+      [
+        action === 'new' ? '<b>New invite link.</b> The old one no longer lets anyone in.' : '<b>Invite link</b>',
+        '',
+        `https://t.me/${ctx.me.username}?start=${INVITE_LINK_PREFIX}${code}`,
+        '',
+        'Whoever opens it and presses Start goes on the invite list. Share it only with people you want in.',
+        '',
+        '/invitelink new: replace it',
+        '/invitelink off: turn it off',
+      ].join('\n'),
+      { ...HTML, link_preview_options: { is_disabled: true } },
+    );
   });
 
   admin.command('tasks', (ctx) => {

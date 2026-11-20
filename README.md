@@ -12,13 +12,14 @@ content/  Tasks, events, shop items, news and program settings, as JSON
 
 ## How it works
 
-**Creators** press Start in the bot. If they are on the invite list they get the welcome and one button that opens the mini app. Everything else happens in the app: take a task, send the link, follow the review, spend coins, RSVP to events.
+**Creators** press Start in the bot. If they are on the invite list, or opened the team's invite link, they get the welcome and one button that opens the mini app. Everything else happens in the app: take a task, send the link, follow the review, spend coins, RSVP to events.
 
 **The team** works in Telegram too. The bot posts every submission, order and question to the team (one group chat, or each admin in private) with buttons to approve or ask for changes. There is no separate admin site.
 
 | What | Where |
 | --- | --- |
 | Invite creators | `/invite @username` in the bot |
+| Invite by link | `/invitelink` in the bot gives one link. Whoever opens it and presses Start goes on the invite list. `/invitelink new` replaces it, `/invitelink off` turns it off |
 | Review a submission | Buttons under the bot's message: Approve with a score of 3, 4 or 5, or Needs changes and then reply with the comment |
 | Review a draft | Same, for tasks with draft approval. A creator can upload the video straight to the bot |
 | Answer a creator | Reply to their message in the team chat |
