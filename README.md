@@ -20,6 +20,8 @@ content/  Tasks, events, shop items, news and program settings, as JSON
 | --- | --- |
 | Invite creators | `/invite @username` in the bot |
 | Invite by link | `/invitelink` in the bot gives one link. Whoever opens it and presses Start goes on the invite list. `/invitelink new` replaces it, `/invitelink off` turns it off |
+| Let testers try both sides | `/demo on` gives everyone on the invite list the team's rights and the team's messages, so each tester reviews their own submissions. Owners only, and never with real creators in the Hub. `/demo off` ends it |
+| Stop the team's messages | `/quiet on` stops them coming to you in private, `/quiet off` brings them back |
 | Review a submission | Buttons under the bot's message: Approve with a score of 3, 4 or 5, or Needs changes and then reply with the comment |
 | Review a draft | Same, for tasks with draft approval. A creator can upload the video straight to the bot |
 | Answer a creator | Reply to their message in the team chat |

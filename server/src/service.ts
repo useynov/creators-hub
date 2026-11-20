@@ -464,7 +464,7 @@ export function joinTask(db: DB, user: UserRow, taskId: string): TaskView {
   if (!getEntry(db, user.id, taskId)) {
     assertOpen(task);
     ensureEntry(db, user.id, task);
-    void notifyAdmins(`${creatorLine(user)} is in for <b>${esc(task.title)}</b>.`);
+    void notifyAdmins(db, `${creatorLine(user)} is in for <b>${esc(task.title)}</b>.`);
   }
   return oneTask(db, user.id, taskId);
 }
@@ -536,6 +536,7 @@ export function submitLinks(db: DB, user: UserRow, taskId: string, body: Record<
 
   const resent = entry.status !== 'joined' && entry.status !== 'draft_approved';
   void notifyAdmins(
+    db,
     [
       `<b>${resent ? 'Resubmitted' : 'New submission'} #${entry.id}</b>`,
       `Task: ${esc(task.title)} (+${task.reward})`,
@@ -571,6 +572,7 @@ export function submitDraftLink(db: DB, user: UserRow, taskId: string, body: Rec
   ).run(link, note, now(), entry.id);
 
   void notifyAdmins(
+    db,
     [
       `<b>Draft #${entry.id}</b>`,
       `Task: ${esc(task.title)} (+${task.reward})`,
@@ -617,6 +619,7 @@ export function receiveDraftFile(db: DB, user: UserRow, fileId: string): { task:
     `UPDATE entries SET status = 'draft_review', draft_file_id = ?, draft_link = NULL, draft_sent_at = ? WHERE id = ?`,
   ).run(fileId, now(), entry.id);
   void notifyAdmins(
+    db,
     [`<b>Draft #${entry.id}</b> (file above)`, `Task: ${esc(task.title)} (+${task.reward})`, `Creator: ${creatorLine(user)}`].join(
       '\n',
     ),
@@ -779,6 +782,7 @@ export function placeOrder(db: DB, user: UserRow, itemId: string, body: Record<s
   })();
 
   void notifyAdmins(
+    db,
     [
       `<b>Order #${orderId}</b>: ${esc(item.title)}${item.needs_size ? `, size ${esc(size)}` : ''} (${item.price} coins)`,
       `Creator: ${creatorLine(user)}`,
@@ -814,6 +818,7 @@ export function requestCashout(db: DB, user: UserRow, body: Record<string, unkno
   })();
 
   void notifyAdmins(
+    db,
     [
       `<b>Cash-out request</b>: ${coins} coins = ${coins * rateKzt} ${settings.currencySign}`,
       `Creator: ${creatorLine(user)}`,
@@ -884,13 +889,13 @@ export function rsvp(db: DB, user: UserRow, eventId: string): void {
   const result = db
     .prepare('INSERT OR IGNORE INTO rsvps (user_id, event_id, code, created_at) VALUES (?, ?, ?, ?)')
     .run(user.id, eventId, code, now());
-  if (result.changes) void notifyAdmins(`${creatorLine(user)} is coming to <b>${esc(event.title)}</b>.`);
+  if (result.changes) void notifyAdmins(db, `${creatorLine(user)} is coming to <b>${esc(event.title)}</b>.`);
 }
 
 export function cancelRsvp(db: DB, user: UserRow, eventId: string): void {
   const event = getEvent(db, eventId);
   const result = db.prepare('DELETE FROM rsvps WHERE user_id = ? AND event_id = ? AND checked_in_at IS NULL').run(user.id, eventId);
-  if (result.changes) void notifyAdmins(`${creatorLine(user)} can no longer come to <b>${esc(event.title)}</b>.`);
+  if (result.changes) void notifyAdmins(db, `${creatorLine(user)} can no longer come to <b>${esc(event.title)}</b>.`);
 }
 
 export function remindMe(db: DB, userId: number, eventId: string): void {
@@ -990,6 +995,7 @@ export function answerOffer(db: DB, user: UserRow, offerId: number, accept: bool
   if (!offer) throw new HubError('offer_not_found', 'This offer is no longer open.', 404);
   db.prepare('UPDATE offers SET status = ?, answered_at = ? WHERE id = ?').run(accept ? 'accepted' : 'declined', now(), offerId);
   void notifyAdmins(
+    db,
     `${creatorLine(user)} <b>${accept ? 'accepted' : 'declined'}</b> the offer “${esc(offer.campaign)}”.` +
       (accept ? ' Write to them directly to agree the idea and the details.' : ''),
   );
