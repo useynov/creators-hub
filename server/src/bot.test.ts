@@ -142,3 +142,44 @@ test('event pass: only the team can check a creator in', async () => {
   const scanned = await say(admin, `/start checkin_${code}`);
   assert.match(texts(scanned, 900)[0]!, /Aruzhan<\/b> is checked in/);
 });
+
+test('/invitelink: the shared link lets in whoever opens it, until it is replaced or turned off', async () => {
+  const igor = { id: 78, first_name: 'Igor' };
+  const late = { id: 79, first_name: 'Late' };
+  const linkIn = (list: Call[]): string => texts(list, 900)[0]!.match(/https:\/\/t\.me\/test_bot\?start=(join_[\w-]+)/)![1]!;
+
+  // No link yet: a made-up code opens nothing, and only the team can make a link.
+  const guess = await say(igor, '/start join_guess');
+  assert.match(texts(guess, 78)[0]!, /no longer active/);
+  await say(igor, '/invitelink');
+  assert.equal(service.inviteLinkCode(db), null);
+  assert.equal(service.isInvited(db, igor), false);
+
+  // The team asks for the link. Asking again shows the same one.
+  const payload = linkIn(await say(admin, '/invitelink'));
+  assert.equal(linkIn(await say(admin, '/invitelink')), payload);
+
+  // Opening it is enough: welcome, and the account is on the list from then on.
+  const joined = await say(igor, `/start ${payload}`);
+  assert.match(texts(joined, 78)[0]!, /Welcome, Igor!/);
+  assert.equal((db.prepare('SELECT note FROM invites WHERE telegram_id = 78').get() as { note: string }).note, 'invite link');
+  assert.match(texts(await say(igor, '/start'), 78)[0]!, /Welcome, Igor!/);
+  assert.match(texts(await say(admin, '/invites'), 900)[0]!, /78 \(Igor\): started the bot, came by the invite link/);
+
+  // Someone already on the list is not added twice.
+  await say(creator, `/start ${payload}`);
+  assert.equal((db.prepare('SELECT COUNT(*) AS n FROM invites WHERE telegram_id = 42 OR username = ?').get('aruzhan') as { n: number }).n, 1);
+
+  // A replaced link: the old one stops working, people already in stay in.
+  const fresh = linkIn(await say(admin, '/invitelink new'));
+  assert.notEqual(fresh, payload);
+  assert.match(texts(await say(late, `/start ${payload}`), 79)[0]!, /no longer active/);
+  assert.equal(service.isInvited(db, late), false);
+  assert.equal(service.isInvited(db, igor), true);
+
+  // Turned off: no link opens the door, a plain /start is still refused.
+  assert.match(texts(await say(admin, '/invitelink off'), 900)[0]!, /invite link is off/);
+  assert.match(texts(await say(late, `/start ${fresh}`), 79)[0]!, /no longer active/);
+  assert.match(texts(await say(late, '/start'), 79)[0]!, /not on the invite list/);
+  assert.equal(service.isInvited(db, igor), true);
+});

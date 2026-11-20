@@ -139,6 +139,45 @@ export function removeInvite(db: DB, ref: string): boolean {
   return result.changes > 0;
 }
 
+// --- Invite link --------------------------------------------------------
+
+/** The shared invite link is t.me/<bot>?start=join_<code>. */
+export const INVITE_LINK_PREFIX = 'join_';
+/** Marks invite-list rows that came in through the link. */
+export const INVITE_LINK_NOTE = 'invite link';
+
+/** The code of the shared invite link, or null while the link is off. */
+export function inviteLinkCode(db: DB): string | null {
+  const row = db.prepare(`SELECT value FROM meta WHERE key = 'invite_link_code'`).get() as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+/** Makes a fresh code. Any earlier link stops letting new people in. */
+export function resetInviteLink(db: DB): string {
+  const code = randomBytes(9).toString('base64url');
+  db.prepare(
+    `INSERT INTO meta (key, value) VALUES ('invite_link_code', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(code);
+  return code;
+}
+
+/** Turns the link off. People who already came in through it stay on the list. */
+export function disableInviteLink(db: DB): boolean {
+  return db.prepare(`DELETE FROM meta WHERE key = 'invite_link_code'`).run().changes > 0;
+}
+
+/**
+ * Lets in whoever opens the bot through the live invite link by putting the
+ * account on the invite list. False when the code is not the current one.
+ */
+export function redeemInviteLink(db: DB, tg: TelegramIdentity, code: string): boolean {
+  if (isInvited(db, tg)) return true;
+  const live = inviteLinkCode(db);
+  if (!live || code !== live) return false;
+  addInvite(db, String(tg.id), INVITE_LINK_NOTE);
+  return true;
+}
+
 export function balanceOf(db: DB, userId: number): number {
   const row = db.prepare('SELECT COALESCE(SUM(amount), 0) AS total FROM ledger WHERE user_id = ?').get(userId) as {
     total: number;
