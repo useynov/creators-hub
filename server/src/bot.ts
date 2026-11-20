@@ -1,7 +1,7 @@
 import { Bot, GrammyError, type Context } from 'grammy';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
-import { adminChats, appButton, copyToAdmins, esc, notifyAdmins } from './notify.js';
+import { appButton, copyToAdmins, esc, notifyAdmins } from './notify.js';
 import {
   addInvite,
   announceTask,
@@ -30,6 +30,7 @@ import {
   setViews,
   upsertUser,
 } from './service.js';
+import { demoMode, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
 import type { Level } from './types.js';
 
 const HTML = { parse_mode: 'HTML' as const };
@@ -48,6 +49,8 @@ const ADMIN_HELP = [
   '/bonus @username coins reason: add coins by hand',
   '/level @username member|pro|partner|auto: set a level by hand',
   '/offer @username | campaign | fee | what we need | post by | answer by',
+  '/quiet on|off: stop or resume the team\'s messages coming to you in private',
+  '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
   '/id: show this chat ID and your user ID',
   '',
   'Reply to a creator\'s message to answer them. Scan an event pass with your phone camera to check a creator in.',
@@ -56,9 +59,9 @@ const ADMIN_HELP = [
 export function createBot(db: DB): Bot {
   const bot = new Bot(config.botToken);
 
-  /** The team: listed admins anywhere, and everyone inside the team group. */
+  /** The team: owners (and, in demo mode, everyone invited) anywhere, and everyone inside the team group. */
   const canAdmin = (ctx: Context): boolean =>
-    Boolean(ctx.from && (isAdmin(ctx.from.id) || (config.adminChatId !== null && ctx.chat?.id === config.adminChatId)));
+    Boolean(ctx.from && (isTeam(db, ctx.from.id) || (config.adminChatId !== null && ctx.chat?.id === config.adminChatId)));
 
   const notInvited = (ctx: Context) =>
     ctx.reply(
@@ -88,7 +91,7 @@ export function createBot(db: DB): Bot {
   bot.command('start', async (ctx) => {
     if (ctx.chat.type !== 'private' || !ctx.from) return;
 
-    if (ctx.match.startsWith('checkin_') && isAdmin(ctx.from.id)) {
+    if (ctx.match.startsWith('checkin_') && isTeam(db, ctx.from.id)) {
       const result = checkIn(db, ctx.match.slice('checkin_'.length));
       if (!result) return ctx.reply('This pass is not valid.');
       return ctx.reply(
@@ -121,6 +124,18 @@ export function createBot(db: DB): Bot {
       ].join('\n'),
       { ...HTML, reply_markup: appButton('Open Creators Hub', user.onboarded_at ? '/' : '/welcome') },
     );
+    if (demoMode(db)) {
+      await ctx.reply(
+        [
+          '🧪 <b>Demo mode</b>',
+          '',
+          'You also have the team\'s rights here, so you can try both sides. What you send as a creator comes back to this chat the way the team sees it, with the review buttons.',
+          '',
+          '/help lists the team commands.',
+        ].join('\n'),
+        HTML,
+      );
+    }
   });
 
   bot.command('id', (ctx) => ctx.reply(`Chat ID: <code>${ctx.chat.id}</code>\nYour user ID: <code>${ctx.from?.id}</code>`, HTML));
@@ -285,6 +300,33 @@ export function createBot(db: DB): Bot {
     return ctx.reply(`Offer sent to ${user.first_name}.`);
   });
 
+  admin.command('quiet', (ctx) => {
+    const action = ctx.match.trim().toLowerCase();
+    if (action !== 'on' && action !== 'off') {
+      return ctx.reply(`The team's messages are ${isQuiet(db, ctx.from!.id) ? 'off' : 'on'} for you. Use /quiet on or /quiet off`);
+    }
+    setQuiet(db, ctx.from!.id, action === 'on');
+    return ctx.reply(
+      action === 'on'
+        ? 'Done. The team\'s messages will no longer come to you in private. /quiet off brings them back.'
+        : 'Done. You get the team\'s messages again.',
+    );
+  });
+
+  admin.command('demo', (ctx) => {
+    const action = ctx.match.trim().toLowerCase();
+    if (action !== 'on' && action !== 'off') {
+      return ctx.reply(`Demo mode is ${demoMode(db) ? 'on' : 'off'}. Use /demo on or /demo off`);
+    }
+    if (!isAdmin(ctx.from!.id)) return ctx.reply('Only the owners can switch demo mode.');
+    setDemoMode(db, action === 'on');
+    return ctx.reply(
+      action === 'on'
+        ? 'Demo mode is on. Everyone on the invite list now has the team\'s rights and gets the team\'s messages. Turn it off before real creators join: /demo off'
+        : 'Demo mode is off. Only the owners and the team group have the team\'s rights.',
+    );
+  });
+
   admin.command('cancel', (ctx) => {
     db.prepare('DELETE FROM admin_pending WHERE admin_id = ?').run(ctx.from!.id);
     return ctx.reply('Cancelled.');
@@ -364,7 +406,7 @@ export function createBot(db: DB): Bot {
     // 3. A draft file we asked for.
     const file = message.video ?? message.document ?? message.animation ?? message.video_note;
     if (file && user.pending) {
-      await copyToAdmins(ctx.chat.id, message.message_id);
+      await copyToAdmins(db, ctx.chat.id, message.message_id);
       const accepted = receiveDraftFile(db, user, file.file_id);
       if (accepted) {
         const wait = settings.reviewTime ? ` The team usually answers within ${settings.reviewTime}.` : '';
@@ -384,9 +426,10 @@ export function createBot(db: DB): Bot {
 
     // 5. Anything else is a message for the team.
     if (!body && !file && !message.photo && !message.voice) return;
-    if (!adminChats().length) return ctx.reply('The team chat is not set up yet. Please try again later.');
-    if (!message.text) await copyToAdmins(ctx.chat.id, message.message_id);
+    if (!teamChats(db).length) return ctx.reply('The team chat is not set up yet. Please try again later.');
+    if (!message.text) await copyToAdmins(db, ctx.chat.id, message.message_id);
     const sent = await notifyAdmins(
+      db,
       `💬 ${creatorLine(user)} writes:\n\n${esc(body || '(attachment above)')}\n\n<i>Reply to this message to answer.</i>`,
     );
     const remember = db.prepare('INSERT OR REPLACE INTO support_threads (chat_id, message_id, user_id) VALUES (?, ?, ?)');

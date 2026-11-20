@@ -1,5 +1,7 @@
 import { InlineKeyboard, type Api } from 'grammy';
 import { config } from './config.js';
+import type { DB } from './db.js';
+import { teamChats } from './team.js';
 
 /**
  * Everything the bot says on its own initiative goes through here.
@@ -52,17 +54,13 @@ export async function notifyUser(
   }
 }
 
-/** The chats where the team works: one group, or each admin in private. */
-export function adminChats(): number[] {
-  return config.adminChatId ? [config.adminChatId] : config.adminIds;
-}
-
 export async function notifyAdmins(
+  db: DB,
   html: string,
   keyboard?: InlineKeyboard,
 ): Promise<Array<{ chatId: number; messageId: number }>> {
   const sent: Array<{ chatId: number; messageId: number }> = [];
-  for (const chatId of adminChats()) {
+  for (const chatId of teamChats(db)) {
     if (!api) {
       outbox.push({ chatId, html });
       continue;
@@ -82,9 +80,9 @@ export async function notifyAdmins(
 }
 
 /** Copies a creator's message (a draft video, for example) to the team. */
-export async function copyToAdmins(fromChatId: number, messageId: number): Promise<void> {
+export async function copyToAdmins(db: DB, fromChatId: number, messageId: number): Promise<void> {
   if (!api) return;
-  for (const chatId of adminChats()) {
+  for (const chatId of teamChats(db)) {
     try {
       await api.copyMessage(chatId, fromChatId, messageId);
     } catch (error) {

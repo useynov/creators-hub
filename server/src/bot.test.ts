@@ -183,3 +183,51 @@ test('/invitelink: the shared link lets in whoever opens it, until it is replace
   assert.match(texts(await say(late, '/start'), 79)[0]!, /not on the invite list/);
   assert.equal(service.isInvited(db, igor), true);
 });
+
+test('demo mode: everyone on the invite list gets the team side, and /quiet stops the messages', async () => {
+  const team = await import('./team.js');
+  const igor = { id: 78, first_name: 'Igor' };
+  const outsider = { id: 80, first_name: 'Outsider' };
+  const toChat = (list: Call[], chatId: number): Call[] => list.filter((call) => call.method === 'sendMessage' && call.payload.chat_id === chatId);
+
+  // Off by default: an invited creator has no team commands and cannot switch the mode.
+  await say(igor, '/demo on');
+  assert.equal(team.demoMode(db), false);
+  assert.doesNotMatch(texts(await say(igor, '/help'), 78)[0]!, /Team commands/);
+
+  // The owner turns it on. Invited people become the team, strangers do not.
+  assert.match(texts(await say(admin, '/demo on'), 900)[0]!, /Demo mode is on/);
+  assert.match(texts(await say(igor, '/help'), 78)[0]!, /Team commands/);
+  assert.match(texts(await say(igor, '/start'), 78).at(-1)!, /Demo mode/);
+  assert.match(texts(await say(outsider, '/help'), 80)[0]!, /not on the invite list/);
+  assert.match(texts(await say(igor, '/demo off'), 78)[0]!, /Only the owners/);
+  assert.equal(team.demoMode(db), true);
+
+  // A tester's own submission comes back to them with the review buttons, and they approve it themselves.
+  calls.length = 0;
+  service.submitLinks(db, service.getUser(db, 78)!, 'caravan-shoot', { links: ['https://instagram.com/reel/igor'] });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const review = toChat([...calls], 78).find((call) => /New submission #\d+/.test(call.payload.text))!;
+  const entryId = Number(review.payload.text.match(/New submission #(\d+)/)![1]);
+  assert.equal(review.payload.reply_markup.inline_keyboard[1][0].callback_data, `nc:${entryId}`);
+  assert.ok(toChat([...calls], 900).length > 0, 'the owner still gets the team messages until they go quiet');
+  const approved = await press(igor as any, `ap:${entryId}:4`, review.payload.text);
+  assert.match(texts(approved, 78)[0]!, /\+5 coins are in your wallet/);
+  assert.equal(service.balanceOf(db, 78), 5);
+
+  // The owner goes quiet: nothing more comes to them, testers still get everything.
+  assert.match(texts(await say(admin, '/quiet on'), 900)[0]!, /no longer come to you/);
+  calls.length = 0;
+  service.rsvp(db, service.getUser(db, 78)!, 'new-year-caravan');
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(toChat([...calls], 900).length, 0);
+  assert.ok(toChat([...calls], 78).some((call) => /is coming to/.test(call.payload.text)));
+  assert.deepEqual(team.teamChats(db).sort(), [42, 78]);
+
+  // Back to normal: quiet off, demo off, the invited creator is a creator again.
+  await say(admin, '/quiet off');
+  assert.match(texts(await say(admin, '/demo off'), 900)[0]!, /Demo mode is off/);
+  assert.deepEqual(team.teamChats(db), [900]);
+  assert.doesNotMatch(texts(await say(igor, '/help'), 78)[0]!, /Team commands/);
+  assert.doesNotMatch(texts(await say(igor, '/start'), 78).join('\n'), /Demo mode/);
+});
