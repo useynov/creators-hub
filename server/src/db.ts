@@ -284,6 +284,43 @@ CREATE TABLE IF NOT EXISTS audit_log (
   detail TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS age_refusals (
+  telegram_id INTEGER PRIMARY KEY,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS social_lookups (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id),
+  platform TEXT NOT NULL DEFAULT 'instagram',
+  handle TEXT NOT NULL COLLATE NOCASE,
+  attempt TEXT NOT NULL,
+  status TEXT NOT NULL,
+  result TEXT,
+  started_at TEXT NOT NULL,
+  finished_at TEXT,
+  day TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS submissions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES entries(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  task_id TEXT NOT NULL REFERENCES tasks(id),
+  links TEXT NOT NULL,
+  note TEXT,
+  status TEXT NOT NULL DEFAULT 'checking',
+  result TEXT NOT NULL DEFAULT '[]',
+  tries INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  claimed_at TEXT,
+  finished_at TEXT
+);
+CREATE INDEX IF NOT EXISTS submissions_entry ON submissions(entry_id, id);
+CREATE TABLE IF NOT EXISTS media_copies (
+  remote_url TEXT PRIMARY KEY,
+  url TEXT,
+  status TEXT NOT NULL,
+  tried_at TEXT NOT NULL
+);
 `;
 
 export interface UserRow {
@@ -402,6 +439,7 @@ export interface OfferRow {
   status: 'open' | 'accepted' | 'declined';
   created_at: string;
   answered_at: string | null;
+  brief: string | null;
 }
 
 export interface SocialProfileRow {
@@ -460,6 +498,8 @@ export interface PublicationRow {
   created_at: string;
   final_at: string | null;
   removed_at: string | null;
+  data_source: 'apify' | 'demo' | null;
+  story_reminded_at: string | null;
 }
 
 export type SnapshotKind = 'submit' | 'h24' | 'd7' | 'd14';
@@ -476,6 +516,7 @@ export interface SnapshotRow {
   comments: number | null;
   shares: number | null;
   error: string | null;
+  attempts: number;
 }
 
 export interface TeamMemberRow {
@@ -555,6 +596,12 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['cashouts', 'decided_at', 'TEXT'],
   ['cashouts', 'decided_by', 'INTEGER'],
   ['cashouts', 'note', 'TEXT'],
+  // Creator workstream: where a publication's numbers came from (apify or demo), the second
+  // request for story views, retries of a measurement, the detailed brief of a paid offer.
+  ['publications', 'data_source', 'TEXT'],
+  ['publications', 'story_reminded_at', 'TEXT'],
+  ['snapshots', 'attempts', 'INTEGER NOT NULL DEFAULT 0'],
+  ['offers', 'brief', 'TEXT'],
 ];
 
 export function migrate(db: DB): void {
@@ -755,4 +802,59 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
     );
   });
   run();
+}
+
+// --- Creator workstream rows -------------------------------------------------
+
+/** A Telegram id refused for age. Nothing else about that person is kept. */
+export interface AgeRefusalRow {
+  telegram_id: number;
+  created_at: string;
+}
+
+export type LookupStatus = 'searching' | 'ok' | 'private' | 'not_found' | 'error';
+
+/** The creator's latest "Find my profile", while they look at it and before they confirm. */
+export interface SocialLookupRow {
+  user_id: number;
+  platform: Platform;
+  handle: string;
+  /** Random id of the latest attempt: a slow answer to an older attempt is dropped. */
+  attempt: string;
+  status: LookupStatus;
+  /** JSON: ProfileData plus avatarPath (our own copy), when status is 'ok'. */
+  result: string | null;
+  started_at: string;
+  finished_at: string | null;
+  /** Lookups cost money: how many this creator started on `day` (YYYY-MM-DD). */
+  day: string;
+  count: number;
+}
+
+export type SubmissionStatus = 'checking' | 'blocked' | 'done';
+
+/** One "Send for review" while its links are being checked, before anything reaches the team. */
+export interface SubmissionRow {
+  id: number;
+  entry_id: number;
+  user_id: number;
+  task_id: string;
+  /** JSON array of links */
+  links: string;
+  note: string | null;
+  status: SubmissionStatus;
+  /** JSON array of BlockedLink when status is 'blocked' */
+  result: string;
+  tries: number;
+  created_at: string;
+  claimed_at: string | null;
+  finished_at: string | null;
+}
+
+/** Our copy of a remote seed photo. status 'failed' keeps the remote address in use. */
+export interface MediaCopyRow {
+  remote_url: string;
+  url: string | null;
+  status: 'ok' | 'failed' | 'standin';
+  tried_at: string;
 }

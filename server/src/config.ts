@@ -32,6 +32,13 @@ export const config = {
   apifyToken: env.APIFY_TOKEN?.trim() || null,
   /** Browser preview without Telegram. Never honoured in production. */
   devUserId: !isProd && env.DEV_USER_ID ? Number(env.DEV_USER_ID) : null,
+  /**
+   * Development preview only: a folder of stand-in pictures (avatar.jpg, task-<id>.jpg, event-<id>.jpg,
+   * shop-<id>.jpg, news-<id>.jpg, story.jpg) used where a seed photo could not be copied.
+   */
+  previewPhotosDir: !isProd && env.PREVIEW_PHOTOS ? resolve(rootDir, env.PREVIEW_PHOTOS) : null,
+  /** Development preview only: PREVIEW_SEED=off leaves DEV_USER_ID a brand-new user, to look at the setup. */
+  previewSeed: !isProd && env.PREVIEW_SEED !== 'off',
   webDist: resolve(rootDir, 'web/dist'),
   adminDist: resolve(rootDir, 'admin/dist'),
 };
