@@ -284,7 +284,7 @@ export async function processSubmission(db: DB, submissionId: number, offline = 
     .filter((link) => link.checks.ownAccount === 'fail')
     .map((link) => ({
       url: link.url,
-      author: (link.result.status === 'ok' ? link.result.post.authorHandle : null) ?? link.info.author,
+      author: lower((link.result.status === 'ok' ? link.result.post.authorHandle : null) ?? link.info.author),
       expected: link.info.platform === 'tiktok' ? user.tiktok : user.instagram,
     }));
   if (blocked.length) {
