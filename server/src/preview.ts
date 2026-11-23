@@ -163,6 +163,7 @@ async function seed(db: DB, userId: number): Promise<void> {
       status: 'needs_changes',
       links: JSON.stringify(['https://www.instagram.com/aruzhan.vibes/reel/DPrevCoffee1/']),
       submitted: ago(30),
+      views: 2140,
       comment: 'Lovely mood! The bottle is hard to see at the start. Could you add a close-up in the first seconds?',
       commentAt: ago(20),
     });
