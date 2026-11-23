@@ -51,21 +51,75 @@ export interface SavedMedia {
   bytes: number;
 }
 
+type MediaFolder = 'covers' | 'avatars' | 'thumbs' | 'stories' | 'screens' | 'seed';
+
+/**
+ * The longest side, in pixels, of a picture shown in the mini app or the admin site.
+ * Covers fill a phone screen's width at up to 3x; avatars and thumbnails are small.
+ */
+const PUBLIC_SIDE: Partial<Record<MediaFolder, number>> = { covers: 1280, seed: 1280, thumbs: 640, avatars: 320 };
+
+type Sharp = typeof import('sharp').default;
+let sharpModule: Promise<Sharp | null> | undefined;
+/** The image library is loaded on first use. Without it pictures are stored as they came. */
+const loadSharp = (): Promise<Sharp | null> =>
+  (sharpModule ??= import('sharp').then(
+    (module) => module.default,
+    () => null,
+  ));
+
+/**
+ * Makes a picture for the public zone light enough for a phone on mobile data: turned upright,
+ * no larger than it is shown, stored as WebP, without the camera's metadata (which can carry
+ * the place a photo was taken). Any failure, or a result that is not smaller, keeps the original.
+ */
+export async function fitImage(bytes: Buffer, maxSide: number): Promise<Buffer> {
+  try {
+    const sharp = await loadSharp();
+    if (!sharp) return bytes;
+    const image = sharp(bytes, { limitInputPixels: 50_000_000, failOn: 'error' });
+    const meta = await image.metadata();
+    // Animated pictures stay as they are.
+    if ((meta.pages ?? 1) > 1) return bytes;
+    const fitted = await image
+      .rotate()
+      .resize({ width: maxSide, height: maxSide, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    const camera = Boolean(meta.exif || meta.xmp || meta.iptc);
+    return fitted.length < bytes.length || camera ? fitted : bytes;
+  } catch {
+    return bytes;
+  }
+}
+
 /**
  * Saves bytes under <zone>/<folder>/<random>.<ext>. The type is decided by the content.
  * Throws when the content is not an image or video we accept, or is too large.
+ * Pictures for the public zone are made lighter first (see fitImage); private files,
+ * the story copies and statistics screenshots, are kept exactly as they came.
  */
 export async function saveMedia(
   zone: MediaZone,
-  folder: 'covers' | 'avatars' | 'thumbs' | 'stories' | 'screens' | 'seed',
+  folder: MediaFolder,
   bytes: Buffer,
   options: { maxBytes?: number; allow?: string[] } = {},
 ): Promise<SavedMedia> {
   const maxBytes = options.maxBytes ?? 8 * 1024 * 1024;
   if (bytes.length === 0) throw new Error('empty file');
   if (bytes.length > maxBytes) throw new Error('file too large');
-  const kind = sniff(bytes);
+  let kind = sniff(bytes);
   if (!kind || (options.allow && !options.allow.includes(kind.ext))) throw new Error('unsupported file type');
+
+  const side = zone === 'public' ? PUBLIC_SIDE[folder] : undefined;
+  if (side && kind.ext !== 'mp4' && (!options.allow || options.allow.includes('webp'))) {
+    const fitted = await fitImage(bytes, side);
+    const fittedKind = fitted === bytes ? null : sniff(fitted);
+    if (fittedKind) {
+      bytes = fitted;
+      kind = fittedKind;
+    }
+  }
 
   const path = `${folder}/${randomBytes(12).toString('hex')}.${kind.ext}`;
   const file = join(zoneDir(zone), path);

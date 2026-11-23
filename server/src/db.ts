@@ -612,6 +612,15 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['admin_pending', 'message_text', 'TEXT'],
   // A publication that could not be found once: one more miss in a row marks it removed.
   ['publications', 'missed_at', 'TEXT'],
+  // Admin: who invited someone from the admin site, and tags to put on them once they arrive.
+  ['invites', 'invited_by', 'INTEGER'],
+  ['invites', 'tags', 'TEXT'],
+  ['invites', 'tags_applied_at', 'TEXT'],
+  // Admin: a task is announced in the bot once, however often "publish and announce" is pressed.
+  ['tasks', 'announced_at', 'TEXT'],
+  // Admin: the team has looked at the story views a creator stated (kept or corrected them).
+  ['publications', 'story_checked_at', 'TEXT'],
+  ['publications', 'story_checked_by', 'INTEGER'],
 ];
 
 export function migrate(db: DB): void {

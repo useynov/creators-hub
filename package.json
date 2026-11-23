@@ -17,5 +17,8 @@
     "start": "node --env-file-if-exists=.env server/dist/index.js",
     "test": "npm test --workspace server",
     "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace web && npm run typecheck --workspace admin"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

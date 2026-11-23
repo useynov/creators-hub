@@ -33,7 +33,7 @@ import {
   setViews,
   upsertUser,
 } from './service.js';
-import { demoMode, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
+import { demoMode, isManagerOnly, isOwner, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
 import type { Level } from './types.js';
 
 const HTML = { parse_mode: 'HTML' as const };
@@ -49,11 +49,12 @@ const ADMIN_HELP = [
   '/tasks: tasks and their IDs',
   '/announce task-id: tell the creators in the task\'s audience about it',
   '/views submission-number views: set the views of an approved post',
-  '/bonus @username coins reason: add coins by hand',
-  '/level @username member|pro|partner|auto: set a level by hand',
+  '/bonus @username coins reason: add coins by hand (owners only)',
+  '/level @username member|pro|partner|auto: set a level by hand (owners only)',
   '/confirm @username or ID: confirm that the Instagram account is theirs (their work can then be paid)',
   '/reject @username or ID reason: we could not confirm the account; the creator gets the reason',
-  '/offer @username | campaign | fee | what we need | post by | answer by',
+  '/offer @username | campaign | fee | what we need | post by | answer by (owners only)',
+  '/admin: a one-time link to sign in to the admin site (in a private chat with me)',
   '/quiet on|off: stop or resume the team\'s messages coming to you in private',
   '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
   '/allowage ID: let someone refused for age answer the question again, after a typo in the date (owners only)',
@@ -286,7 +287,13 @@ export function createBot(db: DB): Bot {
     return ctx.reply(`Submission #${entryId} (${result.title}) now has ${Math.round(views!).toLocaleString('en-US')} views.`);
   });
 
+  // Coins by hand, levels by hand and paid offers are the owners' decisions, as on the admin site.
+  const ownersOnly = (ctx: Context, what: string): string | null =>
+    isManagerOnly(db, ctx.from!.id) ? `Only the owners can ${what}. Ask one of them.` : null;
+
   admin.command('bonus', (ctx) => {
+    const refusal = ownersOnly(ctx, 'add coins by hand');
+    if (refusal) return ctx.reply(refusal);
     const [ref, amount, ...reason] = ctx.match.trim().split(/\s+/);
     const coins = Number(amount);
     const user = ref ? findUser(db, ref) : undefined;
@@ -296,6 +303,8 @@ export function createBot(db: DB): Bot {
   });
 
   admin.command('level', (ctx) => {
+    const refusal = ownersOnly(ctx, 'set a level by hand');
+    if (refusal) return ctx.reply(refusal);
     const [ref, level] = ctx.match.trim().toLowerCase().split(/\s+/);
     const user = ref ? findUser(db, ref) : undefined;
     if (!user || !level || !['member', 'pro', 'partner', 'auto'].includes(level)) {
@@ -306,6 +315,8 @@ export function createBot(db: DB): Bot {
   });
 
   admin.command('offer', (ctx) => {
+    const refusal = ownersOnly(ctx, 'send a paid offer');
+    if (refusal) return ctx.reply(refusal);
     const [ref, ...fields] = ctx.match.split('|').map((part) => part.trim());
     const user = ref ? findUser(db, ref) : undefined;
     if (!user || fields.length !== 5 || fields.some((field) => !field)) {
@@ -344,7 +355,7 @@ export function createBot(db: DB): Bot {
 
   // Undo of an age refusal, for an adult who mistyped their date of birth. Owners only.
   admin.command('allowage', (ctx) => {
-    if (!isAdmin(ctx.from!.id)) return ctx.reply('Only the owners can lift an age refusal.');
+    if (!isOwner(db, ctx.from!.id)) return ctx.reply('Only the owners can lift an age refusal.');
     const id = Number(ctx.match.trim());
     if (!Number.isInteger(id) || id <= 0) return ctx.reply('Send the Telegram ID, for example: /allowage 123456789');
     return ctx.reply(

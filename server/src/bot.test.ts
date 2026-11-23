@@ -356,3 +356,46 @@ test('account buttons: the team confirms or rejects in the bot, with a stamp; cr
   assert.match(texts(paid, 87)[0]!, /coins are in your wallet/);
   team.setDemoMode(db, false);
 });
+
+test('a Manager from the admin site works in the bot, but coins, levels and paid offers stay with the owners', async () => {
+  const { setDemoMode } = await import('./team.js');
+  setDemoMode(db, false);
+  const managerUser = { id: 950, first_name: 'Aliya', username: 'aliya_cm' };
+  const viewerUser = { id: 951, first_name: 'Agency', username: 'agency_kz' };
+  const stamp = new Date().toISOString();
+  db.prepare(`INSERT OR IGNORE INTO users (id, username, first_name, created_at) VALUES (950, 'aliya_cm', 'Aliya', ?)`).run(stamp);
+  db.prepare(`INSERT OR IGNORE INTO users (id, username, first_name, created_at) VALUES (951, 'agency_kz', 'Agency', ?)`).run(stamp);
+  db.prepare(`INSERT INTO team_members (telegram_id, name, role, created_at) VALUES (950, 'Aliya', 'manager', ?)`).run(stamp);
+  db.prepare(`INSERT INTO team_members (telegram_id, name, role, created_at) VALUES (951, 'Agency', 'viewer', ?)`).run(stamp);
+
+  // The Manager has the team commands.
+  const help = await say(managerUser, '/help');
+  assert.match(texts(help, 950)[0]!, /Team commands/);
+  assert.match(texts(help, 950)[0]!, /\/admin: a one-time link/);
+
+  // But not the owners' three.
+  const balance = () => service.balanceOf(db, creator.id);
+  const before = balance();
+  const bonus = await say(managerUser, '/bonus @aruzhan 500 Just because');
+  assert.match(texts(bonus, 950)[0]!, /Only the owners can add coins by hand/);
+  assert.equal(balance(), before, 'no coins moved');
+  const level = await say(managerUser, '/level @aruzhan partner');
+  assert.match(texts(level, 950)[0]!, /Only the owners can set a level by hand/);
+  assert.equal((db.prepare('SELECT level_override AS l FROM users WHERE id = ?').get(creator.id) as { l: string | null }).l, null);
+  const offers = () => (db.prepare('SELECT COUNT(*) AS n FROM offers').get() as { n: number }).n;
+  const offersBefore = offers();
+  const offer = await say(managerUser, '/offer @aruzhan | New Year | 150 000 KZT | 1 reel | 5 Jan | 15 Dec');
+  assert.match(texts(offer, 950)[0]!, /Only the owners can send a paid offer/);
+  assert.equal(offers(), offersBefore);
+
+  // An owner still can.
+  const owned = await say(admin, '/bonus @aruzhan 5 Thanks');
+  assert.match(texts(owned, 900)[0]!, /\+5 coins for Aruzhan/);
+  assert.equal(balance(), before + 5);
+
+  // A Viewer has nothing in the bot: the team's commands do not answer them as team.
+  const viewerHelp = await say(viewerUser, '/help');
+  assert.ok(!texts(viewerHelp, 951).some((text) => /Team commands/.test(text)));
+  await say(viewerUser, '/bonus @aruzhan 500 x');
+  assert.equal(balance(), before + 5);
+});

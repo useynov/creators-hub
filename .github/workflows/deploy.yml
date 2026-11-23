@@ -39,6 +39,7 @@ jobs:
       ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
       COMMUNITY_CHAT_URL: ${{ secrets.COMMUNITY_CHAT_URL }}
       WELCOME_VIDEO: ${{ secrets.WELCOME_VIDEO }}
+      APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
     steps:
       - name: Check that the secrets are set
         id: ready
@@ -105,6 +106,7 @@ jobs:
             echo "ADMIN_CHAT_ID=$ADMIN_CHAT_ID"
             echo "COMMUNITY_CHAT_URL=$COMMUNITY_CHAT_URL"
             echo "WELCOME_VIDEO=$WELCOME_VIDEO"
+            echo "APIFY_TOKEN=$APIFY_TOKEN"
           } | $SSH "$TARGET" 'umask 077; cat > ~/creators-hub/.env'
 
           echo "Starting"

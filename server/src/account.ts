@@ -41,6 +41,37 @@ export function setTags(db: DB, userId: number, tags: string[]): string[] {
   return clean;
 }
 
+/**
+ * Tags chosen when someone was invited from the admin site are put on them once they show up
+ * in the Hub: when they finish the setup, and whenever the admin reads creators or audiences.
+ * Safe to call any time; each invitation's tags are applied once.
+ */
+export function applyInviteTags(db: DB): void {
+  const waiting = db
+    .prepare(
+      `SELECT i.id, i.telegram_id, i.tags FROM invites i JOIN users u ON u.id = i.telegram_id
+       WHERE i.tags IS NOT NULL AND i.tags_applied_at IS NULL`,
+    )
+    .all() as Array<{ id: number; telegram_id: number; tags: string }>;
+  if (!waiting.length) return;
+  const insert = db.prepare('INSERT OR IGNORE INTO user_tags (user_id, tag) VALUES (?, ?)');
+  const done = db.prepare('UPDATE invites SET tags_applied_at = ? WHERE id = ?');
+  db.transaction(() => {
+    for (const row of waiting) {
+      let tags: unknown = [];
+      try {
+        tags = JSON.parse(row.tags);
+      } catch {
+        // A broken value means no tags, never a crash.
+      }
+      if (Array.isArray(tags)) {
+        for (const tag of tags) if (typeof tag === 'string' && tag) insert.run(row.telegram_id, tag.slice(0, 30).toLowerCase());
+      }
+      done.run(now(), row.id);
+    }
+  })();
+}
+
 /** What the audience filter needs to know about one creator. */
 export function audienceSubject(db: DB, user: UserRow, level: Level): AudienceSubject {
   return {
@@ -381,6 +412,8 @@ export function confirmLookup(db: DB, user: UserRow, body: Record<string, unknow
     db.prepare('DELETE FROM social_lookups WHERE user_id = ?').run(user.id);
     if (backToPending) setAccountStatus(db, user.id, 'pending', 0);
   })();
+  // Tags the team chose when inviting this person start working now: tasks for a tag reach them at once.
+  applyInviteTags(db);
 
   // The team hears about every account it has not confirmed yet, including members from v1.
   if (!backToPending && user.account_status === 'confirmed') return;
