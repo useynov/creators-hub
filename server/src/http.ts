@@ -86,6 +86,17 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   // before the mini app's auth below, which knows nothing about admin sessions.
   registerAdminRoutes(app, db);
 
+  // Request bodies of the mini app are small JSON. The story screenshot route has its own, larger
+  // limit, and the admin panel's routes set their own rules.
+  const jsonLimit = bodyLimit({
+    maxSize: 64 * 1024,
+    onError: (c) => c.json({ error: 'too_large', message: 'That is more than the Hub can take in one go.' }, 413),
+  });
+  app.use('/api/*', (c, next) => {
+    if (c.req.path.startsWith('/api/admin/') || /^\/api\/stories\/[^/]+\/views$/.test(c.req.path)) return next();
+    return jsonLimit(c, next);
+  });
+
   // Every mini app API call carries Telegram's signed launch data.
   app.use('/api/*', async (c, next) => {
     if (c.req.path.startsWith('/api/admin/')) return next();

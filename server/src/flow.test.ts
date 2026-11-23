@@ -185,3 +185,15 @@ test('levels: views push the rating over the Pro line and unlock cash-out', asyn
   assert.equal(board.data.top[0]?.handle, '@aruzhan.vibes');
   assert.equal(board.data.me?.rank, 1);
 });
+
+test('a JSON body over 64 KB is refused with 413, before anything reads it', async () => {
+  const big = { note: 'x'.repeat(70 * 1024), links: ['https://www.instagram.com/p/BIG/'] };
+  const refused = await call<{ error: string; message: string }>(creator, 'POST', '/api/tasks/new-year-post/submit', big);
+  assert.equal(refused.status, 413);
+  assert.equal(refused.data.error, 'too_large');
+  const entry = db.prepare(`SELECT 1 FROM entries WHERE user_id = 42 AND task_id = 'new-year-post'`).get();
+  assert.equal(entry, undefined, 'nothing was stored');
+  // A normal body still goes through.
+  const ok = await call(creator, 'PATCH', '/api/me', { size: 'M' });
+  assert.equal(ok.status, 200);
+});
