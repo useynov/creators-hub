@@ -2,7 +2,7 @@
 
 ## 2.0.0 (November 2026)
 
-The second version of Creators Hub. Version 1 is kept as the tag `v1.0.0`.
+The second version of Creators Hub. Version 1 is kept as the branch `v1`.
 
 **For creators (mini app)**
 - Age check at sign-up: date of birth, 18 or older.
@@ -29,7 +29,7 @@ Open `https://<your address>/version`. Version 2 answers `{"name":"creators-hub"
 
 ### Going back to version 1
 
-Version 1 is the tag `v1.0.0` (the last commit of `main` before version 2).
+Version 1 is the branch `v1` (the last commit of `main` before version 2). Nobody works in that branch: it only marks the place to return to.
 
 1. **Before the first start of version 2, copy the data.** On the server:
    ```bash
@@ -39,9 +39,9 @@ Version 1 is the tag `v1.0.0` (the last commit of `main` before version 2).
    docker run --rm -v creators-hub_hub-data:/data -v "$PWD":/backup alpine tar czf /backup/hub-data-before-v2.tgz -C /data .
    ```
    Use the volume name the first command prints if it differs from `creators-hub_hub-data`.
-2. **To return the code,** revert the merge of version 2 on GitHub (open the merged pull request, press Revert, merge the new pull request), or build and start the image from the tag:
+2. **To return the code,** revert the merge of version 2 on GitHub (open the merged pull request, press Revert, merge the new pull request), or build and start the image from the `v1` branch:
    ```bash
-   git checkout v1.0.0
+   git checkout v1
    ```
    Then deploy the same way as before.
 3. **The data.** Version 1 runs on a database that version 2 has already upgraded: it ignores the new tables and columns (checked). Coins, orders and history made under version 2 stay. Tasks created on the admin site are hidden by version 1, not deleted, and come back with version 2. Restoring the copy from step 1 is only needed to return the data exactly as it was before version 2.
