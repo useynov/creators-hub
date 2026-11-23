@@ -423,6 +423,24 @@ export function syncEntryViews(db: DB, entryId: number): void {
   if (entry.status === 'approved') syncLevel(db, entry.user_id);
 }
 
+/**
+ * A read that found nothing. Scrapers come back empty on a bad day, so one miss is only noted:
+ * the publication is marked removed when the next read misses too. Returns true when it was removed.
+ */
+function missed(db: DB, publication: PublicationRow, at: string): boolean {
+  if (!publication.missed_at) {
+    db.prepare('UPDATE publications SET missed_at = ? WHERE id = ? AND missed_at IS NULL').run(at, publication.id);
+    return false;
+  }
+  markRemoved(db, publication);
+  return true;
+}
+
+/** A read that found the publication: any earlier miss no longer counts. */
+const found = (db: DB, publicationId: number): void => {
+  db.prepare('UPDATE publications SET missed_at = NULL WHERE id = ?').run(publicationId);
+};
+
 /** A publication that is no longer there before its final measurement. Tells the team once. */
 function markRemoved(db: DB, publication: PublicationRow): void {
   const changed = db.prepare(`UPDATE publications SET status = 'removed' WHERE id = ? AND status = 'tracking'`).run(publication.id);
@@ -474,8 +492,9 @@ export async function recheckPublication(db: DB, publicationId: number): Promise
          caption = COALESCE(?, caption), mentions = ?, hashtags = ? WHERE id = ?`,
     ).run(post.authorHandle, post.publishedAt, post.caption?.slice(0, 2200) ?? null, JSON.stringify(post.mentions), JSON.stringify(post.hashtags), publicationId);
     if (publication.kind !== 'story') storeNumbers(db, publicationId, post);
+    found(db, publicationId);
   } else if (result.status === 'gone' && publication.kind !== 'story') {
-    markRemoved(db, publication);
+    missed(db, publication, now());
   }
   syncEntryViews(db, publication.entry_id);
   return db.prepare('SELECT * FROM publications WHERE id = ?').get(publicationId) as PublicationRow;
@@ -533,6 +552,7 @@ async function takeSnapshot(db: DB, snapshot: SnapshotRow, at: string): Promise<
          WHERE id = ? AND status = 'pending'`,
       ).run(at, post.views, post.likes, post.comments, post.shares, snapshot.id);
       storeNumbers(db, publication.id, post);
+      found(db, publication.id);
       if (final) finish();
     })();
     syncEntryViews(db, publication.entry_id);
@@ -540,8 +560,13 @@ async function takeSnapshot(db: DB, snapshot: SnapshotRow, at: string): Promise<
   }
 
   if (result.status === 'gone') {
-    db.prepare(`UPDATE snapshots SET status = 'failed', taken_at = ?, error = 'gone' WHERE id = ?`).run(at, snapshot.id);
-    markRemoved(db, publication);
+    if (missed(db, publication, at)) {
+      db.prepare(`UPDATE snapshots SET status = 'failed', taken_at = ?, error = 'gone' WHERE id = ?`).run(at, snapshot.id);
+    } else {
+      // The first miss: this measurement is taken again an hour later.
+      const retry = new Date(new Date(at).getTime() + HOUR).toISOString();
+      db.prepare(`UPDATE snapshots SET due_at = ?, error = 'not found once, looking again' WHERE id = ?`).run(retry, snapshot.id);
+    }
     return false;
   }
 

@@ -270,7 +270,17 @@ test('a publication deleted before the final measurement: marked removed, the te
 
   answer(reel, { status: 'gone' });
   const before = toTeam().length;
+  // One empty read is not enough: it is noted and the measurement is taken again an hour later.
   await pipeline.runDueSnapshots(db, hours(25));
+  const once = publicationOf(reel);
+  assert.deepEqual([once.status, Boolean(once.missed_at)], ['tracking', true]);
+  assert.equal(toTeam().length, before, 'nobody is told after one miss');
+  const retry = pipeline.snapshotsOf(db, once.id).find((row) => row.kind === 'h24')!;
+  assert.equal(retry.status, 'pending');
+  assert.ok(retry.due_at > hours(25));
+  await pipeline.runDueSnapshots(db, hours(25.5));
+  assert.equal(publicationOf(reel).status, 'tracking', 'not due yet');
+  await pipeline.runDueSnapshots(db, hours(26.5));
   const removed = publicationOf(reel);
   assert.deepEqual([removed.status, removed.removed_at, removed.views], ['removed', null, 700], 'status, not removed_at; the last numbers stand');
   assert.deepEqual(pipeline.snapshotsOf(db, removed.id).map((row) => row.status), ['done', 'failed', 'skipped', 'skipped']);
@@ -281,6 +291,40 @@ test('a publication deleted before the final measurement: marked removed, the te
   assert.equal((await pipeline.recheckPublication(db, removed.id)).status, 'removed');
   assert.equal(toTeam().length, before + 1, 'told once');
   assert.equal(service.balanceOf(db, 703), coins);
+});
+
+test('one miss then a good read keeps tracking with the numbers; two misses in a row remove it', async () => {
+  const bolat = person(709, 'bolat.ride');
+  task('t-miss');
+  const reel = 'https://www.instagram.com/reel/MISS1/';
+  answer(reel, post(reel, { authorHandle: 'bolat.ride', views: 100 }));
+  await send(bolat, 't-miss', [reel]);
+  const id = publicationOf(reel).id;
+  const before = toTeam().length;
+
+  // Follow-up measurement: a miss, then the post is back an hour later.
+  answer(reel, { status: 'gone' });
+  await pipeline.runDueSnapshots(db, hours(25));
+  answer(reel, post(reel, { authorHandle: 'bolat.ride', views: 640, likes: 30 }));
+  await pipeline.runDueSnapshots(db, hours(26.5));
+  const back = publicationOf(reel);
+  assert.deepEqual([back.status, back.missed_at, back.views, back.likes], ['tracking', null, 640, 30]);
+  const h24 = pipeline.snapshotsOf(db, id).find((row) => row.kind === 'h24')!;
+  assert.deepEqual([h24.status, h24.views], ['done', 640]);
+
+  // The admin's refresh follows the same rule: miss, good read clears it, miss, miss removes.
+  answer(reel, { status: 'gone' });
+  assert.equal((await pipeline.recheckPublication(db, id)).status, 'tracking');
+  answer(reel, post(reel, { authorHandle: 'bolat.ride', views: 700 }));
+  assert.equal((await pipeline.recheckPublication(db, id)).missed_at, null);
+  answer(reel, { status: 'gone' });
+  await pipeline.recheckPublication(db, id);
+  assert.equal(toTeam().length, before);
+  const gone = await pipeline.recheckPublication(db, id);
+  assert.deepEqual([gone.status, gone.views], ['removed', 700]);
+  assert.equal(toTeam().length, before + 1);
+  await pipeline.recheckPublication(db, id);
+  assert.equal(toTeam().length, before + 1, 'told once');
 });
 
 test('recheck: fresh numbers and checks now, without adding a measurement', async () => {
