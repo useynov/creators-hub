@@ -555,6 +555,15 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['cashouts', 'decided_at', 'TEXT'],
   ['cashouts', 'decided_by', 'INTEGER'],
   ['cashouts', 'note', 'TEXT'],
+  // Admin: who invited someone from the admin site, and tags to put on them once they arrive.
+  ['invites', 'invited_by', 'INTEGER'],
+  ['invites', 'tags', 'TEXT'],
+  ['invites', 'tags_applied_at', 'TEXT'],
+  // Admin: a task is announced in the bot once, however often "publish and announce" is pressed.
+  ['tasks', 'announced_at', 'TEXT'],
+  // Admin: the team has looked at the story views a creator stated (kept or corrected them).
+  ['publications', 'story_checked_at', 'TEXT'],
+  ['publications', 'story_checked_by', 'INTEGER'],
 ];
 
 export function migrate(db: DB): void {
