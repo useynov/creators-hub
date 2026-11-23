@@ -348,6 +348,7 @@ export type ReviewFlag =
   | 'reachable'
   | 'unchecked'
   | 'story_saved'
+  | 'draft'
   | 'ok';
 
 export interface QueueItem {

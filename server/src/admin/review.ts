@@ -83,7 +83,7 @@ function queue(db: DB, status: 'in_review' | 'draft_review'): QueueItem[] {
       task: { id: row.task_id, title: row.title },
       kinds: [...new Set(pubs.map((pub) => pub.kind))],
       waitingSince: (status === 'in_review' ? row.submitted_at : row.draft_sent_at) ?? row.joined_at,
-      flag: status === 'in_review' ? flagOf(row, pubs) : row.account_status !== 'confirmed' ? 'account_unconfirmed' : 'ok',
+      flag: status === 'in_review' ? flagOf(row, pubs) : row.account_status !== 'confirmed' ? 'account_unconfirmed' : 'draft',
     };
   });
 }

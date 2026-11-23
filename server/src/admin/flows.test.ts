@@ -4,7 +4,7 @@ import { addCreator, addMember, call, login, MANAGER_ID, now, OWNER_ID, setup } 
 
 const ExcelJS = (await import('exceljs')).default;
 const { outbox } = await import('../notify.js');
-const { balanceOf } = await import('../service.js');
+const { balanceOf, ratingOf } = await import('../service.js');
 const { fromLocalInput, toLocalInput } = await import('./common.js');
 
 const { db, app } = setup();
@@ -447,6 +447,13 @@ test('creators: search, filters, sorting and paging happen on the server', async
   assert.equal(literal.data.total, 0, 'a % in the search is a character, not a wildcard');
   const paged = await call(app, manager, 'GET', '/api/admin/creators?pageSize=10&page=2&sort=name');
   assert.equal(paged.data.rows.length, Math.max(0, all.data.total - 10));
+  // The rating in the list is the same whole number as ratingOf, views counted in whole points.
+  db.prepare(`UPDATE entries SET views = 1234 WHERE user_id = 1001 AND status = 'approved'`).run();
+  const rated = await call(app, manager, 'GET', '/api/admin/creators?pageSize=100');
+  for (const row of rated.data.rows as Array<{ id: number; rating: number }>) {
+    assert.ok(Number.isInteger(row.rating));
+    assert.equal(row.rating, ratingOf(db, row.id));
+  }
   const injected = await call(app, manager, 'GET', `/api/admin/creators?sort=${encodeURIComponent('name; DROP TABLE users')}&dir=sideways`);
   assert.equal(injected.status, 200);
   assert.ok(db.prepare('SELECT 1 FROM users LIMIT 1').get());

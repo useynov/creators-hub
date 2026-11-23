@@ -354,7 +354,7 @@ export async function seedPreview(db: DB): Promise<void> {
       const handle = CREATORS[work.i]![1];
       const created = t0 - (work.hoursAgo ?? 48) * HOUR;
       const url = work.kind ? `https://www.instagram.com/${work.kind === 'story' ? `stories/${handle}/31${userId}` : `${work.kind === 'post' ? 'p' : 'reel'}/C${userId}${work.task.length}x`}/` : null;
-      const reward = (db.prepare('SELECT reward FROM tasks WHERE id = ?').get(work.task) as { reward: number }).reward;
+      const { reward, title } = db.prepare('SELECT reward, title FROM tasks WHERE id = ?').get(work.task) as { reward: number; title: string };
       const result = entry.run({
         user: userId,
         task: work.task,
@@ -375,7 +375,7 @@ export async function seedPreview(db: DB): Promise<void> {
       });
       if (!result.changes) continue;
       const entryId = Number(result.lastInsertRowid);
-      if (work.status === 'approved') ledger.run(userId, reward, work.task, 'task', String(entryId), at(created + 4 * HOUR));
+      if (work.status === 'approved') ledger.run(userId, reward, title, 'task', String(entryId), at(created + 4 * HOUR));
       if (!url || !work.kind) continue;
 
       // Views grow quickly in the first day, then slowly.

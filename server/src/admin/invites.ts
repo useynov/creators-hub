@@ -33,7 +33,7 @@ function linkState(db: DB): InviteLinkState {
 function recent(db: DB): InviteRow[] {
   const rows = db
     .prepare(
-      `SELECT i.id, i.telegram_id, i.username, i.note, i.invited_by, i.created_at, u.id AS user_id, u.onboarded_at, u.account_status
+      `SELECT i.id, i.telegram_id, i.username, i.note, i.invited_by, i.created_at, u.id AS user_id, u.username AS user_username, u.first_name, u.onboarded_at, u.account_status
        FROM invites i LEFT JOIN users u ON u.id = i.telegram_id ORDER BY i.id DESC LIMIT 50`,
     )
     .all() as Array<{
@@ -44,6 +44,8 @@ function recent(db: DB): InviteRow[] {
     invited_by: number | null;
     created_at: string;
     user_id: number | null;
+    user_username: string | null;
+    first_name: string | null;
     onboarded_at: string | null;
     account_status: 'pending' | 'confirmed' | 'rejected' | null;
   }>;
@@ -51,7 +53,8 @@ function recent(db: DB): InviteRow[] {
     const state: InviteState = !row.user_id ? 'not_opened' : !row.onboarded_at ? 'started' : (row.account_status ?? 'pending');
     return {
       id: row.id,
-      who: row.username ? `@${row.username}` : String(row.telegram_id),
+      // An invite by id shows the person once they have opened the bot.
+      who: row.username ? `@${row.username}` : row.user_username ? `@${row.user_username}` : row.first_name ? `${row.first_name}, ${row.telegram_id}` : String(row.telegram_id),
       via: row.note === INVITE_LINK_NOTE ? 'link' : 'list',
       by: row.invited_by ? memberName(db, row.invited_by) : null,
       createdAt: row.created_at,

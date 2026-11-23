@@ -29,8 +29,9 @@ export const CREATORS_SQL = `
   LEFT JOIN social_profiles p ON p.user_id = u.id AND p.platform = 'instagram'
   LEFT JOIN (
     SELECT e.user_id,
-           COUNT(*) * @perPublication + COALESCE(SUM(e.score), 0) * @perScorePoint
-             + COALESCE(SUM(e.views), 0) / @viewsPerPoint AS rating
+           -- better-sqlite3 binds numbers as REAL: cast, so views count in whole points like Math.floor in ratingOf.
+           CAST(COUNT(*) * @perPublication + COALESCE(SUM(e.score), 0) * @perScorePoint
+             + CAST(COALESCE(SUM(e.views), 0) / @viewsPerPoint AS INTEGER) AS INTEGER) AS rating
     FROM entries e WHERE e.status = 'approved' GROUP BY e.user_id
   ) s ON s.user_id = u.id
   WHERE u.onboarded_at IS NOT NULL`;
