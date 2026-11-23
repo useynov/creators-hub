@@ -1,5 +1,5 @@
 import { Bot, GrammyError, type Context } from 'grammy';
-import { isAgeRefused, isSetUp } from './account.js';
+import { allowAgeAgain, isAgeRefused, isSetUp } from './account.js';
 import { registerAdminBot } from './admin/bot.js';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
@@ -54,6 +54,7 @@ const ADMIN_HELP = [
   '/offer @username | campaign | fee | what we need | post by | answer by',
   '/quiet on|off: stop or resume the team\'s messages coming to you in private',
   '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
+  '/allowage ID: let someone refused for age answer the question again, after a typo in the date (owners only)',
   '/id: show this chat ID and your user ID',
   '',
   'Reply to a creator\'s message to answer them. Scan an event pass with your phone camera to check a creator in.',
@@ -336,6 +337,18 @@ export function createBot(db: DB): Bot {
       action === 'on'
         ? 'Demo mode is on. Everyone on the invite list now has the team\'s rights and gets the team\'s messages. Turn it off before real creators join: /demo off'
         : 'Demo mode is off. Only the owners and the team group have the team\'s rights.',
+    );
+  });
+
+  // Undo of an age refusal, for an adult who mistyped their date of birth. Owners only.
+  admin.command('allowage', (ctx) => {
+    if (!isAdmin(ctx.from!.id)) return ctx.reply('Only the owners can lift an age refusal.');
+    const id = Number(ctx.match.trim());
+    if (!Number.isInteger(id) || id <= 0) return ctx.reply('Send the Telegram ID, for example: /allowage 123456789');
+    return ctx.reply(
+      allowAgeAgain(db, id)
+        ? `Done. ${id} can open the Hub and answer the age question again.`
+        : `${id} was not refused for age, so there was nothing to lift.`,
     );
   });
 

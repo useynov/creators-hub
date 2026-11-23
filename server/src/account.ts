@@ -93,6 +93,11 @@ export function parseBirthDate(value: unknown): string {
   return text;
 }
 
+/** The team's undo for an age refusal (an adult's typo). True when there was a refusal to lift. */
+export function allowAgeAgain(db: DB, telegramId: number): boolean {
+  return db.prepare('DELETE FROM age_refusals WHERE telegram_id = ?').run(telegramId).changes > 0;
+}
+
 export function isAgeRefused(db: DB, telegramId: number): boolean {
   return Boolean(db.prepare('SELECT 1 FROM age_refusals WHERE telegram_id = ?').get(telegramId));
 }

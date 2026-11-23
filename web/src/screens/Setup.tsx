@@ -17,6 +17,17 @@ const todayIso = (): string => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
+/** Full years on `day` for a birth date, both YYYY-MM-DD (the same rule as the server). */
+function ageOn(birthDate: string, day: string): number {
+  const [by, bm, bd] = birthDate.split('-').map(Number) as [number, number, number];
+  const [ty, tm, td] = day.split('-').map(Number) as [number, number, number];
+  return ty - by - (tm < bm || (tm === bm && td < bd) ? 1 : 0);
+}
+
+/** "12 May 2010" */
+const dateInWords = (value: string): string =>
+  new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}T00:00:00Z`));
+
 /** First open, step 2: date of birth and Instagram handle, then "Is this you?" with the city. */
 export function Setup() {
   return <Connect mode="setup" />;
@@ -35,6 +46,8 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
   // A member from before the age question: already has a handle, is not set up yet.
   const returning = mode === 'setup' && Boolean(me.instagram);
   const [busy, setBusy] = useState(false);
+  // A date that would refuse the person is shown back before it is sent: a typo must not lock an adult out.
+  const [checkAge, setCheckAge] = useState(false);
   const [fieldError, setFieldError] = useState<{ field: 'birth' | 'handle' | 'tiktok' | 'city'; text: string } | null>(null);
 
   const [birthDate, setBirthDate] = useState('');
@@ -109,6 +122,12 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: settings.timeZone }).format(new Date());
+    const asked = mode === 'setup' && !me.hasBirthDate;
+    if (asked && /^\d{4}-\d{2}-\d{2}$/.test(birthDate) && ageOn(birthDate, today) < settings.minAge) {
+      setCheckAge(true);
+      return;
+    }
     void find();
   };
 
@@ -121,6 +140,43 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
     </Screen>
   );
   const padding = mode === 'setup' ? '40px 20px 24px' : '8px 20px 24px';
+
+  // --- "Is that right?" before a date that would refuse the person -----------------------------
+  if (checkAge) {
+    return shell(
+      <div className="body" style={{ gap: 20, padding }}>
+        <section className="panel panel--amber">
+          <div className="panel__icon">
+            <Icon name="calendar" size={26} stroke={2.2} />
+          </div>
+          <h1 className="display" style={{ fontSize: 28, lineHeight: 1.15 }}>
+            You entered {dateInWords(birthDate)}. Is that right?
+          </h1>
+          <p style={{ fontSize: 15, lineHeight: 1.45 }}>
+            The Hub is open to people aged {settings.minAge} and over. If this date is right, we cannot let you in, and the answer
+            cannot be changed later.
+          </p>
+        </section>
+        <div className="spacer" />
+        <div className="actions">
+          <button type="button" className="btn" onClick={() => setCheckAge(false)}>
+            Fix the date
+          </button>
+          <button
+            type="button"
+            className="textlink"
+            disabled={busy}
+            onClick={() => {
+              setCheckAge(false);
+              void find();
+            }}
+          >
+            Yes, that is my date of birth
+          </button>
+        </div>
+      </div>,
+    );
+  }
 
   // --- The form: date of birth (first time only) and the handle ---------------------------
   if (showForm || searching || !view) {

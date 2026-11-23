@@ -245,3 +245,29 @@ test('demo mode: everyone on the invite list gets the team side, and /quiet stop
   assert.doesNotMatch(texts(await say(igor, '/help'), 78)[0]!, /Team commands/);
   assert.doesNotMatch(texts(await say(igor, '/start'), 78).join('\n'), /Demo mode/);
 });
+
+test('/allowage: an age refusal stays until an owner lifts it, then the person can try again', async () => {
+  const typo = { id: 81, first_name: 'Typo' };
+  const team = await import('./team.js');
+  service.addInvite(db, '81');
+  db.prepare(`INSERT INTO age_refusals (telegram_id, created_at) VALUES (81, '2026-11-23T00:00:00.000Z')`).run();
+
+  // Refused: the bot says so kindly, nothing else opens, and the refusal does not wear off.
+  assert.match(texts(await say(typo, '/start'), 81)[0]!, /aged 18 and over/);
+  assert.match(texts(await say(typo, 'Hello?'), 81)[0]!, /aged 18 and over/);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users WHERE id = 81').get()!.n, 0, 'no user row comes back');
+
+  // Only an owner can lift it: not a creator, not a demo-mode tester.
+  await say(creator, '/allowage 81');
+  team.setDemoMode(db, true);
+  assert.match(texts(await say({ id: 78, first_name: 'Igor' }, '/allowage 81'), 78)[0]!, /Only the owners/);
+  team.setDemoMode(db, false);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM age_refusals WHERE telegram_id = 81').get()!.n, 1);
+
+  assert.match(texts(await say(admin, '/allowage someone'), 900)[0]!, /for example: \/allowage 123456789/);
+  assert.match(texts(await say(admin, '/allowage 81'), 900)[0]!, /Done\. 81 can open the Hub and answer the age question again/);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM age_refusals WHERE telegram_id = 81').get()!.n, 0);
+  assert.match(texts(await say(admin, '/allowage 81'), 900)[0]!, /was not refused for age/);
+  assert.match(texts(await say(typo, '/start'), 81)[0]!, /Welcome, Typo!/);
+  assert.match(texts(await say(admin, '/help'), 900)[0]!, /\/allowage ID/);
+});
