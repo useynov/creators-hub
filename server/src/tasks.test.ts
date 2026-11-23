@@ -40,7 +40,7 @@ async function call<T>(user: Person, method: string, path: string, body?: unknow
 /** A creator straight in the database: invited, onboarded, confirmed, with a follower count. */
 function creator(id: number, city: string, followers: number, tags: string[] = []): Person {
   db.prepare(
-    `INSERT INTO users (id, first_name, instagram, city, onboarded_at, account_status, created_at) VALUES (?, ?, ?, ?, ?, 'confirmed', ?)`,
+    `INSERT INTO users (id, first_name, instagram, city, birth_date, onboarded_at, account_status, created_at) VALUES (?, ?, ?, ?, '1998-01-01', ?, 'confirmed', ?)`,
   ).run(id, `Creator ${id}`, `creator${id}`, city, now(), now());
   db.prepare(
     `INSERT INTO social_profiles (user_id, platform, handle, followers, status, source, fetched_at) VALUES (?, 'instagram', ?, ?, 'ok', 'demo', ?)`,

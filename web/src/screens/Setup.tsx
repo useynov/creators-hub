@@ -32,6 +32,8 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
   const navigate = useNavigate();
   const toast = useToast();
   const [editing, setEditing] = useState(false);
+  // A member from before the age question: already has a handle, is not set up yet.
+  const returning = mode === 'setup' && Boolean(me.instagram);
   const [busy, setBusy] = useState(false);
   const [fieldError, setFieldError] = useState<{ field: 'birth' | 'handle' | 'tiktok' | 'city'; text: string } | null>(null);
 
@@ -126,12 +128,14 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
       <form className="body" style={{ gap: 22, padding }} onSubmit={submit} noValidate>
         <div className="stack" style={{ gap: 8 }}>
           <h1 className="display" style={{ fontSize: 32 }}>
-            {mode === 'setup' ? 'Almost in' : 'Connect another account'}
+            {mode === 'change' ? 'Connect another account' : returning ? 'One quick check' : 'Almost in'}
           </h1>
           <p className="muted" style={{ fontSize: 16, lineHeight: 1.4 }}>
-            {mode === 'setup'
-              ? 'We find your Instagram profile to count the views on your posts. We read only what is public.'
-              : 'Use the account you post from. The team confirms it again before tasks pay out.'}
+            {mode === 'change'
+              ? 'Use the account you post from. The team confirms it again before tasks pay out.'
+              : returning
+                ? 'We now check the age and the Instagram profile of every member. Your tasks, coins and history stay as they are.'
+                : 'We find your Instagram profile to count the views on your posts. We read only what is public.'}
           </p>
         </div>
 

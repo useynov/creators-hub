@@ -2,7 +2,7 @@ import { Hono, type Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
-import { confirmLookup, connectView, isAgeRefused, startLookup } from './account.js';
+import { confirmLookup, connectView, isAgeRefused, isSetUp, startLookup } from './account.js';
 import { registerAdminRoutes } from './admin/routes.js';
 import { validateInitData, type TelegramUser } from './auth.js';
 import { config } from './config.js';
@@ -112,7 +112,7 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
     const user = upsertUser(db, identity);
     // Until the setup is done (age, confirmed profile, city) only the setup itself is open.
     const setupPath = c.req.path === '/api/bootstrap' || c.req.path.startsWith('/api/me/connect');
-    if (!user.onboarded_at && !setupPath) {
+    if (!isSetUp(db, user) && !setupPath) {
       return c.json({ error: 'setup_required', message: 'Finish the setup first.' }, 403);
     }
     c.set('user', user);

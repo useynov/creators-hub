@@ -1,5 +1,5 @@
 import { Bot, GrammyError, type Context } from 'grammy';
-import { isAgeRefused } from './account.js';
+import { isAgeRefused, isSetUp } from './account.js';
 import { registerAdminBot } from './admin/bot.js';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
@@ -132,7 +132,7 @@ export function createBot(db: DB): Bot {
         '<b>• Free product</b>',
         '<b>• Our latest news first</b>',
       ].join('\n'),
-      { ...HTML, reply_markup: appButton('Open Creators Hub', user.onboarded_at ? '/' : '/welcome') },
+      { ...HTML, reply_markup: appButton('Open Creators Hub', isSetUp(db, user) ? '/' : '/welcome') },
     );
     if (demoMode(db)) {
       await ctx.reply(
@@ -437,7 +437,7 @@ export function createBot(db: DB): Bot {
     // 4. A command we do not know: point back to the app.
     if (message.text?.startsWith('/')) {
       return ctx.reply('Everything lives in the Hub. Open it with the button below, or just write here to reach the team.', {
-        reply_markup: appButton('Open Creators Hub', user.onboarded_at ? '/' : '/welcome'),
+        reply_markup: appButton('Open Creators Hub', isSetUp(db, user) ? '/' : '/welcome'),
       });
     }
 

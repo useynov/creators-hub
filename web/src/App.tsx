@@ -101,9 +101,10 @@ function Shell() {
   if (error instanceof ApiError && error.status === 401) return <OutsideTelegram />;
   if (!hub) return error ? <Problem error={error} onRetry={() => void mutate()} /> : <Loading />;
 
-  // First open: benefits, then the two-field setup. Nothing else until that is done.
+  // First open: benefits, then the setup. A member from before the age question and the
+  // profile check (they already have a handle) goes straight to the setup. Nothing else until it is done.
   const onboarding = pathname === '/welcome' || pathname === '/setup';
-  if (!hub.me.onboarded && !onboarding) return <Navigate to="/welcome" replace />;
+  if (!hub.me.onboarded && !onboarding) return <Navigate to={hub.me.instagram ? '/setup' : '/welcome'} replace />;
 
   return (
     <HubProvider value={hub}>

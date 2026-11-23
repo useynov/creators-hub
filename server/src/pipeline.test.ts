@@ -84,8 +84,11 @@ const send = (user: Person, taskId: string, links: string[]) => call<TaskView>(u
 
 function person(id: number, handle: string): Person {
   db.prepare(
-    `INSERT INTO users (id, first_name, instagram, city, onboarded_at, account_status, created_at) VALUES (?, ?, ?, 'Almaty', ?, 'confirmed', ?)`,
+    `INSERT INTO users (id, first_name, instagram, city, birth_date, onboarded_at, account_status, created_at) VALUES (?, ?, ?, 'Almaty', '1998-01-01', ?, 'confirmed', ?)`,
   ).run(id, `Creator ${id}`, handle, now(), now());
+  db.prepare(
+    `INSERT INTO social_profiles (user_id, platform, handle, followers, status, source, fetched_at) VALUES (?, 'instagram', ?, 1000, 'ok', 'demo', ?)`,
+  ).run(id, handle, now());
   service.addInvite(db, String(id));
   return { id, first_name: `Creator ${id}` };
 }

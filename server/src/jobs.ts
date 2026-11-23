@@ -23,9 +23,9 @@ export async function refreshDueProfiles(db: DB, nowIso = new Date().toISOString
   const before = new Date(new Date(nowIso).getTime() - settings.metrics.profileRefreshDays * 24 * 60 * MINUTE).toISOString();
   const due = db
     .prepare(
-      `SELECT u.id FROM users u LEFT JOIN social_profiles p ON p.user_id = u.id AND p.platform = 'instagram'
-       WHERE u.onboarded_at IS NOT NULL AND u.instagram IS NOT NULL AND (p.fetched_at IS NULL OR p.fetched_at < ?)
-       ORDER BY p.fetched_at IS NOT NULL, p.fetched_at LIMIT ?`,
+      `SELECT u.id FROM users u JOIN social_profiles p ON p.user_id = u.id AND p.platform = 'instagram'
+       WHERE u.onboarded_at IS NOT NULL AND u.birth_date IS NOT NULL AND u.instagram IS NOT NULL AND p.fetched_at < ?
+       ORDER BY p.fetched_at LIMIT ?`,
     )
     .all(before, limit) as Array<{ id: number }>;
   for (const { id } of due) await refreshProfile(db, id, 'instagram');

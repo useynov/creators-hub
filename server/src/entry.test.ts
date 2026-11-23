@@ -279,3 +279,43 @@ test('refreshProfile: new numbers, and provider trouble never loses the last goo
   assert.equal((await call<{ error: string }>(person, 'PATCH', '/api/me', { tiktok: 'bad handle!' })).data.error, 'bad_handle');
   assert.equal((await call<Me>(person, 'PATCH', '/api/me', { tiktok: '@bota.tt', instagram: 'hijack' })).data.instagram, 'bota.style', 'the handle only changes through the connect flow');
 });
+
+test('a member from v1 (no birth date, no pulled profile) goes through the setup again and keeps everything', async () => {
+  const veteran = { id: 560, first_name: 'Askar' };
+  service.addInvite(db, '560');
+  db.prepare(
+    `INSERT INTO users (id, first_name, instagram, city, onboarded_at, account_status, created_at)
+     VALUES (560, 'Askar', 'askar.v1', 'Shymkent', '2026-06-01T00:00:00.000Z', 'pending', '2026-06-01T00:00:00.000Z')`,
+  ).run();
+  db.prepare(`INSERT INTO entries (user_id, task_id, status, joined_at, links, views, approved_at, reward, score) VALUES (560, 'caravan-shoot', 'approved', '2026-06-02T00:00:00Z', '["https://www.instagram.com/p/OLD/"]', 900, '2026-06-03T00:00:00Z', 5, 4)`).run();
+  service.grantCoins(db, 560, 25, 'Summer bonus');
+
+  // Not set up: sent to the setup, and nothing else is open.
+  const boot = await call<{ me: Me }>(veteran, 'GET', '/api/bootstrap');
+  assert.deepEqual([boot.data.me.onboarded, boot.data.me.hasBirthDate, boot.data.me.instagram, boot.data.me.city], [false, false, 'askar.v1', 'Shymkent']);
+  const tasks = await call<{ error: string }>(veteran, 'GET', '/api/tasks');
+  assert.deepEqual([tasks.status, tasks.data.error], [403, 'setup_required']);
+  const join = await call<{ error: string }>(veteran, 'POST', '/api/tasks/new-year-post/join');
+  assert.equal(join.data.error, 'setup_required');
+  assert.equal(service.announceTask(db, 'new-year-post') >= 0, true);
+  assert.ok(!outbox.some((message) => message.chatId === 560 && message.html.includes('New task')), 'not announced to until set up');
+
+  // A weekly refresh does not create the profile behind their back.
+  assert.equal(await account.refreshProfile(db, 560), null);
+  assert.equal(account.profileOf(db, 560), undefined);
+
+  // The age question and "this is me" with the same handle; the city they had is kept.
+  await call(veteran, 'POST', '/api/me/connect', { birthDate: '1995-09-09', instagram: 'askar.v1' });
+  await idle();
+  const done = await call<Me>(veteran, 'POST', '/api/me/connect/confirm', {});
+  assert.equal(done.status, 200, JSON.stringify(done.data));
+  assert.deepEqual([done.data.onboarded, done.data.city, done.data.instagram, done.data.accountStatus], [true, 'Shymkent', 'askar.v1', 'pending']);
+  assert.ok(outbox.some((message) => message.chatId === 900 && message.html.includes('New account to confirm') && message.html.includes('askar.v1')));
+
+  // History, coins and entries are all still there, and the Hub is open again.
+  assert.equal(done.data.balance, 25);
+  assert.equal(done.data.stats.publications, 1);
+  const mine = await call<TaskView>(veteran, 'GET', '/api/tasks/caravan-shoot');
+  assert.deepEqual([mine.status, mine.data.entry?.status, mine.data.entry?.views], [200, 'approved', 900]);
+  assert.equal((await call<TaskView>(veteran, 'POST', '/api/tasks/new-year-post/join')).data.entry?.status, 'joined');
+});

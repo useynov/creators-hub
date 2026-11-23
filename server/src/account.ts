@@ -52,6 +52,21 @@ export function audienceSubject(db: DB, user: UserRow, level: Level): AudienceSu
   };
 }
 
+// --- Set up ------------------------------------------------------------------
+
+/**
+ * A member is set up when they finished the setup, answered the age question and have a
+ * connected Instagram profile. Members from before the age question and the profile pull
+ * (v1) are short of that: they go through the setup again, keeping all their history.
+ */
+export function isSetUp(db: DB, user: Pick<UserRow, 'id' | 'onboarded_at' | 'birth_date'>): boolean {
+  return Boolean(
+    user.onboarded_at &&
+      user.birth_date &&
+      db.prepare(`SELECT 1 FROM social_profiles WHERE user_id = ? AND platform = 'instagram'`).get(user.id),
+  );
+}
+
 // --- Age ---------------------------------------------------------------------
 
 /** The calendar date today in the hub's time zone, as YYYY-MM-DD. */
@@ -199,6 +214,9 @@ export async function refreshProfile(db: DB, userId: number, platform: Platform 
   const before = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
   const handle = platform === 'instagram' ? before?.instagram : before?.tiktok;
   if (!before || !handle) return null;
+  // An Instagram profile row is written first by "Yes, this is me" (it is part of being set up):
+  // a refresh never creates one for someone who has not confirmed their account.
+  if (platform === 'instagram' && !profileOf(db, userId, 'instagram')) return null;
 
   const provider = getProvider();
   const result = await askProvider(platform, handle);
@@ -336,9 +354,9 @@ export function confirmLookup(db: DB, user: UserRow, body: Record<string, unknow
   if (!row || row.status !== 'ok' || !row.result) throw new HubError('lookup_not_ready', 'Find your profile first.');
   const found = JSON.parse(row.result) as StoredLookup;
 
-  const firstSetup = !user.onboarded_at;
+  const firstSetup = !isSetUp(db, user);
   const city = cleanCity(body.city);
-  if (firstSetup && !city) throw new HubError('city_required', 'Choose your city.');
+  if (firstSetup && !city && !user.city) throw new HubError('city_required', 'Choose your city.');
   const tiktokGiven = typeof body.tiktok === 'string' && body.tiktok.trim() !== '';
   const tiktok = tiktokGiven ? cleanHandle(body.tiktok) : null;
   if (tiktokGiven && !tiktok) throw new HubError('bad_handle', 'That TikTok handle does not look right: letters, numbers, dots and underscores.');
@@ -359,7 +377,8 @@ export function confirmLookup(db: DB, user: UserRow, body: Record<string, unknow
     if (backToPending) setAccountStatus(db, user.id, 'pending', 0);
   })();
 
-  if (!backToPending) return;
+  // The team hears about every account it has not confirmed yet, including members from v1.
+  if (!backToPending && user.account_status === 'confirmed') return;
   const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) as UserRow;
   const numbers = [
     found.followers !== null ? `${found.followers.toLocaleString('en-US')} followers` : null,

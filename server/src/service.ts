@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { audienceSubject } from './account.js';
+import { audienceSubject, isSetUp } from './account.js';
 import { matchesAudience, parseAudience, type AudienceSubject } from './audience.js';
 import { config, isAdmin, settings } from './config.js';
 import {
@@ -288,7 +288,7 @@ export function buildMe(db: DB, user: UserRow): Me {
     size: user.size,
     address: user.address,
     phone: user.phone,
-    onboarded: Boolean(user.onboarded_at),
+    onboarded: isSetUp(db, user),
     balance: balanceOf(db, user.id),
     rating,
     level,
@@ -807,7 +807,7 @@ export function announceTask(db: DB, taskId: string): number {
   const audience = parseAudience(task.audience);
   const users = (
     db.prepare(`SELECT * FROM users WHERE onboarded_at IS NOT NULL AND account_status != 'rejected'`).all() as UserRow[]
-  ).filter((user) => matchesAudience(viewerOf(db, user).subject, audience));
+  ).filter((user) => isSetUp(db, user) && matchesAudience(viewerOf(db, user).subject, audience));
   const where = [task.date ? `on ${shortDate(task.date)}` : '', task.place ? `at ${task.place}` : ''].filter(Boolean).join(' ');
   const lead = where ? `${task.title} ${where}.` : `${task.title}.`;
   for (const user of users) {
