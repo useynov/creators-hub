@@ -1,16 +1,18 @@
 import { Hono, type Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
+import { confirmLookup, connectView, isAgeRefused, startLookup } from './account.js';
 import { registerAdminRoutes } from './admin/routes.js';
 import { validateInitData, type TelegramUser } from './auth.js';
 import { config } from './config.js';
 import type { DB, UserRow } from './db.js';
-import { readMedia } from './media.js';
+import { readMedia, saveMedia } from './media.js';
+import { seedPreview } from './preview.js';
 import {
   answerOffer,
   buildMe,
   cancelRsvp,
-  completeSetup,
   currentOffer,
   getUser,
   home,
@@ -21,13 +23,16 @@ import {
   listEvents,
   listTasks,
   oneTask,
+  parseViews,
   placeOrder,
   publicSettings,
   remindMe,
   requestCashout,
   requestDraftUpload,
   rsvp,
+  sendStoryViews,
   shop,
+  storyOf,
   submitDraftLink,
   submitLinks,
   updateDetails,
@@ -96,10 +101,21 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
       preview = true;
     }
     if (!identity) return c.json({ error: 'unauthorized', message: 'Open the Hub from Telegram.' }, 401);
+    // Someone refused for age stays refused, and we do not even keep their name again.
+    if (isAgeRefused(db, identity.id)) {
+      return c.json({ error: 'age_refused', message: 'The Hub is open to adults only.' }, 403);
+    }
     if (!preview && !isInvited(db, identity)) {
       return c.json({ error: 'not_invited', message: 'The Hub is open by invitation only.' }, 403);
     }
-    c.set('user', upsertUser(db, identity));
+    if (preview) await seedPreview(db, identity.id);
+    const user = upsertUser(db, identity);
+    // Until the setup is done (age, confirmed profile, city) only the setup itself is open.
+    const setupPath = c.req.path === '/api/bootstrap' || c.req.path.startsWith('/api/me/connect');
+    if (!user.onboarded_at && !setupPath) {
+      return c.json({ error: 'setup_required', message: 'Finish the setup first.' }, 403);
+    }
+    c.set('user', user);
     await next();
   });
 
@@ -111,8 +127,11 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
 
   app.get('/api/bootstrap', (c) => c.json({ me: me(c), settings: publicSettings(botUsername()) } satisfies Bootstrap));
 
-  app.post('/api/me/setup', async (c) => {
-    completeSetup(db, c.var.user, await body(c));
+  // Connecting the Instagram account: on the first setup (with the date of birth) and when the handle changes.
+  app.get('/api/me/connect', (c) => c.json(connectView(db, c.var.user.id)));
+  app.post('/api/me/connect', async (c) => c.json(startLookup(db, c.var.user, await body(c))));
+  app.post('/api/me/connect/confirm', async (c) => {
+    confirmLookup(db, c.var.user, await body(c));
     return c.json(me(c));
   });
   app.patch('/api/me', async (c) => {
@@ -125,12 +144,63 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   app.get('/api/tasks', (c) => c.json(listTasks(db, c.var.user.id)));
   app.get('/api/tasks/:id', (c) => c.json(oneTask(db, c.var.user.id, c.req.param('id'))));
   app.post('/api/tasks/:id/join', (c) => c.json(joinTask(db, c.var.user, c.req.param('id'))));
-  app.post('/api/tasks/:id/submit', async (c) => c.json(submitLinks(db, c.var.user, c.req.param('id'), await body(c))));
+  app.post('/api/tasks/:id/submit', async (c) => c.json(await submitLinks(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft', async (c) => c.json(submitDraftLink(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft-upload', (c) => {
     requestDraftUpload(db, c.var.user, c.req.param('id'));
     return c.json({ ok: true });
   });
+
+  // Story views: the number and a screenshot of the statistics. Both stay private to the team.
+  const storyId = (c: Context): number => {
+    const id = Number(c.req.param('id'));
+    if (!Number.isInteger(id) || id <= 0) throw new HubError('story_not_found', 'This story is not one of yours.', 404);
+    return id;
+  };
+  app.get('/api/stories/:id', (c) => c.json(storyOf(db, c.var.user.id, storyId(c)).view));
+  // The creator may see the copy we kept of their own story, nobody else may (no static route for it).
+  app.get('/api/stories/:id/copy', async (c) => {
+    const { publication, view } = storyOf(db, c.var.user.id, storyId(c));
+    const file = view.copyIsImage && publication.media_path ? await readMedia('private', publication.media_path) : null;
+    if (!file) return c.json({ error: 'not_found', message: 'Not found.' }, 404);
+    return c.body(new Uint8Array(file.data), 200, {
+      'Content-Type': file.mime,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+  });
+  app.post(
+    '/api/stories/:id/views',
+    bodyLimit({
+      maxSize: 9 * 1024 * 1024,
+      onError: (c) => c.json({ error: 'too_large', message: 'The screenshot is too large. Send one under 8 MB.' }, 413),
+    }),
+    async (c) => {
+      const id = storyId(c);
+      const form = (c.req.header('content-type') ?? '').startsWith('multipart/form-data')
+        ? await c.req.parseBody()
+        : ((await body(c)) as Record<string, unknown>);
+      // Refuse someone else's story, a closed one or a bad number before any file is written.
+      if (!storyOf(db, c.var.user.id, id).view.editable) {
+        throw new HubError('story_closed', 'This work is approved: the number can no longer change. Write to the team if it is wrong.');
+      }
+      parseViews(form.views);
+      let screenshot: string | null = null;
+      const file = form.screenshot;
+      if (file instanceof File && file.size > 0) {
+        try {
+          const saved = await saveMedia('private', 'screens', Buffer.from(await file.arrayBuffer()), {
+            maxBytes: 8 * 1024 * 1024,
+            allow: ['jpg', 'png', 'webp'],
+          });
+          screenshot = saved.path;
+        } catch {
+          throw new HubError('bad_screenshot', 'The screenshot must be a picture (JPG, PNG or WebP) under 8 MB.');
+        }
+      }
+      return c.json(sendStoryViews(db, c.var.user, id, form.views, screenshot));
+    },
+  );
 
   app.get('/api/wallet', (c) => c.json(wallet(db, c.var.user.id)));
   app.get('/api/shop', (c) => c.json(shop(db, c.var.user.id)));

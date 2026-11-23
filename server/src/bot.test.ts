@@ -11,6 +11,8 @@ const { createBot } = await import('./bot.js');
 const { openDb, syncContent } = await import('./db.js');
 const { setApi } = await import('./notify.js');
 const service = await import('./service.js');
+const account = await import('./account.js');
+const { idle } = await import('./background.js');
 
 const db = openDb(':memory:');
 syncContent(db);
@@ -79,8 +81,8 @@ test('/invite then /start: welcome and one button that opens the mini app', asyn
 test('review in the bot: submission reaches the team, comment and approval reach the creator', async () => {
   const user = service.getUser(db, 42)!;
   calls.length = 0;
-  service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/abc'] });
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/abc'] });
+  await idle();
   const toTeam = calls.find((call) => call.payload.chat_id === 900)!;
   assert.match(toTeam.payload.text, /New submission #1/);
   assert.equal(toTeam.payload.reply_markup.inline_keyboard[1][0].callback_data, 'nc:1');
@@ -93,7 +95,17 @@ test('review in the bot: submission reaches the team, comment and approval reach
   assert.equal(commented.find((call) => call.payload.chat_id === 42)!.payload.reply_markup.inline_keyboard[0][0].web_app.url, 'https://hub.example/tasks/caravan-shoot');
   assert.equal(service.oneTask(db, 42, 'caravan-shoot').entry?.comment, 'The truck is hard to see.');
 
-  service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/def'] });
+  await service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/def'] });
+  await idle();
+
+  // The account is not confirmed yet: the reviewer is told why, and no coins move.
+  const early = await press(admin, 'ap:1:5', 'Resubmitted #1');
+  const alert = early.find((call) => call.method === 'answerCallbackQuery')!;
+  assert.equal(alert.payload.show_alert, true);
+  assert.match(alert.payload.text, /not confirmed yet/);
+  assert.equal(service.balanceOf(db, 42), 0);
+
+  account.setAccountStatus(db, 42, 'confirmed', 900);
   const approved = await press(admin, 'ap:1:5', 'Resubmitted #1');
   assert.match(texts(approved, 42)[0]!, /\+5 coins are in your wallet/);
   assert.ok(approved.some((call) => call.method === 'editMessageText' && /Approved by Dana, score 5/.test(call.payload.text)));
@@ -205,8 +217,10 @@ test('demo mode: everyone on the invite list gets the team side, and /quiet stop
 
   // A tester's own submission comes back to them with the review buttons, and they approve it themselves.
   calls.length = 0;
-  service.submitLinks(db, service.getUser(db, 78)!, 'caravan-shoot', { links: ['https://instagram.com/reel/igor'] });
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  account.setAccountStatus(db, 78, 'confirmed', 900);
+  calls.length = 0;
+  await service.submitLinks(db, service.getUser(db, 78)!, 'caravan-shoot', { links: ['https://instagram.com/reel/igor'] });
+  await idle();
   const review = toChat([...calls], 78).find((call) => /New submission #\d+/.test(call.payload.text))!;
   const entryId = Number(review.payload.text.match(/New submission #(\d+)/)![1]);
   assert.equal(review.payload.reply_markup.inline_keyboard[1][0].callback_data, `nc:${entryId}`);

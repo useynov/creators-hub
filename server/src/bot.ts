@@ -1,8 +1,10 @@
 import { Bot, GrammyError, type Context } from 'grammy';
+import { isAgeRefused } from './account.js';
 import { registerAdminBot } from './admin/bot.js';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
 import { appButton, copyToAdmins, esc, notifyAdmins } from './notify.js';
+import { submissionText } from './pipeline.js';
 import {
   addInvite,
   announceTask,
@@ -45,7 +47,7 @@ const ADMIN_HELP = [
   '/invitelink: one link that lets in whoever opens it (add "new" to replace it, "off" to turn it off)',
   '/pending: submissions waiting for review',
   '/tasks: tasks and their IDs',
-  '/announce task-id: tell every creator about a task',
+  '/announce task-id: tell the creators in the task\'s audience about it',
   '/views submission-number views: set the views of an approved post',
   '/bonus @username coins reason: add coins by hand',
   '/level @username member|pro|partner|auto: set a level by hand',
@@ -73,6 +75,12 @@ export function createBot(db: DB): Bot {
         '',
         'Were you invited by our team? Check that you opened the bot from the same Telegram account you gave us.',
       ].join('\n'),
+      HTML,
+    );
+
+  const tooYoung = (ctx: Context) =>
+    ctx.reply(
+      `The ${esc(settings.brandName)} is open to people aged ${settings.minAge} and over, so we cannot let you in. Thank you for your interest, and all the best!`,
       HTML,
     );
 
@@ -109,6 +117,7 @@ export function createBot(db: DB): Bot {
     }
 
     if (!isInvited(db, ctx.from)) return notInvited(ctx);
+    if (isAgeRefused(db, ctx.from.id)) return tooYoung(ctx);
     const user = upsertUser(db, ctx.from);
 
     await ctx.reply(`<b>Welcome, ${esc(user.first_name)}!</b> You are now part of the ${esc(settings.brandName)}.`, HTML);
@@ -242,17 +251,19 @@ export function createBot(db: DB): Bot {
     for (const row of rows) {
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id) as UserRow;
       const isDraft = row.status === 'draft_review';
-      const links = isDraft ? [row.draft_link ?? '(sent as a file)'] : (JSON.parse(row.links) as string[]);
+      const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(row.task_id) as TaskRow;
       await ctx.reply(
-        [
-          `<b>${isDraft ? 'Draft' : 'Submission'} #${row.id}</b>`,
-          `Task: ${esc(row.title)} (+${row.task_reward})`,
-          `Creator: ${creatorLine(user)}`,
-          ...links.map((link) => esc(link)),
-          row.note ? `Note: ${esc(row.note)}` : '',
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        isDraft
+          ? [
+              `<b>Draft #${row.id}</b>`,
+              `Task: ${esc(row.title)} (+${row.task_reward})`,
+              `Creator: ${creatorLine(user)}`,
+              esc(row.draft_link ?? '(sent as a file)'),
+              row.note ? `Note: ${esc(row.note)}` : '',
+            ]
+              .filter(Boolean)
+              .join('\n')
+          : submissionText(db, row, task, user, 'Submission'),
         { ...HTML, reply_markup: isDraft ? draftKeyboard(row.id) : reviewKeyboard(row.id), link_preview_options: { is_disabled: true } },
       );
     }
@@ -406,6 +417,7 @@ export function createBot(db: DB): Bot {
 
     if (!isPrivate) return;
     if (!isInvited(db, from)) return notInvited(ctx);
+    if (isAgeRefused(db, from.id)) return tooYoung(ctx);
     const user = upsertUser(db, from);
 
     // 3. A draft file we asked for.

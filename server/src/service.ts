@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { InlineKeyboard } from 'grammy';
+import { audienceSubject } from './account.js';
+import { matchesAudience, parseAudience, type AudienceSubject } from './audience.js';
 import { config, isAdmin, settings } from './config.js';
 import {
   now,
@@ -7,11 +8,15 @@ import {
   type EntryRow,
   type EventRow,
   type OfferRow,
+  type PublicationRow,
   type ShopItemRow,
   type TaskRow,
   type UserRow,
 } from './db.js';
-import { esc, notifyAdmins, notifyUser } from './notify.js';
+import { HubError } from './errors.js';
+import { creatorLine, draftKeyboard, esc, notifyAdmins, notifyUser } from './notify.js';
+import { latestSubmission, publicationsOf, publicationView, setStoryViews, startSubmission, submissionView } from './pipeline.js';
+import { cleanHandle } from './social/links.js';
 import type {
   EntryView,
   EventsView,
@@ -24,19 +29,13 @@ import type {
   OfferView,
   PublicSettings,
   ShopView,
+  StoryView,
   TaskView,
   WalletView,
 } from './types.js';
 
-export class HubError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public status = 400,
-  ) {
-    super(message);
-  }
-}
+export { HubError } from './errors.js';
+export { creatorLine, draftKeyboard, reviewKeyboard } from './notify.js';
 
 const LEVELS: Level[] = ['member', 'pro', 'partner'];
 const levelRank = (level: Level): number => LEVELS.indexOf(level);
@@ -219,7 +218,7 @@ export function levelOf(user: UserRow, rating: number): Level {
 }
 
 /** Tells the creator when they have climbed a level since we last looked. */
-function syncLevel(db: DB, userId: number): void {
+export function syncLevel(db: DB, userId: number): void {
   const user = getUser(db, userId);
   if (!user) return;
   const level = levelOf(user, ratingOf(db, userId));
@@ -302,6 +301,10 @@ export function buildMe(db: DB, user: UserRow): Me {
       teamScore: stats.publications ? Math.round((stats.scoreSum / stats.publications) * 10) / 10 : null,
     },
     rank: rank >= 0 ? rank + 1 : null,
+    avatarUrl: user.avatar_url,
+    accountStatus: user.account_status,
+    accountNote: user.account_status === 'rejected' ? user.account_note : null,
+    hasBirthDate: Boolean(user.birth_date),
   };
 }
 
@@ -319,47 +322,35 @@ export function publicSettings(botUsername: string | null): PublicSettings {
     cashout: settings.cashout,
     topPerformerBonus: settings.topPerformerBonus,
     checkinCoins: settings.checkinCoins,
+    minAge: settings.minAge,
+    accountConfirmTime: settings.accountConfirmTime,
   };
 }
 
-const handle = (value: unknown): string | null => {
-  const clean = String(value ?? '')
-    .trim()
-    .replace(/^@+/, '')
-    .replace(/^https?:\/\/(www\.)?(instagram|tiktok)\.com\/@?/i, '')
-    .replace(/[/?].*$/, '');
-  return clean ? clean.slice(0, 60) : null;
-};
 const text = (value: unknown, max: number): string | null => {
   const clean = String(value ?? '').trim();
   return clean ? clean.slice(0, max) : null;
 };
 
-export function completeSetup(db: DB, user: UserRow, body: Record<string, unknown>): void {
-  const instagram = handle(body.instagram);
-  const city = text(body.city, 80);
-  if (!instagram) throw new HubError('instagram_required', 'Add your Instagram handle.');
-  if (!city) throw new HubError('city_required', 'Choose your city.');
-  db.prepare('UPDATE users SET instagram = ?, tiktok = ?, city = ?, onboarded_at = COALESCE(onboarded_at, ?) WHERE id = ?').run(
-    instagram,
-    handle(body.tiktok),
-    city,
-    now(),
-    user.id,
-  );
-}
-
+/**
+ * "My details". The Instagram handle is not changed here: a new handle goes through the
+ * connect flow (account.ts) so that the team can confirm it. TikTok is optional and free.
+ */
 export function updateDetails(db: DB, user: UserRow, body: Record<string, unknown>): void {
+  let tiktok = user.tiktok;
+  if ('tiktok' in body) {
+    const typed = String(body.tiktok ?? '').trim();
+    tiktok = typed ? cleanHandle(typed) : null;
+    if (typed && !tiktok) throw new HubError('bad_handle', 'That TikTok handle does not look right: letters, numbers, dots and underscores.');
+  }
   const next = {
-    instagram: 'instagram' in body ? handle(body.instagram) ?? user.instagram : user.instagram,
-    tiktok: 'tiktok' in body ? handle(body.tiktok) : user.tiktok,
+    tiktok,
     city: 'city' in body ? text(body.city, 80) ?? user.city : user.city,
     size: 'size' in body ? text(body.size, 8) : user.size,
     address: 'address' in body ? text(body.address, 300) : user.address,
     phone: 'phone' in body ? text(body.phone, 30) : user.phone,
   };
-  db.prepare('UPDATE users SET instagram = ?, tiktok = ?, city = ?, size = ?, address = ?, phone = ? WHERE id = ?').run(
-    next.instagram,
+  db.prepare('UPDATE users SET tiktok = ?, city = ?, size = ?, address = ?, phone = ? WHERE id = ?').run(
     next.tiktok,
     next.city,
     next.size,
@@ -391,9 +382,36 @@ function entryView(entry: EntryRow): EntryView {
   };
 }
 
-const isClosed = (task: TaskRow): boolean => !task.active || new Date(task.deadline).getTime() < Date.now();
+const isClosed = (task: TaskRow): boolean =>
+  !task.active || task.status !== 'active' || new Date(task.deadline).getTime() < Date.now();
 
-function taskView(task: TaskRow, entry: EntryRow | undefined): TaskView {
+const LOCKED_REASON = 'We could not confirm your Instagram account, so tasks are locked. Connect the account that is yours in your profile.';
+
+/** Everything about the creator that decides what they see, read once per request. */
+interface Viewer {
+  user: UserRow;
+  subject: AudienceSubject;
+}
+
+function viewerOf(db: DB, user: UserRow): Viewer {
+  return { user, subject: audienceSubject(db, user, levelOf(user, ratingOf(db, user.id))) };
+}
+
+const participants = (db: DB, taskId: string): number =>
+  (db.prepare('SELECT COUNT(*) AS n FROM entries WHERE task_id = ?').get(taskId) as { n: number }).n;
+
+/**
+ * A task is visible to a creator who already took part in it, or when it is published, open,
+ * and the creator is in its audience. The same rule serves the list, opening by link and joining.
+ */
+function canSee(task: TaskRow, viewer: Viewer, entry: EntryRow | undefined): boolean {
+  if (entry) return true;
+  return !isClosed(task) && matchesAudience(viewer.subject, parseAudience(task.audience));
+}
+
+function taskView(db: DB, task: TaskRow, entry: EntryRow | undefined, viewer: Viewer): TaskView {
+  const approved = entry?.status === 'approved';
+  const latest = entry ? latestSubmission(db, entry.id) : undefined;
   return {
     id: task.id,
     title: task.title,
@@ -409,6 +427,18 @@ function taskView(task: TaskRow, entry: EntryRow | undefined): TaskView {
     viewsBonus: Boolean(task.views_bonus),
     steps: JSON.parse(task.steps) as string[],
     entry: entry ? entryView(entry) : null,
+    brief: task.brief,
+    formats: JSON.parse(task.formats || '[]') as TaskView['formats'],
+    requiredMention: task.required_mention,
+    requiredHashtag: task.required_hashtag,
+    startsAt: task.starts_at,
+    bonusCoins: task.bonus_coins,
+    maxPublications: Math.max(1, task.max_publications),
+    full: task.max_participants !== null && participants(db, task.id) >= task.max_participants,
+    locked: viewer.user.account_status === 'rejected' ? LOCKED_REASON : null,
+    publications: entry ? publicationsOf(db, entry.id).map((row) => publicationView(row, approved)) : [],
+    // A finished check is history: only a running one or a refusal is news for the app.
+    submission: latest && latest.status !== 'done' ? submissionView(latest) : null,
   };
 }
 
@@ -430,91 +460,105 @@ function getEntryById(db: DB, entryId: number): EntryRow {
   return entry;
 }
 
-/** Every task the creator can see: open ones, plus any they already took part in. */
+/** A task this creator may look at. Hidden ones answer exactly like missing ones. */
+function visibleTask(db: DB, viewer: Viewer, taskId: string): { task: TaskRow; entry: EntryRow | undefined } {
+  const task = getTask(db, taskId);
+  const entry = getEntry(db, viewer.user.id, taskId);
+  if (!canSee(task, viewer, entry)) throw new HubError('task_not_found', 'This task does not exist.', 404);
+  return { task, entry };
+}
+
+/** Every task the creator can see: open ones for their audience, plus any they already took part in. */
 export function listTasks(db: DB, userId: number): TaskView[] {
+  const user = getUser(db, userId);
+  if (!user) return [];
+  const viewer = viewerOf(db, user);
   const tasks = db.prepare('SELECT * FROM tasks ORDER BY active DESC, sort ASC, deadline ASC').all() as TaskRow[];
   const entries = db.prepare('SELECT * FROM entries WHERE user_id = ?').all(userId) as EntryRow[];
   const byTask = new Map(entries.map((entry) => [entry.task_id, entry]));
-  return tasks
-    .map((task) => taskView(task, byTask.get(task.id)))
-    .filter((task) => task.entry || !task.closed);
+  return tasks.filter((task) => canSee(task, viewer, byTask.get(task.id))).map((task) => taskView(db, task, byTask.get(task.id), viewer));
 }
 
 export function oneTask(db: DB, userId: number, taskId: string): TaskView {
-  return taskView(getTask(db, taskId), getEntry(db, userId, taskId));
+  const user = getUser(db, userId);
+  if (!user) throw new HubError('task_not_found', 'This task does not exist.', 404);
+  const viewer = viewerOf(db, user);
+  const { task, entry } = visibleTask(db, viewer, taskId);
+  return taskView(db, task, entry, viewer);
 }
 
 function assertOpen(task: TaskRow): void {
   if (isClosed(task)) throw new HubError('task_closed', 'The deadline for this task has passed.');
 }
 
-function ensureEntry(db: DB, userId: number, task: TaskRow): EntryRow {
-  const existing = getEntry(db, userId, task.id);
-  if (existing) return existing;
-  db.prepare(`INSERT INTO entries (user_id, task_id, status, joined_at) VALUES (?, ?, 'joined', ?)`).run(
-    userId,
-    task.id,
-    now(),
-  );
-  return getEntry(db, userId, task.id)!;
+function assertNotLocked(user: UserRow): void {
+  if (user.account_status === 'rejected') throw new HubError('account_rejected', LOCKED_REASON, 403);
+}
+
+/**
+ * The creator's entry for a task, creating it when they join. Joining checks everything a
+ * newcomer must pass: the task is open and visible to them, and there is still room.
+ */
+function ensureEntry(db: DB, user: UserRow, taskId: string): { task: TaskRow; entry: EntryRow; created: boolean } {
+  return db.transaction(() => {
+    const viewer = viewerOf(db, user);
+    const { task, entry } = visibleTask(db, viewer, taskId);
+    if (entry) return { task, entry, created: false };
+    assertNotLocked(user);
+    assertOpen(task);
+    if (task.max_participants !== null && participants(db, task.id) >= task.max_participants) {
+      throw new HubError('task_full', 'All places on this task are taken.', 409);
+    }
+    db.prepare(`INSERT INTO entries (user_id, task_id, status, joined_at) VALUES (?, ?, 'joined', ?)`).run(user.id, task.id, now());
+    return { task, entry: getEntry(db, user.id, task.id)!, created: true };
+  })();
 }
 
 export function joinTask(db: DB, user: UserRow, taskId: string): TaskView {
-  const task = getTask(db, taskId);
-  if (!getEntry(db, user.id, taskId)) {
-    assertOpen(task);
-    ensureEntry(db, user.id, task);
-    void notifyAdmins(db, `${creatorLine(user)} is in for <b>${esc(task.title)}</b>.`);
-  }
+  const { task, created } = ensureEntry(db, user, taskId);
+  if (created) void notifyAdmins(db, `${creatorLine(user)} is in for <b>${esc(task.title)}</b>.`);
   return oneTask(db, user.id, taskId);
 }
 
-function cleanLinks(input: unknown): string[] {
-  const raw = Array.isArray(input) ? input : [input];
+function cleanLinks(input: unknown, max: number): string[] {
+  const raw = Array.isArray(input) ? input.slice(0, 20) : [input];
   const links: string[] = [];
   for (const item of raw) {
     let value = String(item ?? '').trim();
     if (!value) continue;
+    if (value.length > 500) throw new HubError('bad_link', 'That link is too long. Copy it from the app and paste it here.');
     if (!/^https?:\/\//i.test(value)) value = `https://${value}`;
     try {
       const url = new URL(value);
-      if (!url.hostname.includes('.')) throw new Error('no host');
-      links.push(url.toString().slice(0, 500));
+      if (!url.hostname.includes('.') || (url.protocol !== 'https:' && url.protocol !== 'http:')) throw new Error('no host');
+      const clean = url.toString();
+      if (!links.includes(clean)) links.push(clean);
     } catch {
       throw new HubError('bad_link', 'That does not look like a link. Copy it from the app and paste it here.');
     }
   }
   if (!links.length) throw new HubError('link_required', 'Paste the link to your post.');
-  return links.slice(0, 5);
+  if (links.length > max) {
+    throw new HubError('too_many_links', max === 1 ? 'This task takes one link.' : `This task takes up to ${max} links.`);
+  }
+  return links;
 }
 
-export function creatorLine(user: UserRow): string {
-  const parts = [`<b>${esc(user.first_name)}</b>`];
-  if (user.username) parts.push(`@${esc(user.username)}`);
-  if (user.instagram) parts.push(`IG <a href="https://instagram.com/${esc(user.instagram)}">@${esc(user.instagram)}</a>`);
-  return parts.join(' · ');
-}
+/** How long the send waits for its check before answering "Checking your link". */
+const CHECK_WAIT_MS = 2500;
 
-export function reviewKeyboard(entryId: number): InlineKeyboard {
-  return new InlineKeyboard()
-    .text('Approve ★3', `ap:${entryId}:3`)
-    .text('★4', `ap:${entryId}:4`)
-    .text('★5', `ap:${entryId}:5`)
-    .row()
-    .text('Needs changes', `nc:${entryId}`);
-}
-
-export function draftKeyboard(entryId: number): InlineKeyboard {
-  return new InlineKeyboard().text('Approve draft', `da:${entryId}`).text('Needs changes', `nc:${entryId}`);
-}
-
-/** The creator sends the link(s) to the published work. */
-export function submitLinks(db: DB, user: UserRow, taskId: string, body: Record<string, unknown>): TaskView {
-  const task = getTask(db, taskId);
-  assertOpen(task);
-  const links = cleanLinks(body.links);
+/**
+ * The creator sends the link(s) to the published work. The links are checked in the background
+ * (pipeline.ts): the answer comes at once, or as soon as the check is done if that is quick.
+ * The app shows "Checking your link" while `submission.status` is 'checking'.
+ */
+export async function submitLinks(db: DB, user: UserRow, taskId: string, body: Record<string, unknown>): Promise<TaskView> {
+  // Read the links before joining anyone: a typo must not leave an entry behind.
+  const links = cleanLinks(body.links, Math.max(1, getTask(db, taskId).max_publications));
   const note = text(body.note, 1000);
-  const entry = ensureEntry(db, user.id, task);
+  const { task, entry } = ensureEntry(db, user, taskId);
+  assertNotLocked(user);
+  assertOpen(task);
 
   const allowed =
     task.review_mode === 'draft_first'
@@ -526,29 +570,65 @@ export function submitLinks(db: DB, user: UserRow, taskId: string, body: Record<
       entry.status === 'approved' ? 'This task is already approved.' : 'Send your draft first. Post after it is approved.',
     );
   }
+  if (latestSubmission(db, entry.id)?.status === 'checking') {
+    throw new HubError('still_checking', 'We are still checking your last link. Give it a moment.', 409);
+  }
 
-  db.prepare(`UPDATE entries SET status = 'in_review', links = ?, note = ?, submitted_at = ? WHERE id = ?`).run(
-    JSON.stringify(links),
-    note,
-    now(),
-    entry.id,
-  );
+  const submission = startSubmission(db, entry, links, note);
+  const deadline = Date.now() + CHECK_WAIT_MS;
+  while (Date.now() < deadline && latestSubmission(db, entry.id)?.id === submission.id && latestSubmission(db, entry.id)?.status === 'checking') {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return oneTask(db, user.id, taskId);
+}
 
-  const resent = entry.status !== 'joined' && entry.status !== 'draft_approved';
+/** The creator's story, for the "How many people saw your story?" screen. */
+export function storyOf(db: DB, userId: number, publicationId: number): { publication: PublicationRow; view: StoryView } {
+  const row = db
+    .prepare(
+      `SELECT p.*, t.title AS task_title, e.status AS entry_status FROM publications p
+       JOIN tasks t ON t.id = p.task_id JOIN entries e ON e.id = p.entry_id
+       WHERE p.id = ? AND p.user_id = ? AND p.kind = 'story' AND p.removed_at IS NULL`,
+    )
+    .get(publicationId, userId) as (PublicationRow & { task_title: string; entry_status: string }) | undefined;
+  if (!row) throw new HubError('story_not_found', 'This story is not one of yours.', 404);
+  const view: StoryView = {
+    id: row.id,
+    taskId: row.task_id,
+    taskTitle: row.task_title,
+    postedAt: row.published_at ?? row.created_at,
+    hasCopy: Boolean(row.media_path),
+    copyIsImage: Boolean(row.media_path && /\.(jpg|png|webp)$/.test(row.media_path)),
+    views: row.story_views,
+    answeredAt: row.story_answered_at,
+    hasScreenshot: Boolean(row.story_screenshot_path),
+    editable: !row.story_answered_at || row.entry_status !== 'approved',
+  };
+  return { publication: row, view };
+}
+
+/** A number of views as typed: "1 240" and "1,240" are fine, anything else is refused. */
+export function parseViews(value: unknown): number {
+  const number = typeof value === 'string' ? Number(value.replace(/[\s,]/g, '')) : typeof value === 'number' ? value : NaN;
+  if (!Number.isInteger(number) || number < 0 || number > 100_000_000) {
+    throw new HubError('bad_views', 'Enter the number of views as a whole number.');
+  }
+  return number;
+}
+
+/** The creator sends the number of views of their story, with an optional screenshot (already saved, private). */
+export function sendStoryViews(db: DB, user: UserRow, publicationId: number, views: unknown, screenshotPath: string | null): StoryView {
+  const { view } = storyOf(db, user.id, publicationId);
+  if (!view.editable) throw new HubError('story_closed', 'This work is approved: the number can no longer change. Write to the team if it is wrong.');
+  const number = parseViews(views);
+  setStoryViews(db, publicationId, number, { kind: 'creator' }, screenshotPath);
   void notifyAdmins(
     db,
-    [
-      `<b>${resent ? 'Resubmitted' : 'New submission'} #${entry.id}</b>`,
-      `Task: ${esc(task.title)} (+${task.reward})`,
-      `Creator: ${creatorLine(user)}`,
-      ...links.map((link) => esc(link)),
-      note ? `Note: ${esc(note)}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n') + '\n\nApprove with a score for the work, or ask for changes.',
-    reviewKeyboard(entry.id),
+    `${creatorLine(user)} says their story for <b>${esc(view.taskTitle)}</b> has <b>${number.toLocaleString('en-US')}</b> views${
+      screenshotPath ? ', with a screenshot of the statistics' : ', without a screenshot'
+    }.`,
   );
-  return oneTask(db, user.id, taskId);
+  return storyOf(db, user.id, publicationId).view;
 }
 
 function assertDraftStep(task: TaskRow, entry: EntryRow): void {
@@ -560,11 +640,11 @@ function assertDraftStep(task: TaskRow, entry: EntryRow): void {
 
 /** Draft sent as a link (a cloud folder, an unlisted video). */
 export function submitDraftLink(db: DB, user: UserRow, taskId: string, body: Record<string, unknown>): TaskView {
-  const task = getTask(db, taskId);
-  assertOpen(task);
-  const [link] = cleanLinks(body.links);
+  const [link] = cleanLinks(body.links, 1);
   const note = text(body.note, 1000);
-  const entry = ensureEntry(db, user.id, task);
+  const { task, entry } = ensureEntry(db, user, taskId);
+  assertNotLocked(user);
+  assertOpen(task);
   assertDraftStep(task, entry);
 
   db.prepare(
@@ -589,9 +669,9 @@ export function submitDraftLink(db: DB, user: UserRow, taskId: string, body: Rec
 
 /** The creator wants to upload a file: the bot asks for it in the chat. */
 export function requestDraftUpload(db: DB, user: UserRow, taskId: string): void {
-  const task = getTask(db, taskId);
+  const { task, entry } = ensureEntry(db, user, taskId);
+  assertNotLocked(user);
   assertOpen(task);
-  const entry = ensureEntry(db, user.id, task);
   assertDraftStep(task, entry);
   db.prepare('UPDATE users SET pending = ? WHERE id = ?').run(JSON.stringify({ type: 'draft', taskId }), user.id);
   void notifyUser(
@@ -610,10 +690,10 @@ export function receiveDraftFile(db: DB, user: UserRow, fileId: string): { task:
   }
   if (pending.type !== 'draft' || !pending.taskId) return null;
 
-  const task = getTask(db, pending.taskId);
-  const entry = ensureEntry(db, user.id, task);
   db.prepare('UPDATE users SET pending = NULL WHERE id = ?').run(user.id);
-  if (isClosed(task) || !['joined', 'draft_review', 'draft_changes'].includes(entry.status)) return null;
+  const task = getTask(db, pending.taskId);
+  const entry = getEntry(db, user.id, task.id);
+  if (!entry || isClosed(task) || user.account_status === 'rejected' || !['joined', 'draft_review', 'draft_changes'].includes(entry.status)) return null;
 
   db.prepare(
     `UPDATE entries SET status = 'draft_review', draft_file_id = ?, draft_link = NULL, draft_sent_at = ? WHERE id = ?`,
@@ -651,6 +731,16 @@ export function approveEntry(db: DB, entryId: number, score: number): { title: s
   if (entry.status !== 'in_review') throw new HubError('wrong_step', 'This submission is not waiting for review.');
   if (!Number.isInteger(score) || score < 1 || score > 5) throw new HubError('bad_score', 'Score must be 1 to 5.');
   const task = getTask(db, entry.task_id);
+  const creator = getUser(db, entry.user_id);
+  if (creator?.account_status !== 'confirmed') {
+    throw new HubError(
+      'account_not_confirmed',
+      creator?.account_status === 'rejected'
+        ? 'This creator\'s Instagram account was rejected. No coins until they connect an account the team confirms.'
+        : 'This creator\'s Instagram account is not confirmed yet. Confirm the account first, then approve the work.',
+      409,
+    );
+  }
 
   const before = ratingOf(db, entry.user_id);
   db.transaction(() => {
@@ -710,10 +800,14 @@ export function grantCoins(db: DB, userId: number, amount: number, title: string
   );
 }
 
-/** Tells every creator about a task. Returns how many people were messaged. */
+/** Tells the creators in the task's audience about it. Returns how many people were messaged. */
 export function announceTask(db: DB, taskId: string): number {
   const task = getTask(db, taskId);
-  const users = db.prepare('SELECT id FROM users').all() as Array<{ id: number }>;
+  if (isClosed(task)) throw new HubError('task_closed', 'This task is not open, so there is nothing to announce.');
+  const audience = parseAudience(task.audience);
+  const users = (
+    db.prepare(`SELECT * FROM users WHERE onboarded_at IS NOT NULL AND account_status != 'rejected'`).all() as UserRow[]
+  ).filter((user) => matchesAudience(viewerOf(db, user).subject, audience));
   const where = [task.date ? `on ${shortDate(task.date)}` : '', task.place ? `at ${task.place}` : ''].filter(Boolean).join(' ');
   const lead = where ? `${task.title} ${where}.` : `${task.title}.`;
   for (const user of users) {
@@ -852,6 +946,7 @@ function eventView(row: EventJoined): EventView {
     code: row.code,
     checkedIn: Boolean(row.checked_in_at),
     reminded: Boolean(row.reminded),
+    coverUrl: row.cover_url,
   };
 }
 
@@ -972,6 +1067,7 @@ const offerView = (row: OfferRow): OfferView => ({
   postBy: row.post_by,
   answerBy: row.answer_by,
   status: row.status,
+  brief: row.brief,
 });
 
 export function currentOffer(db: DB, userId: number): OfferView | null {
@@ -1010,7 +1106,9 @@ export function home(db: DB, userId: number): HomeView {
   const fresh = tasks.filter((task) => !task.entry);
   const nextTask = tasks.find((task) => task.entry && needsAction.includes(task.entry.status)) ?? fresh[0] ?? null;
 
-  const news = db.prepare('SELECT id, title, summary, date, url FROM news WHERE active = 1 ORDER BY sort ASC LIMIT 1').get() as
+  const news = db
+    .prepare('SELECT id, title, summary, date, url, path, cover_url AS coverUrl FROM news WHERE active = 1 ORDER BY sort ASC LIMIT 1')
+    .get() as
     | NewsView
     | undefined;
   const events = listEvents(db, userId).upcoming;

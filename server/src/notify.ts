@@ -1,6 +1,6 @@
 import { InlineKeyboard, type Api } from 'grammy';
 import { config } from './config.js';
-import type { DB } from './db.js';
+import type { DB, UserRow } from './db.js';
 import { teamChats } from './team.js';
 
 /**
@@ -89,4 +89,25 @@ export async function copyToAdmins(db: DB, fromChatId: number, messageId: number
       console.warn(`[notify] could not copy message to ${chatId}:`, (error as Error).message);
     }
   }
+}
+
+/** Who a creator is, for the team's messages. */
+export function creatorLine(user: UserRow): string {
+  const parts = [`<b>${esc(user.first_name)}</b>`];
+  if (user.username) parts.push(`@${esc(user.username)}`);
+  if (user.instagram) parts.push(`IG <a href="https://instagram.com/${esc(user.instagram)}">@${esc(user.instagram)}</a>`);
+  return parts.join(' · ');
+}
+
+export function reviewKeyboard(entryId: number): InlineKeyboard {
+  return new InlineKeyboard()
+    .text('Approve ★3', `ap:${entryId}:3`)
+    .text('★4', `ap:${entryId}:4`)
+    .text('★5', `ap:${entryId}:5`)
+    .row()
+    .text('Needs changes', `nc:${entryId}`);
+}
+
+export function draftKeyboard(entryId: number): InlineKeyboard {
+  return new InlineKeyboard().text('Approve draft', `da:${entryId}`).text('Needs changes', `nc:${entryId}`);
 }
