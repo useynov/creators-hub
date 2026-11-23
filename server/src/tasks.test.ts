@@ -146,3 +146,22 @@ test('announcements go only to the creators in the task\'s audience', () => {
   assert.equal(service.announceTask(db, 'astana-launch'), 0);
   assert.throws(() => service.announceTask(db, 'draft-task'), /not open/);
 });
+
+test('events: the linked task and its reward show only to creators who can see that task', async () => {
+  type Events = import('./types.js').EventsView;
+  task('event-task-astana', { reward: 40, audience: JSON.stringify({ mode: 'segment', cities: ['Astana'] }) });
+  db.prepare(`UPDATE events SET task_id = 'event-task-astana' WHERE id = 'creators-ny-party'`).run();
+  db.prepare(`UPDATE users SET account_status = 'confirmed' WHERE id = 603`).run();
+  const party = (list: Events) => [...list.upcoming, ...list.past].find((event) => event.id === 'creators-ny-party')!;
+
+  const inside = party((await call<Events>(astana, 'GET', '/api/events')).data);
+  assert.deepEqual([inside.taskId, inside.taskReward], ['event-task-astana', 40]);
+  const outside = party((await call<Events>(almatySmall, 'GET', '/api/events')).data);
+  assert.deepEqual([outside.taskId, outside.taskReward], [null, null]);
+
+  // A closed task is not offered either, unless the creator already took part in it.
+  db.prepare(`UPDATE tasks SET status = 'closed' WHERE id = 'event-task-astana'`).run();
+  assert.equal(party((await call<Events>(astana, 'GET', '/api/events')).data).taskReward, null);
+  db.prepare(`INSERT INTO entries (user_id, task_id, status, joined_at) VALUES (603, 'event-task-astana', 'joined', ?)`).run(now());
+  assert.equal(party((await call<Events>(astana, 'GET', '/api/events')).data).taskId, 'event-task-astana');
+});

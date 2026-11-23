@@ -962,6 +962,17 @@ export function listEvents(db: DB, userId: number): EventsView {
        ORDER BY e.date IS NULL, e.date ASC, e.sort ASC`,
     )
     .all({ userId }) as EventJoined[];
+  // The linked task, its reward and its link are shown only to creators who can see that task.
+  const user = getUser(db, userId);
+  const viewer = user ? viewerOf(db, user) : null;
+  for (const row of rows) {
+    if (!row.task_id) continue;
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(row.task_id) as TaskRow | undefined;
+    if (!task || !viewer || !canSee(task, viewer, getEntry(db, userId, task.id))) {
+      row.task_id = null;
+      row.task_reward = null;
+    }
+  }
   const today = localDate();
   const views = rows.map(eventView);
   return {
