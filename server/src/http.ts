@@ -1,9 +1,11 @@
 import { Hono, type Context } from 'hono';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, sep } from 'node:path';
+import { registerAdminRoutes } from './admin/routes.js';
 import { validateInitData, type TelegramUser } from './auth.js';
 import { config } from './config.js';
 import type { DB, UserRow } from './db.js';
+import { readMedia } from './media.js';
 import {
   answerOffer,
   buildMe,
@@ -62,8 +64,26 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
 
   app.get('/healthz', (c) => c.text('ok'));
 
-  // Every API call carries Telegram's signed launch data.
+  // Files we keep ourselves and show to everyone: task covers, avatars, thumbnails.
+  // Private files (story copies, screenshots) are never served here, only by the admin API.
+  app.get('/media/*', async (c) => {
+    const relative = decodeURIComponent(new URL(c.req.url).pathname.slice('/media/'.length));
+    const file = await readMedia('public', relative);
+    if (!file) return c.notFound();
+    return c.body(new Uint8Array(file.data), 200, {
+      'Content-Type': file.mime,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+  });
+
+  // The admin panel has its own login and its own routes. They must be registered
+  // before the mini app's auth below, which knows nothing about admin sessions.
+  registerAdminRoutes(app, db);
+
+  // Every mini app API call carries Telegram's signed launch data.
   app.use('/api/*', async (c, next) => {
+    if (c.req.path.startsWith('/api/admin/')) return next();
     const header = c.req.header('authorization') ?? '';
     let identity: TelegramUser | null = header.startsWith('tma ')
       ? validateInitData(header.slice(4), config.botToken)
@@ -145,21 +165,31 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
 
   app.all('/api/*', (c) => c.json({ error: 'not_found', message: 'Not found.' }, 404));
 
-  // The built mini app. Any unknown path falls back to index.html so that
+  // The built admin panel lives under /admin. Unknown paths there fall back to its index.html.
+  // The built mini app serves everything else, and falls back to its own index.html so that
   // links from the bot (for example /tasks/caravan-shoot) open the right screen.
   app.get('*', async (c) => {
-    const requested = normalize(decodeURIComponent(new URL(c.req.url).pathname)).replace(/^(\.\.[/\\])+/, '');
-    const isAsset = Boolean(extname(requested));
-    const file = join(config.webDist, isAsset ? requested : 'index.html');
-    if (!file.startsWith(config.webDist)) return c.notFound();
+    let requested: string;
+    try {
+      requested = normalize(decodeURIComponent(new URL(c.req.url).pathname)).replace(/^(\.\.[/\\])+/, '');
+    } catch {
+      return c.notFound();
+    }
+    const isAdmin = requested === '/admin' || requested.startsWith('/admin/');
+    const root = isAdmin ? config.adminDist : config.webDist;
+    const inside = isAdmin ? requested.slice('/admin'.length) || '/' : requested;
+    const isAsset = Boolean(extname(inside));
+    const file = join(root, isAsset ? inside : 'index.html');
+    if (file !== root && !file.startsWith(root + sep)) return c.notFound();
     try {
       const data = await readFile(file);
-      return c.body(data, 200, {
+      return c.body(new Uint8Array(data), 200, {
         'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
-        'Cache-Control': requested.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+        'Cache-Control': inside.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+        'X-Content-Type-Options': 'nosniff',
       });
     } catch {
-      return isAsset ? c.notFound() : c.text('The mini app is not built yet. Run: npm run build', 503);
+      return isAsset ? c.notFound() : c.text('This part of the app is not built yet. Run: npm run build', 503);
     }
   });
 

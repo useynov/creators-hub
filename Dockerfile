@@ -10,6 +10,7 @@ RUN apt-get update \
 COPY package.json package-lock.json ./
 COPY server/package.json server/
 COPY web/package.json web/
+COPY admin/package.json admin/
 RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
@@ -25,8 +26,10 @@ COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/server/package.json server/
 COPY --from=build /app/server/dist server/dist
 COPY --from=build /app/web/dist web/dist
+COPY --from=build /app/admin/dist admin/dist
 COPY --from=build /app/content content
-# The database lives here. Mount a persistent disk at /data on your host.
+# The database and the media folder (covers, avatars, story copies) live here.
+# Mount a persistent disk at /data on your host.
 VOLUME /data
 EXPOSE 3000
 CMD ["node", "server/dist/index.js"]

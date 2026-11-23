@@ -1,4 +1,5 @@
 import { Bot, GrammyError, type Context } from 'grammy';
+import { registerAdminBot } from './admin/bot.js';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
 import { appButton, copyToAdmins, esc, notifyAdmins } from './notify.js';
@@ -363,6 +364,10 @@ export function createBot(db: DB): Bot {
       });
     }
   });
+
+  // --- Admin panel -------------------------------------------------------
+
+  registerAdminBot(bot, db);
 
   // --- Messages ----------------------------------------------------------
 

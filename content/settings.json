@@ -3,11 +3,37 @@
   "brandInitials": "CH",
   "timeZone": "Asia/Almaty",
   "currencySign": "₸",
-  "reviewTime": null,
-  "cities": ["Almaty", "Astana", "Shymkent"],
-  "levels": { "pro": 150, "partner": 400 },
-  "rating": { "perPublication": 5, "perScorePoint": 1, "viewsPerPoint": 250 },
-  "cashout": { "rateKzt": null, "minCoins": null, "method": null },
+  "reviewTime": "24 hours",
+  "cities": [
+    "Almaty",
+    "Astana",
+    "Shymkent"
+  ],
+  "levels": {
+    "pro": 150,
+    "partner": 400
+  },
+  "rating": {
+    "perPublication": 5,
+    "perScorePoint": 1,
+    "viewsPerPoint": 250
+  },
+  "cashout": {
+    "rateKzt": null,
+    "minCoins": null,
+    "method": null
+  },
   "topPerformerBonus": null,
-  "checkinCoins": 0
+  "checkinCoins": 0,
+  "minAge": 18,
+  "accountConfirmTime": "24 hours",
+  "metrics": {
+    "scheduleHours": [
+      24,
+      168,
+      336
+    ],
+    "profileSample": 12,
+    "profileRefreshDays": 7
+  }
 }

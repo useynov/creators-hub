@@ -26,9 +26,14 @@ export const config = {
   communityChatUrl: env.COMMUNITY_CHAT_URL?.trim() || null,
   welcomeVideo: env.WELCOME_VIDEO?.trim() || null,
   dbPath: resolve(rootDir, env.DATABASE_PATH ?? './data/hub.db'),
+  /** Uploaded and downloaded files: task covers, avatars, story copies, screenshots. Lives next to the database. */
+  mediaDir: resolve(rootDir, env.MEDIA_DIR ?? resolve(dirname(resolve(rootDir, env.DATABASE_PATH ?? './data/hub.db')), 'media')),
+  /** Apify API token for reading public Instagram and TikTok data. Without it the demo provider answers. */
+  apifyToken: env.APIFY_TOKEN?.trim() || null,
   /** Browser preview without Telegram. Never honoured in production. */
   devUserId: !isProd && env.DEV_USER_ID ? Number(env.DEV_USER_ID) : null,
   webDist: resolve(rootDir, 'web/dist'),
+  adminDist: resolve(rootDir, 'admin/dist'),
 };
 
 export interface HubSettings {
@@ -43,6 +48,18 @@ export interface HubSettings {
   cashout: { rateKzt: number | null; minCoins: number | null; method: string | null };
   topPerformerBonus: number | null;
   checkinCoins: number;
+  /** Creators must be at least this old. */
+  minAge: number;
+  /** How long the team takes to confirm a new account, as shown to creators. */
+  accountConfirmTime: string | null;
+  metrics: {
+    /** Hours after submission for the three follow-up measurements. The last one is final. */
+    scheduleHours: [number, number, number];
+    /** How many of the latest publications the profile averages are counted over. */
+    profileSample: number;
+    /** Days between automatic refreshes of a creator's profile data. */
+    profileRefreshDays: number;
+  };
 }
 
 export const settings: HubSettings = JSON.parse(

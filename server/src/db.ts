@@ -4,6 +4,12 @@ import { dirname, resolve } from 'node:path';
 import { rootDir } from './config.js';
 import type { EntryStatus, Level, ReviewMode } from './types.js';
 
+export type AccountStatus = 'pending' | 'confirmed' | 'rejected';
+export type TaskStatus = 'draft' | 'active' | 'closed';
+export type Platform = 'instagram' | 'tiktok';
+export type PublicationKind = 'reel' | 'post' | 'story' | 'tiktok' | 'unknown';
+export type TeamRole = 'owner' | 'manager' | 'viewer';
+
 export type DB = Database.Database;
 
 const SCHEMA = `
@@ -172,6 +178,112 @@ CREATE TABLE IF NOT EXISTS admin_pending (
   entry_id INTEGER NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS social_profiles (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  platform TEXT NOT NULL,
+  handle TEXT NOT NULL COLLATE NOCASE,
+  external_id TEXT,
+  full_name TEXT,
+  bio TEXT,
+  avatar_url TEXT,
+  followers INTEGER,
+  following INTEGER,
+  posts_count INTEGER,
+  is_private INTEGER NOT NULL DEFAULT 0,
+  is_verified INTEGER NOT NULL DEFAULT 0,
+  avg_reel_views INTEGER,
+  engagement_rate REAL,
+  recent TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'ok',
+  source TEXT NOT NULL DEFAULT 'demo',
+  fetched_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, platform)
+);
+CREATE TABLE IF NOT EXISTS user_tags (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  tag TEXT NOT NULL COLLATE NOCASE,
+  PRIMARY KEY (user_id, tag)
+);
+CREATE TABLE IF NOT EXISTS publications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entry_id INTEGER NOT NULL REFERENCES entries(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  task_id TEXT NOT NULL REFERENCES tasks(id),
+  url TEXT NOT NULL,
+  platform TEXT NOT NULL DEFAULT 'other',
+  kind TEXT NOT NULL DEFAULT 'unknown',
+  external_id TEXT,
+  author_handle TEXT COLLATE NOCASE,
+  published_at TEXT,
+  caption TEXT,
+  mentions TEXT NOT NULL DEFAULT '[]',
+  hashtags TEXT NOT NULL DEFAULT '[]',
+  thumb_path TEXT,
+  media_path TEXT,
+  checks TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'tracking',
+  views INTEGER,
+  likes INTEGER,
+  comments INTEGER,
+  shares INTEGER,
+  views_source TEXT NOT NULL DEFAULT 'none',
+  story_views INTEGER,
+  story_screenshot_path TEXT,
+  story_asked_at TEXT,
+  story_answered_at TEXT,
+  created_at TEXT NOT NULL,
+  final_at TEXT,
+  removed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS publications_entry ON publications(entry_id);
+CREATE INDEX IF NOT EXISTS publications_task ON publications(task_id);
+CREATE TABLE IF NOT EXISTS snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  publication_id INTEGER NOT NULL REFERENCES publications(id),
+  kind TEXT NOT NULL,
+  due_at TEXT NOT NULL,
+  taken_at TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  views INTEGER,
+  likes INTEGER,
+  comments INTEGER,
+  shares INTEGER,
+  error TEXT,
+  UNIQUE (publication_id, kind)
+);
+CREATE INDEX IF NOT EXISTS snapshots_due ON snapshots(status, due_at);
+CREATE TABLE IF NOT EXISTS team_members (
+  telegram_id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  username TEXT COLLATE NOCASE,
+  role TEXT NOT NULL,
+  added_by INTEGER,
+  created_at TEXT NOT NULL,
+  last_seen_at TEXT
+);
+CREATE TABLE IF NOT EXISTS admin_logins (
+  token_hash TEXT PRIMARY KEY,
+  telegram_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used_at TEXT
+);
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  token_hash TEXT PRIMARY KEY,
+  telegram_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  last_seen_at TEXT,
+  user_agent TEXT
+);
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  target TEXT,
+  detail TEXT,
+  created_at TEXT NOT NULL
+);
 `;
 
 export interface UserRow {
@@ -189,6 +301,13 @@ export interface UserRow {
   onboarded_at: string | null;
   pending: string | null;
   created_at: string;
+  birth_date: string | null;
+  avatar_url: string | null;
+  account_status: AccountStatus;
+  account_note: string | null;
+  account_reviewed_by: number | null;
+  account_reviewed_at: string | null;
+  market: string;
 }
 
 export interface TaskRow {
@@ -206,6 +325,23 @@ export interface TaskRow {
   steps: string;
   sort: number;
   active: number;
+  brief: string | null;
+  /** JSON array of PublicationKind the task accepts. Empty means any. */
+  formats: string;
+  required_mention: string | null;
+  required_hashtag: string | null;
+  starts_at: string | null;
+  max_publications: number;
+  max_participants: number | null;
+  bonus_coins: number | null;
+  status: TaskStatus;
+  /** JSON, see Audience in audience.ts */
+  audience: string;
+  source: 'seed' | 'admin';
+  created_by: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+  market: string;
 }
 
 export interface EntryRow {
@@ -241,6 +377,7 @@ export interface EventRow {
   task_id: string | null;
   sort: number;
   active: number;
+  cover_url: string | null;
 }
 
 export interface ShopItemRow {
@@ -267,12 +404,183 @@ export interface OfferRow {
   answered_at: string | null;
 }
 
+export interface SocialProfileRow {
+  user_id: number;
+  platform: Platform;
+  handle: string;
+  external_id: string | null;
+  full_name: string | null;
+  bio: string | null;
+  /** Path under /media when we keep our own copy, otherwise null. */
+  avatar_url: string | null;
+  followers: number | null;
+  following: number | null;
+  posts_count: number | null;
+  is_private: number;
+  is_verified: number;
+  avg_reel_views: number | null;
+  /** Percent, e.g. 6.1 */
+  engagement_rate: number | null;
+  /** JSON array of RecentPost (social/types.ts) */
+  recent: string;
+  status: 'ok' | 'private' | 'not_found' | 'error';
+  source: 'apify' | 'demo';
+  fetched_at: string;
+}
+
+export interface PublicationRow {
+  id: number;
+  entry_id: number;
+  user_id: number;
+  task_id: string;
+  url: string;
+  platform: Platform | 'other';
+  kind: PublicationKind;
+  external_id: string | null;
+  author_handle: string | null;
+  published_at: string | null;
+  caption: string | null;
+  mentions: string;
+  hashtags: string;
+  thumb_path: string | null;
+  /** Our saved copy of a story, private to the team. */
+  media_path: string | null;
+  /** JSON, see LinkChecks in social/types.ts */
+  checks: string;
+  status: 'tracking' | 'final' | 'removed' | 'unreachable';
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  views_source: 'auto' | 'creator' | 'none';
+  story_views: number | null;
+  story_screenshot_path: string | null;
+  story_asked_at: string | null;
+  story_answered_at: string | null;
+  created_at: string;
+  final_at: string | null;
+  removed_at: string | null;
+}
+
+export type SnapshotKind = 'submit' | 'h24' | 'd7' | 'd14';
+
+export interface SnapshotRow {
+  id: number;
+  publication_id: number;
+  kind: SnapshotKind;
+  due_at: string;
+  taken_at: string | null;
+  status: 'pending' | 'done' | 'failed' | 'skipped';
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  error: string | null;
+}
+
+export interface TeamMemberRow {
+  telegram_id: number;
+  name: string;
+  username: string | null;
+  role: TeamRole;
+  added_by: number | null;
+  created_at: string;
+  last_seen_at: string | null;
+}
+
+export interface OrderRow {
+  id: number;
+  user_id: number;
+  item_id: string;
+  title: string;
+  price: number;
+  size: string | null;
+  address: string;
+  phone: string;
+  status: 'new' | 'packed' | 'shipped' | 'delivered';
+  created_at: string;
+  status_at: string | null;
+  status_by: number | null;
+}
+
+export interface CashoutRow {
+  id: number;
+  user_id: number;
+  coins: number;
+  details: string;
+  status: 'new' | 'paid' | 'rejected';
+  created_at: string;
+  decided_at: string | null;
+  decided_by: number | null;
+  note: string | null;
+}
+
+/**
+ * Columns added after the first release. CREATE TABLE IF NOT EXISTS does not touch
+ * a table that is already there, so each new column is added here, once.
+ * Order matters only within one table. Never rename or drop a column here.
+ */
+const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
+  // Creator: age gate, Instagram avatar, the team's confirmation of the account.
+  ['users', 'birth_date', 'TEXT'],
+  ['users', 'avatar_url', 'TEXT'],
+  ['users', 'account_status', "TEXT NOT NULL DEFAULT 'pending'"],
+  ['users', 'account_note', 'TEXT'],
+  ['users', 'account_reviewed_by', 'INTEGER'],
+  ['users', 'account_reviewed_at', 'TEXT'],
+  ['users', 'market', "TEXT NOT NULL DEFAULT 'kz'"],
+  // Tasks: the detailed brief, what is checked on a link, who sees the task.
+  ['tasks', 'brief', 'TEXT'],
+  ['tasks', 'formats', "TEXT NOT NULL DEFAULT '[]'"],
+  ['tasks', 'required_mention', 'TEXT'],
+  ['tasks', 'required_hashtag', 'TEXT'],
+  ['tasks', 'starts_at', 'TEXT'],
+  ['tasks', 'max_publications', 'INTEGER NOT NULL DEFAULT 1'],
+  ['tasks', 'max_participants', 'INTEGER'],
+  ['tasks', 'bonus_coins', 'INTEGER'],
+  ['tasks', 'status', "TEXT NOT NULL DEFAULT 'active'"],
+  ['tasks', 'audience', `TEXT NOT NULL DEFAULT '{"mode":"all"}'`],
+  ['tasks', 'source', "TEXT NOT NULL DEFAULT 'seed'"],
+  ['tasks', 'created_by', 'INTEGER'],
+  ['tasks', 'created_at', 'TEXT'],
+  ['tasks', 'updated_at', 'TEXT'],
+  ['tasks', 'market', "TEXT NOT NULL DEFAULT 'kz'"],
+  // Photos for events and news.
+  ['events', 'cover_url', 'TEXT'],
+  ['news', 'cover_url', 'TEXT'],
+  ['news', 'path', 'TEXT'],
+  // Who moved an order or a payout, and when.
+  ['orders', 'status_at', 'TEXT'],
+  ['orders', 'status_by', 'INTEGER'],
+  ['cashouts', 'decided_at', 'TEXT'],
+  ['cashouts', 'decided_by', 'INTEGER'],
+  ['cashouts', 'note', 'TEXT'],
+];
+
+export function migrate(db: DB): void {
+  const known = new Map<string, Set<string>>();
+  const columnsOf = (table: string): Set<string> => {
+    let set = known.get(table);
+    if (!set) {
+      set = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map((row) => row.name));
+      known.set(table, set);
+    }
+    return set;
+  };
+  for (const [table, column, ddl] of ADDED_COLUMNS) {
+    if (columnsOf(table).has(column)) continue;
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    columnsOf(table).add(column);
+  }
+}
+
 export function openDb(path: string): DB {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 
@@ -283,14 +591,21 @@ interface SeedFile {
     id: string;
     title: string;
     summary?: string | null;
+    brief?: string | null;
     coverUrl?: string | null;
     reward: number;
     format?: string | null;
+    formats?: PublicationKind[];
+    requiredMention?: string | null;
+    requiredHashtag?: string | null;
     date?: string | null;
     place?: string | null;
+    startsAt?: string | null;
     deadline: string;
     reviewMode?: ReviewMode;
     viewsBonus?: boolean;
+    bonusCoins?: number | null;
+    maxPublications?: number;
     steps?: string[];
   }>;
   events?: Array<{
@@ -301,6 +616,7 @@ interface SeedFile {
     monthHint?: string | null;
     place?: string | null;
     description?: string | null;
+    coverUrl?: string | null;
     taskId?: string | null;
   }>;
   shop?: Array<{
@@ -317,49 +633,77 @@ interface SeedFile {
     summary?: string | null;
     date?: string | null;
     url?: string | null;
+    /** A screen of the mini app to open, e.g. /events */
+    path?: string | null;
+    coverUrl?: string | null;
   }>;
 }
 
 /**
- * Mirrors content/seed.json into the database. The file is the source of truth
- * for tasks, events, shop items and news: rows are upserted by id, and anything
- * removed from the file is hidden (never deleted, creators may reference it).
+ * Mirrors content/seed.json into the database.
+ *
+ * Events, shop items and news: the file is the source of truth. Rows are upserted
+ * by id, and anything removed from the file is hidden (never deleted, creators may
+ * reference it).
+ *
+ * Tasks: the file only owns tasks whose source is 'seed'. A task created in the
+ * admin panel, or a seed task the team has edited there (the admin sets its source
+ * to 'admin'), is never touched here, so a restart cannot undo the team's work.
  */
 export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')): void {
   const seed = JSON.parse(readFileSync(file, 'utf8')) as SeedFile;
 
   const run = db.transaction(() => {
-    db.exec('UPDATE tasks SET active = 0; UPDATE events SET active = 0; UPDATE shop_items SET active = 0; UPDATE news SET active = 0;');
+    db.exec(
+      "UPDATE tasks SET active = 0 WHERE source = 'seed'; UPDATE events SET active = 0; UPDATE shop_items SET active = 0; UPDATE news SET active = 0;",
+    );
 
     const task = db.prepare(`
-      INSERT INTO tasks (id, title, summary, cover_url, reward, format, date, place, deadline, review_mode, views_bonus, steps, sort, active)
-      VALUES (@id, @title, @summary, @coverUrl, @reward, @format, @date, @place, @deadline, @reviewMode, @viewsBonus, @steps, @sort, 1)
-      ON CONFLICT(id) DO UPDATE SET title=excluded.title, summary=excluded.summary, cover_url=excluded.cover_url,
-        reward=excluded.reward, format=excluded.format, date=excluded.date, place=excluded.place, deadline=excluded.deadline,
-        review_mode=excluded.review_mode, views_bonus=excluded.views_bonus, steps=excluded.steps, sort=excluded.sort, active=1`);
+      INSERT INTO tasks (id, title, summary, brief, cover_url, reward, format, formats, required_mention, required_hashtag,
+        date, place, starts_at, deadline, review_mode, views_bonus, bonus_coins, max_publications, steps, sort, active,
+        status, source, created_at)
+      VALUES (@id, @title, @summary, @brief, @coverUrl, @reward, @format, @formats, @requiredMention, @requiredHashtag,
+        @date, @place, @startsAt, @deadline, @reviewMode, @viewsBonus, @bonusCoins, @maxPublications, @steps, @sort, 1,
+        'active', 'seed', @now)
+      ON CONFLICT(id) DO UPDATE SET title=excluded.title, summary=excluded.summary, brief=excluded.brief,
+        cover_url=excluded.cover_url, reward=excluded.reward, format=excluded.format, formats=excluded.formats,
+        required_mention=excluded.required_mention, required_hashtag=excluded.required_hashtag, date=excluded.date,
+        place=excluded.place, starts_at=excluded.starts_at, deadline=excluded.deadline, review_mode=excluded.review_mode,
+        views_bonus=excluded.views_bonus, bonus_coins=excluded.bonus_coins, max_publications=excluded.max_publications,
+        steps=excluded.steps, sort=excluded.sort, active=1
+      WHERE tasks.source = 'seed'`);
     (seed.tasks ?? []).forEach((t, sort) =>
       task.run({
         id: t.id,
         title: t.title,
         summary: t.summary ?? null,
+        brief: t.brief ?? null,
         coverUrl: t.coverUrl ?? null,
         reward: t.reward,
         format: t.format ?? null,
+        formats: JSON.stringify(t.formats ?? []),
+        requiredMention: t.requiredMention ?? null,
+        requiredHashtag: t.requiredHashtag ?? null,
         date: t.date ?? null,
         place: t.place ?? null,
+        startsAt: t.startsAt ?? null,
         deadline: t.deadline,
         reviewMode: t.reviewMode ?? 'post_first',
         viewsBonus: t.viewsBonus ? 1 : 0,
+        bonusCoins: t.bonusCoins ?? null,
+        maxPublications: t.maxPublications ?? 1,
         steps: JSON.stringify(t.steps ?? []),
         sort,
+        now: now(),
       }),
     );
 
     const event = db.prepare(`
-      INSERT INTO events (id, title, date, time, month_hint, place, description, task_id, sort, active)
-      VALUES (@id, @title, @date, @time, @monthHint, @place, @description, @taskId, @sort, 1)
+      INSERT INTO events (id, title, date, time, month_hint, place, description, cover_url, task_id, sort, active)
+      VALUES (@id, @title, @date, @time, @monthHint, @place, @description, @coverUrl, @taskId, @sort, 1)
       ON CONFLICT(id) DO UPDATE SET title=excluded.title, date=excluded.date, time=excluded.time, month_hint=excluded.month_hint,
-        place=excluded.place, description=excluded.description, task_id=excluded.task_id, sort=excluded.sort, active=1`);
+        place=excluded.place, description=excluded.description, cover_url=excluded.cover_url, task_id=excluded.task_id,
+        sort=excluded.sort, active=1`);
     (seed.events ?? []).forEach((e, sort) =>
       event.run({
         id: e.id,
@@ -369,6 +713,7 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
         monthHint: e.monthHint ?? null,
         place: e.place ?? null,
         description: e.description ?? null,
+        coverUrl: e.coverUrl ?? null,
         taskId: e.taskId ?? null,
         sort,
       }),
@@ -392,12 +737,21 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
     );
 
     const news = db.prepare(`
-      INSERT INTO news (id, title, summary, date, url, sort, active)
-      VALUES (@id, @title, @summary, @date, @url, @sort, 1)
+      INSERT INTO news (id, title, summary, date, url, path, cover_url, sort, active)
+      VALUES (@id, @title, @summary, @date, @url, @path, @coverUrl, @sort, 1)
       ON CONFLICT(id) DO UPDATE SET title=excluded.title, summary=excluded.summary, date=excluded.date,
-        url=excluded.url, sort=excluded.sort, active=1`);
+        url=excluded.url, path=excluded.path, cover_url=excluded.cover_url, sort=excluded.sort, active=1`);
     (seed.news ?? []).forEach((n, sort) =>
-      news.run({ id: n.id, title: n.title, summary: n.summary ?? null, date: n.date ?? null, url: n.url ?? null, sort }),
+      news.run({
+        id: n.id,
+        title: n.title,
+        summary: n.summary ?? null,
+        date: n.date ?? null,
+        url: n.url ?? null,
+        path: n.path ?? null,
+        coverUrl: n.coverUrl ?? null,
+        sort,
+      }),
     );
   });
   run();

@@ -6,6 +6,6 @@ export default defineConfig({
   server: {
     port: 5173,
     // In development the API runs separately: npm run dev --workspace server
-    proxy: { '/api': 'http://localhost:3000' },
+    proxy: { '/api': 'http://localhost:3000', '/media': 'http://localhost:3000' },
   },
 });
