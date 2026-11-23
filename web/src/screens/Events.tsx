@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import type { EventsView, EventView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { DateBox, Loading, Problem, Screen, TabBar } from '../components/ui';
+import { Cover, DateBox, Loading, Problem, Screen, TabBar } from '../components/ui';
 import { coins, dayLong } from '../format';
 import { useAction, useToast } from '../hub';
 import { buzz } from '../telegram';
@@ -63,7 +63,9 @@ export function Events() {
         ) : (
           <>
             {featured && (
-              <section className="panel panel--red" style={{ padding: 20, gap: 16 }}>
+              <section className="panel panel--red" style={{ padding: featured.coverUrl ? 10 : 20, gap: 16, paddingBottom: 20 }}>
+                {featured.coverUrl && <Cover src={featured.coverUrl} alt="" style={{ height: 170, borderRadius: 16 }} />}
+                <div className="stack" style={{ gap: 16, padding: featured.coverUrl ? '0 10px' : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                   <DateBox date={featured.date} large white />
                   <div className="stack" style={{ gap: 4 }}>
@@ -85,19 +87,23 @@ export function Events() {
                   </p>
                 )}
                 {rsvpButton(featured, 'btn btn--md btn--white')}
+                </div>
               </section>
             )}
 
             {later.map((event) => (
-              <div key={event.id} className="card card--row" style={{ gap: 14, borderRadius: 24 }}>
-                <DateBox date={event.date} large />
-                <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
-                  <div style={{ fontSize: 17, fontWeight: 800 }}>{event.title}</div>
-                  <div className="muted" style={{ fontSize: 14 }}>
-                    {where(event) || dayLong(event.date!)}
+              <div key={event.id} className="card card--col" style={{ gap: 12, borderRadius: 24, padding: event.coverUrl ? 10 : 16 }}>
+                {event.coverUrl && <Cover src={event.coverUrl} alt="" style={{ height: 140, borderRadius: 16 }} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: event.coverUrl ? '0 6px' : 0 }}>
+                  <DateBox date={event.date} large />
+                  <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
+                    <div style={{ fontSize: 17, fontWeight: 800 }}>{event.title}</div>
+                    <div className="muted" style={{ fontSize: 14 }}>
+                      {where(event) || dayLong(event.date!)}
+                    </div>
                   </div>
                 </div>
-                {rsvpButton(event, 'btn btn--line')}
+                <div style={{ padding: event.coverUrl ? '0 6px 6px' : 0, display: 'flex' }}>{rsvpButton(event, 'btn btn--line btn--wide')}</div>
               </div>
             ))}
 

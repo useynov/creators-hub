@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Me } from '../../../server/src/types';
 import { api } from '../api';
 import { Screen, TopBar } from '../components/ui';
@@ -13,7 +13,6 @@ export function Details() {
   const navigate = useNavigate();
   const toast = useToast();
   const [form, setForm] = useState({
-    instagram: me.instagram ? `@${me.instagram}` : '',
     tiktok: me.tiktok ? `@${me.tiktok}` : '',
     city: me.city ?? '',
     size: me.size ?? '',
@@ -41,7 +40,7 @@ export function Details() {
         id={id}
         className="input"
         type={type}
-        autoCapitalize={id === 'instagram' || id === 'tiktok' ? 'none' : undefined}
+        autoCapitalize={id === 'tiktok' ? 'none' : undefined}
         placeholder={placeholder}
         value={form[id]}
         onChange={(event) => set(id)(event.target.value)}
@@ -54,7 +53,15 @@ export function Details() {
       <TopBar back="/profile" backLabel="Back to profile" title="My details" />
       <form className="body" style={{ gap: 16 }} onSubmit={submit} noValidate>
         <div className="form">
-          {text('instagram', 'Instagram handle', '@yourhandle')}
+          <div className="field">
+            <span style={{ fontSize: 15, fontWeight: 700 }}>Instagram account</span>
+            <Link to="/profile/instagram" className="input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--ink)' }}>
+              <span>{me.instagram ? `@${me.instagram}` : 'Connect your account'}</span>
+              <span className="textlink" style={{ fontSize: 15 }}>
+                Change
+              </span>
+            </Link>
+          </div>
           {text('tiktok', 'TikTok handle', '@yourhandle')}
           {text('city', 'City', 'Almaty')}
           <fieldset className="field">

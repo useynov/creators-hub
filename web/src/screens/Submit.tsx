@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import useSWR, { useSWRConfig } from 'swr';
 import type { TaskView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
 import { Loading, Problem, Screen, TopBar } from '../components/ui';
 import { dayTime } from '../format';
-import { useAction, useToast } from '../hub';
-import { buzz, closeApp, inTelegram } from '../telegram';
+import { useAction, useHub, useToast } from '../hub';
+import { buzz, closeApp, inTelegram, openTelegram } from '../telegram';
 
 /** One link for a reel, a post or a story. With ?draft=1 it sends a draft for approval instead. */
 export function Submit() {
   const { id = '' } = useParams();
   const [params] = useSearchParams();
   const draft = params.get('draft') === '1';
+  const [retry, setRetry] = useState(params.get('retry') === '1');
   const navigate = useNavigate();
   const toast = useToast();
   const { mutate } = useSWRConfig();
@@ -53,6 +54,12 @@ export function Submit() {
     await mutate(`/api/tasks/${id}`, next, { revalidate: false });
     void mutate('/api/tasks');
     void mutate('/api/home');
+    if (!draft && next.submission?.status === 'blocked') {
+      // Stay here and say whose post it is.
+      buzz('error');
+      setRetry(false);
+      return;
+    }
     buzz('success');
     navigate(`/tasks/${id}`, { replace: true });
   });
@@ -77,6 +84,19 @@ export function Submit() {
     );
   }
 
+  if (!draft && !retry && task.submission?.status === 'blocked') {
+    return (
+      <BlockedView
+        task={task}
+        onRetry={() => {
+          setLinks(['']);
+          setRetry(true);
+        }}
+      />
+    );
+  }
+
+  const maxLinks = draft ? 1 : task.maxPublications;
   return (
     <Screen>
       <TopBar back={`/tasks/${id}`} backLabel="Back to the task" title={draft ? 'Send your draft' : 'Send your work'} />
@@ -118,7 +138,7 @@ export function Submit() {
                 )}
               </div>
             ))}
-            {!draft && links.length < 5 && (
+            {!draft && links.length < maxLinks && (
               <button type="button" className="textlink" style={{ alignSelf: 'flex-start' }} onClick={() => setLinks((all) => [...all, ''])}>
                 + Add another link
               </button>
@@ -169,6 +189,96 @@ export function Submit() {
           )}
         </div>
       </form>
+    </Screen>
+  );
+}
+
+/**
+ * A link from someone else's account: refused before it reaches the team. Shows whose post it
+ * is, which account is connected, and what we check on every link.
+ */
+export function BlockedView({ task, onRetry, back = `/tasks/${task.id}` }: { task: TaskView; onRetry?: () => void; back?: string }) {
+  const { botLink } = useHub();
+  const blocked = task.submission?.blocked ?? [];
+  const first = blocked[0];
+  const tags = [task.requiredMention && `@${task.requiredMention}`, task.requiredHashtag && `#${task.requiredHashtag}`].filter(Boolean).join(' and ');
+  const check = (state: 'fail' | 'todo', text: ReactNode) => (
+    <div style={{ color: state === 'fail' ? 'var(--red-darker)' : 'var(--muted)', fontWeight: state === 'fail' ? 700 : 500 }}>
+      <Icon name={state === 'fail' ? 'cross' : 'circle'} size={18} stroke={state === 'fail' ? 3 : 2} />
+      <span>{text}</span>
+    </div>
+  );
+
+  return (
+    <Screen>
+      <TopBar back={back} backLabel={back === '/tasks' ? 'Back to tasks' : 'Back to the task'} title="Send your work" />
+      <main className="body" style={{ gap: 18 }}>
+        <div className="card card--row" style={{ justifyContent: 'space-between', gap: 12, borderRadius: 18, padding: '14px 16px' }}>
+          <div className="stack" style={{ gap: 2, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>{task.title}</div>
+            <div className="muted" style={{ fontSize: 14 }}>
+              Send the link by {dayTime(task.deadline)}
+            </div>
+          </div>
+          <span className="chip chip--pink nums" style={{ padding: '6px 10px' }}>
+            +{task.reward}
+          </span>
+        </div>
+
+        <div className="field">
+          <label htmlFor="refused-link">Link to your reel, post or story</label>
+          {blocked.map((link, index) => (
+            <input
+              key={link.url}
+              id={index === 0 ? 'refused-link' : undefined}
+              className="input input--bad"
+              value={link.url}
+              readOnly
+              aria-invalid="true"
+              aria-describedby="link-error"
+            />
+          ))}
+          <div id="link-error" className="hint hint--red" style={{ padding: '12px 14px' }}>
+            <Icon name="alert" size={20} />
+            <div>
+              <strong>This post is from another account.</strong>{' '}
+              {first?.author ? `It was published by @${first.author}` : 'It was published by someone else'}
+              {first?.expected ? `, and your account in the Hub is @${first.expected}.` : '.'} Send a link to your own post.
+            </div>
+          </div>
+        </div>
+
+        <div className="card card--col" style={{ gap: 10 }}>
+          <h2 className="eyebrow">What we check on every link</h2>
+          <div className="checks">
+            {check('fail', 'Posted from your account')}
+            {task.startsAt && check('todo', 'Posted after the task started')}
+            {tags && check('todo', `Has ${tags}`)}
+          </div>
+        </div>
+
+        <p className="muted" style={{ fontSize: 13, lineHeight: 1.45 }}>
+          Changed your Instagram handle? <Link to="/profile/instagram">Update it in your profile</Link>, the team will confirm it.
+        </p>
+
+        <div className="spacer" />
+        <div className="actions">
+          {onRetry ? (
+            <button type="button" className="btn" onClick={onRetry}>
+              Paste another link
+            </button>
+          ) : (
+            <Link to={`/tasks/${task.id}/submit?retry=1`} className="btn">
+              Paste another link
+            </Link>
+          )}
+          {botLink && (
+            <button type="button" className="textlink" onClick={() => openTelegram(botLink)}>
+              Ask the team
+            </button>
+          )}
+        </div>
+      </main>
     </Screen>
   );
 }

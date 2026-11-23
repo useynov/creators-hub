@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import type { OfferView, TaskView } from '../../../server/src/types';
 import { Icon } from '../components/Icon';
-import { Loading, Problem, Screen, TabBar } from '../components/ui';
+import { AccountNote, Cover, Loading, Problem, Screen, TabBar } from '../components/ui';
 import { coins, day } from '../format';
+import { useHub } from '../hub';
 
 type Tab = 'new' | 'progress' | 'done';
 
@@ -34,25 +35,31 @@ function footer(task: TaskView): { icon: ReactNode; text: string; color?: string
         ? { icon: <Icon name="eye" size={16} />, text: 'You are in: send a draft first', ...amber }
         : { icon: <Icon name="check" size={16} />, text: 'You are in: post and send the link' };
   }
+  if (task.locked) return { icon: <Icon name="lock" size={16} />, text: 'Locked until your account is confirmed', color: 'var(--muted)' };
+  if (task.full) return { icon: <Icon name="lock" size={16} />, text: 'All places are taken', color: 'var(--muted)' };
   if (task.reviewMode === 'draft_first') return { icon: <Icon name="eye" size={16} />, text: 'Send a draft first, then post', ...amber };
   if (task.viewsBonus) return { icon: <Icon name="trophy" size={16} />, text: 'Bonus for the most views' };
   return { icon: <Icon name="check" size={16} />, text: 'Post first, we check after' };
 }
 
+/** Photo first, then the title, the reward and one line. The brief waits on the task screen. */
 function TaskCard({ task }: { task: TaskView }) {
   const line = footer(task);
   return (
-    <Link to={`/tasks/${task.id}`} className="card card--col" style={{ gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>{task.title}</div>
-        <span className="chip chip--pink nums" style={{ padding: '6px 10px' }}>
+    <Link to={`/tasks/${task.id}`} className="card card--col" style={{ gap: 10, padding: 10 }}>
+      <div style={{ position: 'relative' }}>
+        <Cover src={task.coverUrl} alt="" style={{ height: 150, borderRadius: 14 }} />
+        <span className="chip chip--white nums" style={{ position: 'absolute', top: 10, right: 10, color: 'var(--red-dark)', fontWeight: 800 }}>
           +{coins(task.reward)}
         </span>
       </div>
-      <div className="muted" style={{ fontSize: 14 }}>
-        {[task.format, `until ${day(task.deadline)}`].filter(Boolean).join(' · ')}
+      <div className="stack" style={{ gap: 4, padding: '0 6px' }}>
+        <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>{task.title}</div>
+        <div className="muted" style={{ fontSize: 14 }}>
+          {[task.format, `until ${day(task.deadline)}`].filter(Boolean).join(' · ')}
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: line.bold ? 700 : 600, color: line.color ?? 'var(--ink-2)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 6px 6px', fontSize: 13, fontWeight: line.bold ? 700 : 600, color: line.color ?? 'var(--ink-2)' }}>
         {line.icon}
         <span>{line.text}</span>
       </div>
@@ -65,6 +72,7 @@ export function Tasks() {
   const { data: tasks, error, mutate } = useSWR<TaskView[]>('/api/tasks');
   const { data: offer } = useSWR<OfferView | null>('/api/offer');
   const [tab, setTab] = useState<Tab>('new');
+  const { me, settings } = useHub();
 
   const groups: Record<Tab, TaskView[]> = {
     new: tasks?.filter((task) => !task.entry) ?? [],
@@ -83,6 +91,7 @@ export function Tasks() {
         <h1 className="display" style={{ fontSize: 32 }}>
           Tasks
         </h1>
+        <AccountNote status={me.accountStatus} note={me.accountNote} confirmTime={settings.accountConfirmTime} />
         <div role="tablist" aria-label="Task status" className="segmented" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
           {tabs.map(([key, label]) => (
             <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>

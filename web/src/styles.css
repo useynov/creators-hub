@@ -319,18 +319,86 @@ ol {
   padding: 12px 0;
 }
 
-.stripes {
-  background: repeating-linear-gradient(135deg, var(--line) 0 12px, var(--line-soft) 12px 24px);
+.photo {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-2);
   overflow: hidden;
+  flex-shrink: 0;
+  background: var(--line);
 }
-.stripes img {
+.photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+/* No photo, or it did not load: a quiet warm block, not a placeholder. */
+.photo--empty {
+  background: linear-gradient(135deg, #f2e4de 0%, #ead9d2 100%);
+  color: rgba(138, 6, 14, 0.28);
+}
+
+.brief {
+  background: var(--white);
+  border-radius: 20px;
+}
+.brief__toggle {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+}
+.brief__toggle > span:nth-child(2) {
+  flex: 1;
+}
+.brief__chevron {
+  display: flex;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.brief__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 16px 18px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.brief__body ul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.brief__heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.brief--dark {
+  background: var(--ink-raised);
+}
+.brief--dark .brief__toggle,
+.brief--dark .brief__body {
+  color: var(--white);
+}
+.brief--dark .brief__heading,
+.brief--dark .brief__chevron {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .hint {
@@ -346,6 +414,92 @@ ol {
 .hint svg {
   flex-shrink: 0;
   margin-top: 1px;
+}
+.hint--soft {
+  background: var(--white);
+  color: var(--ink-2);
+  font-size: 13px;
+  padding: 12px 14px;
+}
+.hint--red {
+  background: var(--pink);
+  color: var(--red-darker);
+}
+.hint--red a {
+  color: var(--red-darker);
+  text-decoration: underline;
+}
+
+/* Find my profile, private profile, is this you */
+.field-state {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.field-state__icon {
+  position: absolute;
+  right: 16px;
+  display: flex;
+  pointer-events: none;
+}
+.dashed {
+  height: 48px;
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+.field-state .input {
+  flex: 1;
+}
+.input.input--ok {
+  border-color: var(--green);
+}
+.input.input--warn {
+  border-color: var(--amber);
+}
+.input.input--bad {
+  border: 2px solid var(--red-dark);
+}
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.checks > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+.upload {
+  min-height: 96px;
+  border: 1.5px dashed #bdb2ac;
+  border-radius: 16px;
+  background: var(--white);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  padding: 12px;
+}
+.upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.upload:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 /* --- Chips and badges -------------------------------------------------- */
@@ -523,6 +677,10 @@ ol {
   background: var(--white);
   color: var(--ink);
   font-size: 14px;
+}
+
+.btn--wide {
+  width: 100%;
 }
 
 .textlink {

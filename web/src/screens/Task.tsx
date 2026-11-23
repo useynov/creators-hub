@@ -1,12 +1,14 @@
 import { Link, useParams } from 'react-router-dom';
 import useSWR, { useSWRConfig } from 'swr';
-import type { TaskView } from '../../../server/src/types';
+import { useEffect, type ReactNode } from 'react';
+import type { PublicationView, TaskView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { Cover, Loading, Problem, Screen, TopBar } from '../components/ui';
-import { coins, day, dayLong, dayTime, shortLink } from '../format';
+import { AccountNote, Brief as DetailedBrief, Cover, Loading, Problem, Screen, TopBar } from '../components/ui';
+import { coins, day, dayLong, dayTime, num, shortLink } from '../format';
 import { useAction, useHub, useToast } from '../hub';
 import { buzz, closeApp, inTelegram, openTelegram } from '../telegram';
+import { BlockedView } from './Submit';
 
 /**
  * One address per task. What the creator sees depends on where their work stands:
@@ -24,6 +26,10 @@ export function Task() {
       </Screen>
     );
   }
+
+  // A send whose links are being read, or a link from another account: say so before anything else.
+  if (task.submission?.status === 'checking') return <Checking task={task} onDone={() => void mutate()} />;
+  if (task.submission?.status === 'blocked') return <BlockedView task={task} back="/tasks" />;
 
   switch (task.entry?.status) {
     case 'approved':
@@ -58,11 +64,12 @@ function Brief({ task }: { task: TaskView }) {
     toast('You are in. The team knows you are coming.');
   });
 
+  const { me, settings } = useHub();
   return (
     <Screen>
       <TopBar back="/tasks" backLabel="Back to tasks" title="Task" />
       <main className="body" style={{ paddingTop: 0 }}>
-        <Cover src={task.coverUrl} alt={task.title} style={{ height: 120, borderRadius: 20 }} />
+        <Cover src={task.coverUrl} alt={task.title} style={{ height: 200, borderRadius: 20 }} />
         <div className="stack" style={{ gap: 10 }}>
           <h1 className="display" style={{ fontSize: 26, lineHeight: 1.15 }}>
             {task.title}
@@ -98,6 +105,8 @@ function Brief({ task }: { task: TaskView }) {
           </div>
         </dl>
 
+        <AccountNote status={me.accountStatus} note={me.accountNote} confirmTime={settings.accountConfirmTime} />
+
         {(task.steps.length > 0 || task.summary) && (
           <div className="stack" style={{ gap: 8 }}>
             <h2 className="eyebrow">What to do</h2>
@@ -120,10 +129,20 @@ function Brief({ task }: { task: TaskView }) {
           </div>
         )}
 
+        {task.brief && <DetailedBrief text={task.brief} />}
+
         <div className="spacer" />
         {task.closed ? (
           <p className="empty" style={{ padding: 12 }}>
             The deadline for this task has passed.
+          </p>
+        ) : task.locked ? (
+          <button type="button" className="btn" disabled>
+            Locked
+          </button>
+        ) : !joined && task.full ? (
+          <p className="empty" style={{ padding: 12 }}>
+            All places on this task are taken.
           </p>
         ) : joined ? (
           <div className="actions">
@@ -153,7 +172,7 @@ function Brief({ task }: { task: TaskView }) {
 // --- 12 Task with draft approval --------------------------------------------
 
 function DraftBrief({ task }: { task: TaskView }) {
-  const { settings } = useHub();
+  const { me, settings } = useHub();
   const toast = useToast();
   const draftApproved = task.entry?.status === 'draft_approved';
   const current = draftApproved ? 3 : 1;
@@ -174,7 +193,8 @@ function DraftBrief({ task }: { task: TaskView }) {
   return (
     <Screen>
       <TopBar back="/tasks" backLabel="Back to tasks" title="Task" />
-      <main className="body" style={{ gap: 16 }}>
+      <main className="body" style={{ gap: 16, paddingTop: 0 }}>
+        <Cover src={task.coverUrl} alt={task.title} style={{ height: 180, borderRadius: 20 }} />
         <div className="stack" style={{ gap: 10 }}>
           <h1 className="display" style={{ fontSize: 26, lineHeight: 1.15 }}>
             {task.title}
@@ -184,9 +204,10 @@ function DraftBrief({ task }: { task: TaskView }) {
             <span className="chip chip--amber">Draft first, then post</span>
           </div>
           <p style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--ink-2)' }}>
-            {task.summary} Post by {day(task.deadline)}.
+            {[task.summary, `Post by ${day(task.deadline)}.`].filter(Boolean).join(' ')}
           </p>
         </div>
+        <AccountNote status={me.accountStatus} note={me.accountNote} confirmTime={settings.accountConfirmTime} />
 
         <div className="card steps">
           <h2 className="eyebrow">Four steps</h2>
@@ -205,10 +226,20 @@ function DraftBrief({ task }: { task: TaskView }) {
           })}
         </div>
 
+        {task.brief && <DetailedBrief text={task.brief} />}
+
         <div className="spacer" />
         {task.closed ? (
           <p className="empty" style={{ padding: 12 }}>
             The deadline for this task has passed.
+          </p>
+        ) : task.locked ? (
+          <button type="button" className="btn" disabled>
+            Locked
+          </button>
+        ) : !task.entry && task.full ? (
+          <p className="empty" style={{ padding: 12 }}>
+            All places on this task are taken.
           </p>
         ) : draftApproved ? (
           <div className="actions">
@@ -292,17 +323,23 @@ function InReview({ task }: { task: TaskView }) {
           ))}
         </div>
 
-        <div className="card card--row" style={{ gap: 12, padding: '14px 16px' }}>
-          <Icon name="link" size={22} color="var(--muted)" />
-          <div style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {sent ? shortLink(sent) + more : 'Sent to the bot as a file'}
+        <StoryAsk publications={task.publications} />
+
+        {draft || !task.publications.length ? (
+          <div className="card card--row" style={{ gap: 12, padding: '14px 16px' }}>
+            <Icon name="link" size={22} color="var(--muted)" />
+            <div style={{ flex: 1, minWidth: 0, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {sent ? shortLink(sent) + more : 'Sent to the bot as a file'}
+            </div>
+            {!task.closed && (
+              <Link to={`/tasks/${task.id}/submit${draft ? '?draft=1' : ''}`} className="textlink" style={{ fontSize: 14 }}>
+                Replace
+              </Link>
+            )}
           </div>
-          {!task.closed && (
-            <Link to={`/tasks/${task.id}/submit${draft ? '?draft=1' : ''}`} className="textlink" style={{ fontSize: 14 }}>
-              Replace
-            </Link>
-          )}
-        </div>
+        ) : (
+          <Publications task={task} replace={!task.closed} />
+        )}
 
         <div className="spacer" />
         <Link to="/tasks" className="btn btn--outline">
@@ -418,6 +455,9 @@ function Approved({ task }: { task: TaskView }) {
           </div>
         </div>
 
+        <StoryAsk publications={task.publications} />
+        {task.publications.length > 0 && <Publications task={task} replace={false} />}
+
         <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <Icon name="trophy" color="var(--red-dark)" />
           <div className="stack" style={{ gap: 4 }}>
@@ -439,5 +479,115 @@ function Approved({ task }: { task: TaskView }) {
         </div>
       </main>
     </Screen>
+  );
+}
+
+// --- Checking the link ----------------------------------------------------------
+
+/** The links are being read. Asks again every two seconds until the check is done. */
+function Checking({ task, onDone }: { task: TaskView; onDone: () => void }) {
+  useEffect(() => {
+    const timer = window.setInterval(onDone, 2000);
+    return () => window.clearInterval(timer);
+  }, [onDone]);
+  const links = task.submission?.links ?? [];
+  return (
+    <Screen>
+      <TopBar back="/tasks" backLabel="Back to tasks" title={task.title} />
+      <main className="body" style={{ gap: 18 }}>
+        <section className="panel panel--dark" role="status">
+          <div className="panel__icon">
+            <div className="spinner" style={{ width: 26, height: 26 }} />
+          </div>
+          <h1 className="display" style={{ fontSize: 30 }}>
+            Checking your link
+          </h1>
+          <p className="lede">
+            We look at the post on Instagram: that it is yours and that it opens. It usually takes under a minute. You can leave
+            this screen.
+          </p>
+        </section>
+        <div className="card card--col" style={{ gap: 10, padding: '14px 16px' }}>
+          {links.map((link) => (
+            <div key={link} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, minWidth: 0 }}>
+              <Icon name="link" size={20} color="var(--muted)" />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortLink(link)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="spacer" />
+        <Link to="/tasks" className="btn btn--outline">
+          Back to tasks
+        </Link>
+      </main>
+    </Screen>
+  );
+}
+
+// --- Publications and their numbers ------------------------------------------------
+
+const KIND: Record<PublicationView['kind'], string> = {
+  reel: 'Reel',
+  post: 'Post',
+  story: 'Story',
+  tiktok: 'TikTok',
+  unknown: 'Link',
+};
+
+function numbersOf(publication: PublicationView): ReactNode {
+  if (publication.status === 'removed') return <span style={{ color: 'var(--amber)', fontWeight: 700 }}>No longer on Instagram</span>;
+  const parts = [
+    publication.views !== null ? `${num(publication.views)} views${publication.viewsSource === 'creator' ? ' (from you)' : ''}` : null,
+    publication.likes !== null ? `${num(publication.likes)} likes` : null,
+  ].filter(Boolean);
+  if (parts.length) return parts.join(' · ');
+  return publication.kind === 'story' ? 'Views: you send them after 24 hours' : 'Numbers come in over the next days';
+}
+
+/** Each link with its numbers so far. Measured at sending, after 24 hours, 7 days and 14 days. */
+function Publications({ task, replace }: { task: TaskView; replace: boolean }) {
+  return (
+    <div className="card card--col" style={{ gap: 12, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+        <h2 className="eyebrow">Your {task.publications.length > 1 ? 'publications' : 'publication'}</h2>
+        {replace && (
+          <Link to={`/tasks/${task.id}/submit`} className="textlink" style={{ fontSize: 14, minHeight: 0 }}>
+            Replace
+          </Link>
+        )}
+      </div>
+      {task.publications.map((publication) => (
+        <div key={publication.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span className="chip chip--sm" style={{ background: 'var(--bg)', color: 'var(--ink-2)' }}>
+            {KIND[publication.kind]}
+          </span>
+          <div className="stack" style={{ gap: 2, minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortLink(publication.url)}</div>
+            <div className="muted nums" style={{ fontSize: 13 }}>
+              {numbersOf(publication)}
+            </div>
+          </div>
+        </div>
+      ))}
+      <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
+        We count the numbers four times: when you send the link, after 24 hours, 7 days and 14 days.
+      </div>
+    </div>
+  );
+}
+
+/** A story whose views we still need: one clear button to the number screen. */
+function StoryAsk({ publications }: { publications: PublicationView[] }) {
+  const open = publications.find((publication) => publication.storyViewsOpen && publication.viewsSource !== 'creator');
+  if (!open) return null;
+  return (
+    <Link to={`/stories/${open.id}`} className="card card--row" style={{ gap: 12, padding: '14px 16px', background: 'var(--amber-bg)', color: 'var(--amber-ink)' }}>
+      <Icon name="eye" size={22} />
+      <div className="stack" style={{ flex: 1, gap: 2 }}>
+        <div style={{ fontSize: 15, fontWeight: 800 }}>How many people saw your story?</div>
+        <div style={{ fontSize: 13 }}>Send us the number, it takes a minute.</div>
+      </div>
+      <Icon name="right" size={20} />
+    </Link>
   );
 }

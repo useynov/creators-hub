@@ -3,7 +3,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import type { OfferView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { Loading, Problem, Screen, TopBar } from '../components/ui';
+import { Brief, Loading, Problem, Screen, TopBar } from '../components/ui';
 import { useAction, useHub, useToast } from '../hub';
 import { buzz } from '../telegram';
 
@@ -100,6 +100,8 @@ export function PaidOffer() {
             <dd style={{ margin: 0 }}>{offer.answerBy}</dd>
           </div>
         </dl>
+
+        {offer.brief && <Brief text={offer.brief} dark />}
 
         <div className="card card--raised" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '14px 16px' }}>
           <Icon name="chat" size={22} />

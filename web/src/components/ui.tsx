@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { errorText } from '../api';
 import { dayParts } from '../format';
@@ -101,20 +101,139 @@ interface DateBoxProps {
 }
 
 export function DateBox({ date, monthHint, large, white }: DateBoxProps) {
-  const [dayNumber, month] = date ? dayParts(date) : ['?', (monthHint ?? 'Soon').slice(0, 4)];
+  const cls = `datebox${large ? ' datebox--lg' : ''}${white ? ' datebox--white' : ''}`;
+  if (!date) {
+    // No day yet: the month if we know it, otherwise a calendar, never a question mark.
+    return (
+      <div className={cls}>
+        {monthHint ? <b style={{ fontSize: 14 }}>{monthHint.slice(0, 4).toUpperCase()}</b> : <Icon name="calendar" size={large ? 24 : 20} />}
+      </div>
+    );
+  }
+  const [dayNumber, month] = dayParts(date);
   return (
-    <div className={`datebox${large ? ' datebox--lg' : ''}${white ? ' datebox--white' : ''}`}>
+    <div className={cls}>
       <b>{dayNumber}</b>
       <span>{month}</span>
     </div>
   );
 }
 
-/** A photo slot. Shows the striped placeholder from the design until a photo is set. */
-export function Cover({ src, alt, style }: { src: string | null; alt: string; style: CSSProperties }) {
+/**
+ * A photo. With no address, or when the picture does not load, a calm warm block takes its
+ * place: never a broken image, never placeholder text.
+ */
+export function Cover({ src, alt, style, className }: { src: string | null; alt: string; style?: CSSProperties; className?: string }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const show = src && failed !== src;
   return (
-    <div className="stripes" style={style} role={src ? undefined : 'img'} aria-label={src ? undefined : alt}>
-      {src && <img src={src} alt={alt} loading="lazy" />}
+    <div className={`photo${show ? '' : ' photo--empty'}${className ? ` ${className}` : ''}`} style={style}>
+      {show ? <img src={src} alt={alt} loading="lazy" onError={() => setFailed(src)} /> : <Icon name="image" size={28} stroke={1.6} />}
+    </div>
+  );
+}
+
+/** The creator's Instagram picture, or their initial when we have none. */
+export function Avatar({ src, name, size, light }: { src: string | null; name: string; size: number; light?: boolean }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const show = src && failed !== src;
+  return (
+    <div
+      className="avatar"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.4),
+        background: light ? 'var(--white)' : 'var(--pink)',
+        color: 'var(--red-dark)',
+        overflow: 'hidden',
+      }}
+    >
+      {show ? (
+        <img src={src} alt="" width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setFailed(src)} />
+      ) : (
+        <span aria-hidden="true">{name.charAt(0) || '·'}</span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A brief written as plain text: paragraphs split by a blank line. A paragraph whose first line
+ * is short and has no full stop is a heading over the lines below it.
+ */
+function briefBlocks(text: string): Array<{ heading: string | null; lines: string[] }> {
+  return text
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((block) => block.split('\n').map((line) => line.trim()).filter(Boolean))
+    .filter((lines) => lines.length)
+    .map((lines) => {
+      const first = lines[0]!;
+      const isHeading = lines.length > 1 && first.length <= 40 && !/[.!?:]$/.test(first);
+      return isHeading ? { heading: first, lines: lines.slice(1) } : { heading: null, lines };
+    });
+}
+
+/** The collapsible "Detailed brief". Closed by default: the screen leads with the photo and the steps. */
+export function Brief({ text, dark }: { text: string; dark?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <section className={`brief${dark ? ' brief--dark' : ''}`}>
+      <button type="button" className="brief__toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen((value) => !value)}>
+        <Icon name="doc" size={20} />
+        <span>Detailed brief</span>
+        <span className="brief__chevron" style={{ transform: open ? 'rotate(90deg)' : undefined }}>
+          <Icon name="right" size={18} />
+        </span>
+      </button>
+      {open && (
+        <div id={id} className="brief__body">
+          {briefBlocks(text).map((block, index) => (
+            <div key={index} className="stack" style={{ gap: 4 }}>
+              {block.heading && <h3 className="brief__heading">{block.heading}</h3>}
+              {block.lines.length > 1 && block.heading ? (
+                <ul>
+                  {block.lines.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                block.lines.map((line) => <p key={line}>{line}</p>)
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Where the creator's account stands with the team: a quiet note while pending, a lock when rejected. */
+export function AccountNote({ status, note, confirmTime }: { status: string; note: string | null; confirmTime: string | null }) {
+  if (status === 'confirmed') return null;
+  if (status === 'rejected') {
+    return (
+      <div className="hint hint--red" role="status">
+        <Icon name="lock" size={22} />
+        <div className="stack" style={{ gap: 4 }}>
+          <strong>Tasks are locked: we could not confirm your account.</strong>
+          {note && <span>{note}</span>}
+          <Link to="/profile/instagram" style={{ fontWeight: 700 }}>
+            Connect the account that is yours
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="hint hint--soft" role="status">
+      <Icon name="clock" size={20} />
+      <div>
+        <strong>Your account is being confirmed</strong>
+        {confirmTime ? `, usually within ${confirmTime}` : ''}. You can take tasks now: coins arrive once it is confirmed.
+      </div>
     </div>
   );
 }
