@@ -500,6 +500,7 @@ export interface PublicationRow {
   removed_at: string | null;
   data_source: 'apify' | 'demo' | null;
   story_reminded_at: string | null;
+  missed_at: string | null;
 }
 
 export type SnapshotKind = 'submit' | 'h24' | 'd7' | 'd14';
@@ -602,6 +603,15 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['publications', 'story_reminded_at', 'TEXT'],
   ['snapshots', 'attempts', 'INTEGER NOT NULL DEFAULT 0'],
   ['offers', 'brief', 'TEXT'],
+  // The team's reply that is awaited: a comment on a work ('entry', entry_id is the entry) or the
+  // reason for rejecting an account ('account', entry_id is the creator's id), and the bot message
+  // to stamp once it arrives.
+  ['admin_pending', 'kind', "TEXT NOT NULL DEFAULT 'entry'"],
+  ['admin_pending', 'chat_id', 'INTEGER'],
+  ['admin_pending', 'message_id', 'INTEGER'],
+  ['admin_pending', 'message_text', 'TEXT'],
+  // A publication that could not be found once: one more miss in a row marks it removed.
+  ['publications', 'missed_at', 'TEXT'],
 ];
 
 export function migrate(db: DB): void {

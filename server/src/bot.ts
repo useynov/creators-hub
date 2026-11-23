@@ -1,5 +1,5 @@
 import { Bot, GrammyError, type Context } from 'grammy';
-import { allowAgeAgain, isAgeRefused, isSetUp } from './account.js';
+import { allowAgeAgain, isAgeRefused, isSetUp, setAccountStatus } from './account.js';
 import { registerAdminBot } from './admin/bot.js';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
@@ -51,6 +51,8 @@ const ADMIN_HELP = [
   '/views submission-number views: set the views of an approved post',
   '/bonus @username coins reason: add coins by hand',
   '/level @username member|pro|partner|auto: set a level by hand',
+  '/confirm @username or ID: confirm that the Instagram account is theirs (their work can then be paid)',
+  '/reject @username or ID reason: we could not confirm the account; the creator gets the reason',
   '/offer @username | campaign | fee | what we need | post by | answer by',
   '/quiet on|off: stop or resume the team\'s messages coming to you in private',
   '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
@@ -372,7 +374,13 @@ export function createBot(db: DB): Bot {
     };
 
     if (action === 'ap') {
-      const result = approveEntry(db, entryId, Number(score));
+      let result: { title: string; reward: number };
+      try {
+        result = approveEntry(db, entryId, Number(score));
+      } catch (error) {
+        if (!(error instanceof HubError) || error.code !== 'account_not_confirmed') throw error;
+        return ctx.answerCallbackQuery({ text: notConfirmedHelp(entryId), show_alert: true });
+      }
       await ctx.answerCallbackQuery({ text: `Approved. +${result.reward} coins sent.` });
       await stamp(`✅ Approved by ${reviewer}, score ${score} of 5`);
     } else if (action === 'da') {
@@ -389,6 +397,76 @@ export function createBot(db: DB): Bot {
     }
   });
 
+  // --- Account confirmation ------------------------------------------------
+
+  /** What the reviewer should do when a work cannot be approved because the account is not confirmed. */
+  const notConfirmedHelp = (entryId: number): string => {
+    const row = db.prepare('SELECT u.id, u.account_status FROM entries e JOIN users u ON u.id = e.user_id WHERE e.id = ?').get(entryId) as
+      | { id: number; account_status: string }
+      | undefined;
+    if (row?.account_status === 'rejected') {
+      return `Not paid: this creator's Instagram account was rejected. If that was a mistake, send /confirm ${row.id}, then approve again.`;
+    }
+    return `Not paid yet: the creator's Instagram account is not confirmed. Press Confirm under their "New account to confirm" message, or send /confirm ${row?.id ?? 'ID'}, then approve again.`;
+  };
+
+  /** The creator behind a button, or a refusal the presser can read. */
+  const accountOwner = (userId: number): UserRow => {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
+    if (!user?.instagram) throw new HubError('user_not_found', 'This creator has no connected account.', 404);
+    return user;
+  };
+
+  admin.callbackQuery(/^(ac|ar):(\d+)$/, async (ctx) => {
+    const [, action, id] = ctx.match;
+    const user = accountOwner(Number(id));
+    const decider = esc(ctx.from.first_name);
+    const original = ctx.callbackQuery.message;
+    const text = original && 'text' in original ? original.text : undefined;
+
+    if (action === 'ac') {
+      if (user.account_status === 'confirmed') {
+        return ctx.answerCallbackQuery({ text: 'This account is already confirmed.', show_alert: true });
+      }
+      setAccountStatus(db, user.id, 'confirmed', ctx.from.id);
+      await ctx.answerCallbackQuery({ text: 'Account confirmed.' });
+      if (text) {
+        await ctx
+          .editMessageText(`${esc(text)}\n\n✅ Account confirmed by ${decider}`, { ...HTML, link_preview_options: { is_disabled: true } })
+          .catch(() => undefined);
+      }
+      return;
+    }
+
+    // Reject: the reason comes as the next reply, like "Needs changes".
+    db.prepare(
+      `INSERT OR REPLACE INTO admin_pending (admin_id, entry_id, created_at, kind, chat_id, message_id, message_text)
+       VALUES (?, ?, ?, 'account', ?, ?, ?)`,
+    ).run(ctx.from.id, user.id, now(), original?.chat.id ?? null, original?.message_id ?? null, text?.slice(0, 3500) ?? null);
+    await ctx.answerCallbackQuery();
+    await ctx.reply(`Why can we not confirm @${user.instagram}? Reply to this message with the reason, the creator will see it. /cancel to drop it.`, {
+      reply_markup: { force_reply: true, selective: true },
+      reply_parameters: original ? { message_id: original.message_id } : undefined,
+    });
+  });
+
+  admin.command('confirm', (ctx) => {
+    const user = ctx.match.trim() ? findUser(db, ctx.match.trim().split(/\s+/)[0]!) : undefined;
+    if (!user?.instagram) return ctx.reply('Whose account? For example: /confirm @username or /confirm 123456789');
+    if (user.account_status === 'confirmed') return ctx.reply(`@${user.instagram} is already confirmed.`);
+    setAccountStatus(db, user.id, 'confirmed', ctx.from!.id);
+    return ctx.reply(`✅ @${user.instagram} (${user.first_name}) is confirmed. Their work can be approved now.`);
+  });
+
+  admin.command('reject', (ctx) => {
+    const [ref, ...reason] = ctx.match.trim().split(/\s+/);
+    const user = ref ? findUser(db, ref) : undefined;
+    const note = reason.join(' ').trim();
+    if (!user?.instagram || !note) return ctx.reply('Whose account, and why? For example: /reject @username The profile belongs to someone else');
+    setAccountStatus(db, user.id, 'rejected', ctx.from!.id, note);
+    return ctx.reply(`@${user.instagram} (${user.first_name}) is rejected. They got your reason and can connect another account.`);
+  });
+
   // --- Admin panel -------------------------------------------------------
 
   registerAdminBot(bot, db);
@@ -402,11 +480,26 @@ export function createBot(db: DB): Bot {
     const body = message.text ?? message.caption ?? '';
 
     if (canAdmin(ctx)) {
-      // 1. A comment for "Needs changes".
-      const pending = db.prepare('SELECT entry_id FROM admin_pending WHERE admin_id = ?').get(from.id) as { entry_id: number } | undefined;
+      // 1. A comment for "Needs changes", or the reason for rejecting an account.
+      const pending = db.prepare('SELECT * FROM admin_pending WHERE admin_id = ?').get(from.id) as
+        | { entry_id: number; kind: string; chat_id: number | null; message_id: number | null; message_text: string | null }
+        | undefined;
       const repliesToBot = message.reply_to_message?.from?.id === ctx.me.id;
       if (pending && message.text && (isPrivate || repliesToBot)) {
         db.prepare('DELETE FROM admin_pending WHERE admin_id = ?').run(from.id);
+        if (pending.kind === 'account') {
+          const user = accountOwner(pending.entry_id);
+          setAccountStatus(db, user.id, 'rejected', from.id, message.text);
+          if (pending.chat_id && pending.message_id && pending.message_text) {
+            await ctx.api
+              .editMessageText(pending.chat_id, pending.message_id, `${esc(pending.message_text)}\n\n❌ Account rejected by ${esc(from.first_name)}`, {
+                ...HTML,
+                link_preview_options: { is_disabled: true },
+              })
+              .catch(() => undefined);
+          }
+          return ctx.reply(`Sent to the creator: @${user.instagram} could not be confirmed.`);
+        }
         const title = requestChanges(db, pending.entry_id, message.text);
         return ctx.reply(`Sent to the creator: “${title}” needs changes.`);
       }

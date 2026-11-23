@@ -271,3 +271,88 @@ test('/allowage: an age refusal stays until an owner lifts it, then the person c
   assert.match(texts(await say(typo, '/start'), 81)[0]!, /Welcome, Typo!/);
   assert.match(texts(await say(admin, '/help'), 900)[0]!, /\/allowage ID/);
 });
+
+test('account buttons: the team confirms or rejects in the bot, with a stamp; creators cannot; demo testers can', async () => {
+  const team = await import('./team.js');
+  const { idle } = await import('./background.js');
+  const people = [
+    { id: 85, first_name: 'Saule', username: 'saule' },
+    { id: 86, first_name: 'Erlan', username: 'erlan' },
+    { id: 87, first_name: 'Gulnar', username: 'gulnar' },
+  ];
+  const connect = async (person: (typeof people)[number], handle: string): Promise<Call> => {
+    service.addInvite(db, String(person.id));
+    service.upsertUser(db, person);
+    account.startLookup(db, service.getUser(db, person.id)!, { birthDate: '1996-04-04', instagram: handle });
+    await idle();
+    calls.length = 0;
+    account.confirmLookup(db, service.getUser(db, person.id)!, { city: 'Almaty' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return calls.find((call) => call.method === 'sendMessage' && call.payload.chat_id === 900 && /New account to confirm/.test(call.payload.text))!;
+  };
+
+  // The team's message carries the two buttons.
+  const notice = await connect(people[0]!, 'saule.cooks');
+  assert.deepEqual(
+    notice.payload.reply_markup.inline_keyboard[0].map((button: { text: string; callback_data: string }) => [button.text, button.callback_data]),
+    [['Confirm', 'ac:85'], ['Reject', 'ar:85']],
+  );
+
+  // A creator pressing them changes nothing.
+  await press(creator as any, 'ac:85', notice.payload.text);
+  assert.equal(service.getUser(db, 85)!.account_status, 'pending');
+
+  // The team confirms: status, who decided, the stamp, and the creator's message.
+  const confirmed = await press(admin, 'ac:85', notice.payload.text);
+  const saule = service.getUser(db, 85)!;
+  assert.deepEqual([saule.account_status, saule.account_reviewed_by], ['confirmed', 900]);
+  assert.ok(confirmed.some((call) => call.method === 'editMessageText' && /✅ Account confirmed by Dana/.test(call.payload.text)));
+  assert.match(texts(confirmed, 85)[0]!, /Your account is confirmed/);
+  const again = await press(admin, 'ac:85', notice.payload.text);
+  assert.match(again.find((call) => call.method === 'answerCallbackQuery')!.payload.text, /already confirmed/);
+
+  // Reject asks for the reason; /cancel drops it; the reply rejects with the note and stamps the message.
+  const second = await connect(people[1]!, 'erlan.not.mine');
+  const asked = await press(admin, 'ar:86', second.payload.text);
+  assert.match(texts(asked, 900)[0]!, /Why can we not confirm @erlan\.not\.mine\?/);
+  await say(admin, '/cancel');
+  await say(admin, 'Random chat after cancel');
+  assert.equal(service.getUser(db, 86)!.account_status, 'pending');
+  await press(admin, 'ar:86', second.payload.text);
+  const rejected = await say(admin, 'The profile belongs to a café, not to you.');
+  const erlan = service.getUser(db, 86)!;
+  assert.deepEqual([erlan.account_status, erlan.account_note, erlan.account_reviewed_by], ['rejected', 'The profile belongs to a café, not to you.', 900]);
+  assert.match(texts(rejected, 86)[0]!, /could not confirm your account[\s\S]*belongs to a café/);
+  assert.equal(rejected.find((call) => call.payload.chat_id === 86)!.payload.reply_markup.inline_keyboard[0][0].web_app.url, 'https://hub.example/profile/instagram');
+  assert.ok(rejected.some((call) => call.method === 'editMessageText' && /❌ Account rejected by Dana/.test(call.payload.text)));
+  assert.match(texts(rejected, 900)[0]!, /could not be confirmed/);
+
+  // The commands do the same.
+  assert.match(texts(await say(admin, '/confirm @erlan'), 900)[0]!, /erlan\.not\.mine \(Erlan\) is confirmed/);
+  assert.equal(service.getUser(db, 86)!.account_status, 'confirmed');
+  assert.match(texts(await say(admin, '/reject 86'), 900)[0]!, /Whose account, and why\?/);
+  assert.match(texts(await say(admin, '/reject 86 Wrong person'), 900)[0]!, /is rejected/);
+  assert.equal(service.getUser(db, 86)!.account_note, 'Wrong person');
+  await say(creator, '/confirm 86');
+  assert.equal(service.getUser(db, 86)!.account_status, 'rejected', 'a creator cannot use the commands');
+
+  // An approval refused for an unconfirmed account tells the reviewer what to do next.
+  const third = await connect(people[2]!, 'gulnar.eats');
+  await service.submitLinks(db, service.getUser(db, 87)!, 'new-year-post', { links: ['https://www.instagram.com/gulnar.eats/p/GUL1/'] });
+  await idle();
+  const entryId = (db.prepare(`SELECT id FROM entries WHERE user_id = 87`).get() as { id: number }).id;
+  const refused = await press(admin, `ap:${entryId}:5`, 'New submission');
+  const alert = refused.find((call) => call.method === 'answerCallbackQuery')!;
+  assert.equal(alert.payload.show_alert, true);
+  assert.match(alert.payload.text, /Press Confirm under their "New account to confirm" message, or send \/confirm 87, then approve again/);
+  assert.equal(service.balanceOf(db, 87), 0);
+
+  // In demo mode a tester (no admin site) confirms with the button, then approves their test work.
+  team.setDemoMode(db, true);
+  const tester = { id: 78, first_name: 'Igor' };
+  await press(tester as any, 'ac:87', third.payload.text);
+  assert.equal(service.getUser(db, 87)!.account_status, 'confirmed');
+  const paid = await press(tester as any, `ap:${entryId}:5`, 'New submission');
+  assert.match(texts(paid, 87)[0]!, /coins are in your wallet/);
+  team.setDemoMode(db, false);
+});

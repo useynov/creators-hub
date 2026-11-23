@@ -13,7 +13,7 @@ import { settings } from './config.js';
 import { now, type AccountStatus, type DB, type Platform, type SocialLookupRow, type SocialProfileRow, type UserRow } from './db.js';
 import { HubError } from './errors.js';
 import { downloadMedia, saveMedia } from './media.js';
-import { creatorLine, esc, notifyAdmins, notifyUser } from './notify.js';
+import { accountKeyboard, creatorLine, esc, notifyAdmins, notifyUser } from './notify.js';
 import { cleanHandle, getProvider } from './social/index.js';
 import type { ProfileData, ProfileResult, RecentPost } from './social/types.js';
 import type { ConnectView, Level } from './types.js';
@@ -398,10 +398,11 @@ export function confirmLookup(db: DB, user: UserRow, body: Record<string, unknow
       `<b>${firstSetup ? 'New account to confirm' : 'Changed Instagram account to confirm'}</b>`,
       `Creator: ${creatorLine(fresh)}`,
       numbers ? esc(numbers) : '',
-      'Check that the account is theirs, then confirm or reject it in the admin panel. Until then their work cannot be approved.',
+      'Check that the account is theirs, then confirm or reject it with the buttons below or in the admin panel. Until then their work cannot be approved.',
     ]
       .filter(Boolean)
       .join('\n'),
+    accountKeyboard(user.id),
   );
 }
 

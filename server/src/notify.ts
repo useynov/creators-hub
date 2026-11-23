@@ -108,6 +108,11 @@ export function reviewKeyboard(entryId: number): InlineKeyboard {
     .text('Needs changes', `nc:${entryId}`);
 }
 
+/** Under "New account to confirm": the team's decision on the creator's Instagram account. */
+export function accountKeyboard(userId: number): InlineKeyboard {
+  return new InlineKeyboard().text('Confirm', `ac:${userId}`).text('Reject', `ar:${userId}`);
+}
+
 export function draftKeyboard(entryId: number): InlineKeyboard {
   return new InlineKeyboard().text('Approve draft', `da:${entryId}`).text('Needs changes', `nc:${entryId}`);
 }
