@@ -102,7 +102,7 @@ test('review in the bot: submission reaches the team, comment and approval reach
   const early = await press(admin, 'ap:1:5', 'Resubmitted #1');
   const alert = early.find((call) => call.method === 'answerCallbackQuery')!;
   assert.equal(alert.payload.show_alert, true);
-  assert.match(alert.payload.text, /not confirmed yet/);
+  assert.match(alert.payload.text, /not confirmed[\s\S]*\/confirm 42, then approve again/);
   assert.equal(service.balanceOf(db, 42), 0);
 
   account.setAccountStatus(db, 42, 'confirmed', 900);
