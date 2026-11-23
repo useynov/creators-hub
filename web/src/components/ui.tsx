@@ -119,16 +119,29 @@ export function DateBox({ date, monthHint, large, white }: DateBoxProps) {
   );
 }
 
+interface CoverProps {
+  src: string | null;
+  alt: string;
+  /** The box is sized before the picture arrives, so nothing jumps while it loads: a height is required. */
+  style: CSSProperties & { height: number };
+  /** Above the fold (the first thing on a screen): load at once instead of lazily. */
+  eager?: boolean;
+}
+
 /**
- * A photo. With no address, or when the picture does not load, a calm warm block takes its
- * place: never a broken image, never placeholder text.
+ * A photo in a box of fixed height that it fills (object-fit: cover). With no address, or when
+ * the picture does not load, a calm warm block takes its place: never a broken image, never text.
  */
-export function Cover({ src, alt, style, className }: { src: string | null; alt: string; style?: CSSProperties; className?: string }) {
+export function Cover({ src, alt, style, eager }: CoverProps) {
   const [failed, setFailed] = useState<string | null>(null);
   const show = src && failed !== src;
   return (
-    <div className={`photo${show ? '' : ' photo--empty'}${className ? ` ${className}` : ''}`} style={style}>
-      {show ? <img src={src} alt={alt} loading="lazy" onError={() => setFailed(src)} /> : <Icon name="image" size={28} stroke={1.6} />}
+    <div className={`photo${show ? '' : ' photo--empty'}`} style={style}>
+      {show ? (
+        <img src={src} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" onError={() => setFailed(src)} />
+      ) : (
+        <Icon name="image" size={28} stroke={1.6} />
+      )}
     </div>
   );
 }
@@ -150,7 +163,15 @@ export function Avatar({ src, name, size, light }: { src: string | null; name: s
       }}
     >
       {show ? (
-        <img src={src} alt="" width={size} height={size} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setFailed(src)} />
+        <img
+          src={src}
+          alt=""
+          width={size}
+          height={size}
+          decoding="async"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setFailed(src)}
+        />
       ) : (
         <span aria-hidden="true">{name.charAt(0) || '·'}</span>
       )}

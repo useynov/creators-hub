@@ -94,7 +94,7 @@ export function Home() {
               </div>
               {data.nextTask ? (
                 <div className="card card--col" style={{ gap: 12, padding: 10 }}>
-                  <Cover src={data.nextTask.coverUrl} alt="" style={{ height: 132, borderRadius: 14 }} />
+                  <Cover src={data.nextTask.coverUrl} alt="" style={{ height: 132, borderRadius: 14 }} eager />
                   <div className="stack" style={{ gap: 6, padding: '0 6px' }}>
                     <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.2 }}>{data.nextTask.title}</div>
                     <div className="muted" style={{ fontSize: 14 }}>

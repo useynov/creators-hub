@@ -69,7 +69,7 @@ function Brief({ task }: { task: TaskView }) {
     <Screen>
       <TopBar back="/tasks" backLabel="Back to tasks" title="Task" />
       <main className="body" style={{ paddingTop: 0 }}>
-        <Cover src={task.coverUrl} alt={task.title} style={{ height: 200, borderRadius: 20 }} />
+        <Cover src={task.coverUrl} alt={task.title} style={{ height: 200, borderRadius: 20 }} eager />
         <div className="stack" style={{ gap: 10 }}>
           <h1 className="display" style={{ fontSize: 26, lineHeight: 1.15 }}>
             {task.title}
@@ -194,7 +194,7 @@ function DraftBrief({ task }: { task: TaskView }) {
     <Screen>
       <TopBar back="/tasks" backLabel="Back to tasks" title="Task" />
       <main className="body" style={{ gap: 16, paddingTop: 0 }}>
-        <Cover src={task.coverUrl} alt={task.title} style={{ height: 180, borderRadius: 20 }} />
+        <Cover src={task.coverUrl} alt={task.title} style={{ height: 180, borderRadius: 20 }} eager />
         <div className="stack" style={{ gap: 10 }}>
           <h1 className="display" style={{ fontSize: 26, lineHeight: 1.15 }}>
             {task.title}

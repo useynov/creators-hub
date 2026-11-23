@@ -261,7 +261,7 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
           >
             {searching ? 'Looking for your profile' : 'Find my profile'}
           </button>
-          {mode === 'setup' && (
+          {mode === 'setup' && !returning && (
             <div className="muted" style={{ fontSize: 13 }}>
               Step 2 of 2
             </div>

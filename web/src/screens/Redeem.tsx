@@ -60,7 +60,7 @@ export function Redeem() {
       <TopBar back="/shop" backLabel="Back to shop" title="Your order" />
       <form className="body" style={{ gap: 16 }} onSubmit={submit} noValidate>
         <div className="card card--row" style={{ gap: 14, padding: 12 }}>
-          <Cover src={item.imageUrl} alt={`${item.title} photo`} style={{ width: 84, height: 84, borderRadius: 14, flexShrink: 0 }} />
+          <Cover src={item.imageUrl} alt={`${item.title} photo`} style={{ width: 84, height: 84, borderRadius: 14, flexShrink: 0 }} eager />
           <div className="stack" style={{ gap: 4 }}>
             <h1 className="display" style={{ fontSize: 22 }}>
               {item.title}

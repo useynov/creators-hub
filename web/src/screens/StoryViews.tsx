@@ -75,7 +75,7 @@ export function StoryViews() {
   const copyCard = (
     <div className="card card--row" style={{ gap: 12, padding: 12, borderRadius: 18 }}>
       <div className={`photo${copy ? '' : ' photo--empty'}`} style={{ width: 48, height: 84, borderRadius: 10 }}>
-        {copy ? <img src={copy} alt="Your story" /> : <Icon name="image" size={20} stroke={1.6} />}
+        {copy ? <img src={copy} alt="Your story" width={48} height={84} decoding="async" /> : <Icon name="image" size={20} stroke={1.6} />}
       </div>
       <div className="stack" style={{ gap: 3, minWidth: 0 }}>
         {story.hasCopy ? (

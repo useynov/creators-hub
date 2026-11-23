@@ -64,7 +64,7 @@ export function Events() {
           <>
             {featured && (
               <section className="panel panel--red" style={{ padding: featured.coverUrl ? 10 : 20, gap: 16, paddingBottom: 20 }}>
-                {featured.coverUrl && <Cover src={featured.coverUrl} alt="" style={{ height: 170, borderRadius: 16 }} />}
+                {featured.coverUrl && <Cover src={featured.coverUrl} alt="" style={{ height: 170, borderRadius: 16 }} eager />}
                 <div className="stack" style={{ gap: 16, padding: featured.coverUrl ? '0 10px' : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
                   <DateBox date={featured.date} large white />
