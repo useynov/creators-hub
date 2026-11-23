@@ -12,6 +12,8 @@ content/  Starting tasks, events, shop items, news and program settings, as JSON
 docs/     V2-SPEC.md (how v2 is put together), DATA-PROVIDER.md (where the public numbers come from)
 ```
 
+This is **version 2**. What changed, how to see which version is running and how to go back to version 1 are in [CHANGELOG.md](CHANGELOG.md).
+
 ## How it works
 
 **Creators** press Start in the bot. If they are on the invite list, or opened the team's invite link, they get the welcome and one button that opens the mini app. On the first visit they confirm they are 18 or older, type their Instagram handle and see their own profile pulled from public data ("Is this you?"). A private or missing account is not let in. Everything else happens in the app: take a task, send the link, follow the review, spend coins, RSVP to events.

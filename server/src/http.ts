@@ -68,6 +68,8 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   });
 
   app.get('/healthz', (c) => c.text('ok'));
+  // Which version is running: the first thing to check after a deploy or a rollback.
+  app.get('/version', (c) => c.json({ name: 'creators-hub', version: config.version }));
 
   // Files we keep ourselves and show to everyone: task covers, avatars, thumbnails.
   // Private files (story copies, screenshots) are never served here, only by the admin API.

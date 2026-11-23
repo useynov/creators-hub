@@ -7,6 +7,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const rootDir = resolve(here, '../..');
 
 const env = process.env;
+
+/** The version from the root package.json: shown at /version so it is clear what is running. */
+function readVersion(): string {
+  try {
+    const parsed = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8')) as { version?: unknown };
+    return typeof parsed.version === 'string' ? parsed.version : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
 const isProd = env.NODE_ENV === 'production';
 
 function idList(value: string | undefined): number[] {
@@ -18,6 +28,7 @@ function idList(value: string | undefined): number[] {
 
 export const config = {
   isProd,
+  version: readVersion(),
   botToken: env.BOT_TOKEN?.trim() ?? '',
   webappUrl: (env.WEBAPP_URL ?? '').trim().replace(/\/+$/, ''),
   port: Number(env.PORT ?? 3000),
