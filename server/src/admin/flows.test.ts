@@ -33,7 +33,7 @@ const draftTask = {
   place: null,
   date: null,
   formats: ['reel'],
-  requiredMention: '@cocacola_kz',
+  requiredMention: '@cocacola_kaz',
   requiredHashtag: '#NewYearTable',
   reviewMode: 'draft_first',
   reward: 15,
@@ -79,7 +79,7 @@ test('task: create as a draft, with a unique slug from the title', async () => {
   createdId = saved.data.task.id;
   assert.equal(createdId, 'novogodniy-stol');
   assert.equal(saved.data.task.status, 'draft');
-  assert.equal(saved.data.task.requiredMention, 'cocacola_kz');
+  assert.equal(saved.data.task.requiredMention, 'cocacola_kaz');
   assert.equal(saved.data.task.requiredHashtag, 'NewYearTable');
   assert.equal(saved.data.task.deadline, draftTask.deadline);
   assert.equal(saved.data.announced, null);

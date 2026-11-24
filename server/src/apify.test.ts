@@ -99,9 +99,9 @@ test('apify: Instagram post and reel', () => {
         type: 'Video',
         productType: 'clips',
         shortCode: 'DZN3mhZBQ_Q',
-        caption: 'Caravan night ✨ with @CocaCola_KZ #NewYear #coke_winter',
+        caption: 'Caravan night ✨ with @CocaCola_KAZ #NewYear #coke_winter',
         hashtags: ['NewYear', 'coke_winter'],
-        mentions: ['CocaCola_KZ'],
+        mentions: ['CocaCola_KAZ'],
         taggedUsers: [{ username: 'dana.almaty', full_name: 'Dana' }],
         url: 'https://www.instagram.com/p/DZN3mhZBQ_Q/',
         commentsCount: 92,
@@ -122,7 +122,7 @@ test('apify: Instagram post and reel', () => {
   assert.equal(reel.post.kind, 'reel');
   assert.equal(reel.post.authorHandle, 'aruzhan.vibes');
   assert.equal(reel.post.views, 241820);
-  assert.deepEqual(reel.post.mentions, ['cocacola_kz', 'dana.almaty'], 'caption mentions and tagged users, lower case');
+  assert.deepEqual(reel.post.mentions, ['cocacola_kaz', 'dana.almaty'], 'caption mentions and tagged users, lower case');
   assert.deepEqual(reel.post.hashtags, ['newyear', 'coke_winter']);
   assert.equal(reel.post.publishedAt, '2026-12-25T19:58:30.000Z');
   assert.equal(reel.post.shares, null, 'Instagram does not show shares');
@@ -153,7 +153,7 @@ test('apify: Instagram story from the story reader', () => {
       videoUrl: 'https://scontent.cdninstagram.com/story.mp4',
       takenAt: '2026-12-25T18:22:00.000Z',
       expiringAt: '2026-12-26T18:22:00.000Z',
-      mentions: [{ username: 'cocacola_kz', fullName: 'Coca-Cola KZ', userId: '1', isVerified: true }],
+      mentions: [{ username: 'cocacola_kaz', fullName: 'Coca-Cola KZ', userId: '1', isVerified: true }],
       hashtags: [],
       highlightId: null,
     },
@@ -164,14 +164,14 @@ test('apify: Instagram story from the story reader', () => {
   assert.equal(story.post.kind, 'story');
   assert.equal(story.post.authorHandle, 'aruzhan.vibes');
   assert.equal(story.post.mediaUrl, 'https://scontent.cdninstagram.com/story.mp4', 'the video is the copy we keep');
-  assert.deepEqual(story.post.mentions, ['cocacola_kz']);
+  assert.deepEqual(story.post.mentions, ['cocacola_kaz']);
   assert.equal(story.post.views, null, 'only the author sees story views');
   assert.equal(mapInstagramStory(items.slice(0, 1), url, parseLink(url)).status, 'gone', 'expired: no longer among the live stories');
 });
 
 const tiktokVideo = {
   id: '7450000000000000001',
-  text: 'New Year table 🎄 @cocacola_kz #newyear',
+  text: 'New Year table 🎄 @cocacola_kaz #newyear',
   createTimeISO: '2026-12-28T12:00:00.000Z',
   createTime: 1798459200,
   authorMeta: { id: '6999', name: 'Aruzhan.Vibes', nickName: 'Aruzhan', verified: false, signature: 'Almaty', avatar: 'https://p16.tiktokcdn.com/a.jpg', privateAccount: false, fans: 15100, following: 300, video: 88 },
@@ -182,7 +182,7 @@ const tiktokVideo = {
   playCount: 61000,
   commentCount: 77,
   hashtags: [{ id: '1', name: 'newyear' }],
-  mentions: ['@cocacola_kz'],
+  mentions: ['@cocacola_kaz'],
 };
 
 test('apify: TikTok profile and video', () => {
@@ -204,7 +204,7 @@ test('apify: TikTok profile and video', () => {
   assert.equal(video.post.authorHandle, 'aruzhan.vibes');
   assert.deepEqual([video.post.views, video.post.likes, video.post.comments, video.post.shares], [61000, 2300, 77, 140]);
   assert.deepEqual(video.post.hashtags, ['newyear']);
-  assert.deepEqual(video.post.mentions, ['cocacola_kz']);
+  assert.deepEqual(video.post.mentions, ['cocacola_kaz']);
 });
 
 test('apify: calls use the Bearer header, never put the token in the address, and survive failures', async () => {

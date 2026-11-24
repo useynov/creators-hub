@@ -250,7 +250,7 @@ export async function seedPreview(db: DB): Promise<void> {
       `INSERT OR IGNORE INTO tasks (id, title, summary, brief, cover_url, reward, format, formats, required_mention, required_hashtag, place,
          starts_at, deadline, review_mode, views_bonus, bonus_coins, max_publications, max_participants, steps, sort, active, status,
          audience, source, created_by, created_at, updated_at, announced_at)
-       VALUES (@id, @title, @summary, @brief, @cover, @reward, @format, @formats, 'cocacola_kz', @hashtag, @place, @starts, @deadline,
+       VALUES (@id, @title, @summary, @brief, @cover, @reward, @format, @formats, 'cocacola_kaz', @hashtag, @place, @starts, @deadline,
          @review, 0, @bonus, 1, @limit, @steps, @sort, 1, @status, @audience, 'admin', @by, @created, @created, @announced)`,
     );
     const steps = JSON.stringify(['Pick your moment.', 'Shoot it your way and post it.', 'Send us the link.']);
