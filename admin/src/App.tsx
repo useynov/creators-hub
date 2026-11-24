@@ -16,7 +16,7 @@ import { Review } from './screens/Review';
 import { TaskEdit } from './screens/TaskEdit';
 import { Tasks } from './screens/Tasks';
 import { Team } from './screens/Team';
-import { LangSwitch, Loading, Problem, SessionProvider, ToastProvider, useAction, useSession } from './ui';
+import { BrandLogo, LangSwitch, Loading, Problem, SessionProvider, ToastProvider, useAction, useSession } from './ui';
 
 const STAFF: TeamRole[] = ['owner', 'manager'];
 
@@ -44,10 +44,8 @@ function Sidebar() {
   return (
     <aside className="side">
       <div className="side__inner">
-      <div className="brand">
-        <div className="brand__mark" aria-hidden="true">
-          CH
-        </div>
+      <div className="brand brand--logo">
+        <BrandLogo tone="white" height={30} />
         <div>
           <div className="brand__name">{t.brand.name}</div>
           <div className="brand__place">{t.brand.place}</div>

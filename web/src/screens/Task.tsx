@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 import type { PublicationView, TaskView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { AccountNote, Brief as DetailedBrief, Cover, Loading, Problem, Screen, TopBar } from '../components/ui';
+import { AccountNote, Brief as DetailedBrief, Cover, Loading, Problem, Screen, TopBar, keepBrand } from '../components/ui';
 import { coins, day, dayLong, dayTime, num, shortLink } from '../format';
 import { useAction, useHub, useToast } from '../hub';
 import { buzz, closeApp, inTelegram, openTelegram } from '../telegram';
@@ -57,7 +57,7 @@ function TaskHero({ task, mode }: { task: TaskView; mode: string }) {
           <span className="chip glass">{mode}</span>
         </div>
         <h1 className="lead__title" style={{ fontSize: 32 }}>
-          {task.title}
+          {keepBrand(task.title)}
         </h1>
       </div>
     </div>

@@ -3,7 +3,7 @@ import useSWR from 'swr';
 import type { LoginInfo } from '../../../server/src/admin/types';
 import { api } from '../api';
 import { useI18n } from '../i18n';
-import { errorText, LangSwitch } from '../ui';
+import { BrandLogo, errorText, LangSwitch } from '../ui';
 
 /**
  * The page the bot's link opens. The token is exchanged by a POST from this page, not by the
@@ -44,10 +44,8 @@ export function Login() {
         <div className="login__lang">
           <LangSwitch />
         </div>
-        <div className="brand" style={{ padding: 0 }}>
-          <div className="brand__mark" aria-hidden="true">
-            CH
-          </div>
+        <div className="brand brand--logo" style={{ padding: 0 }}>
+          <BrandLogo tone="red" height={34} />
           <div className="brand__name">{t.brand.name}</div>
         </div>
         <h1 className="h1">{t.login.title}</h1>

@@ -147,17 +147,30 @@ A task:
 
 `reviewMode` is `post_first` (post, then the team checks) or `draft_first` (the draft is approved before posting). Optional fields: `summary`, `brief` (the detailed brief the creator can unfold), `coverUrl`, `formats`, `requiredMention`, `requiredHashtag`, `startsAt`, `viewsBonus`. Photos given as remote addresses are copied to the server on start and made light for phones. Shop items take `imageUrl` and `needsSize`. An event without a `date` shows as "details soon" with a Remind me button; set `monthHint` (for example `"JAN"`) for its badge.
 
-### Brand photos
+### Brand assets
 
-The welcome screen, the task covers, the paid offer and the news use cuts of the brand photos. They are internal brand material, so they are **not in this repository**: `content/brand/` is git-ignored.
+The photos, the TCCC Unity font and the Coca-Cola logo are brand material, so they are **not in this repository**: `content/brand/` is git-ignored. The server serves that folder at `/brand/<name>`.
 
-To make them, point the script at the folder with the four source photos (`red-studio.png`, `dusk-friends.png`, `fizz-macro.png`, `portrait-studio.png`):
+**Photos.** Point the script at the folder with the four source photos (`red-studio.png`, `dusk-friends.png`, `fizz-macro.png`, `portrait-studio.png`):
 
 ```bash
 node scripts/brand-photos.mjs "/path/to/assets/photography"
 ```
 
-It writes six small `.webp` files into `content/brand/`. Copy that folder to the server, next to the code, before building the image. The app serves them at `/brand/<name>.webp`. If the folder is missing nothing breaks: photo blocks turn flat.
+It writes six small `.webp` files (welcome, three task covers, the paid offer, the news).
+
+**Font and logo.** Point the second script at the folder with the `TCCC-Unity*.ttf` files and at a Coca-Cola logo PNG with a transparent background:
+
+```bash
+pip install fonttools brotli potracer pillow numpy
+python3 scripts/brand-fonts-logo.py "/path/to/TCCC_Unity_Font_Family" "/path/to/coca-cola-logo.png" content/brand
+```
+
+It writes five `.woff2` files and `logo-red.svg`, `logo-white.svg`.
+
+Copy `content/brand/` to the server, next to the code, before building the image. If the folder or a file is missing nothing breaks: photo blocks turn flat, the text is set in Onest, and the name is set in type instead of the logo.
+
+TCCC Unity has Latin letters only. Cyrillic and the tenge sign are shown in Onest.
 
 To use a different photo for a task, set its `coverUrl` in `content/seed.json` (a `/brand/...` path or any remote address), or upload a cover on the admin site.
 

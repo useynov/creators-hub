@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Cover, Screen } from '../components/ui';
+import { Cover, Logo, Screen, hubName } from '../components/ui';
 import { useHub } from '../hub';
 
 const BENEFITS: Array<{ title: string; text: string }> = [
@@ -16,8 +16,11 @@ export function Benefits() {
     <Screen top="dark">
       <div className="lead lead--square" style={{ minHeight: 'min(56vh, 460px)' }}>
         <Cover src="/brand/welcome.webp" alt="" fill eager style={{ background: 'var(--red)' }} />
+        <div style={{ position: 'absolute', top: 24, left: 20 }}>
+          <Logo tone="white" height={34} />
+        </div>
         <div className="lead__body" style={{ gap: 14, paddingBottom: 28 }}>
-          <div className="label">{settings.brandName} · By invitation</div>
+          <div className="label">{hubName(settings.brandName)} · By invitation</div>
           <h1 className="display" style={{ fontSize: 46 }}>
             Welcome to the family
           </h1>

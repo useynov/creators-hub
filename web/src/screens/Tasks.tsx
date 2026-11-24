@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import type { OfferView, TaskView } from '../../../server/src/types';
 import { Icon } from '../components/Icon';
-import { AccountNote, Cover, Loading, Problem, Screen, TabBar } from '../components/ui';
+import { AccountNote, Cover, Loading, Problem, Screen, TabBar, keepBrand } from '../components/ui';
 import { coins, day } from '../format';
 import { useHub } from '../hub';
 
@@ -56,7 +56,7 @@ function TaskCard({ task }: { task: TaskView }) {
         <div className="lead__body">
           <div className="t-sm muted">{[task.format, `until ${day(task.deadline)}`].filter(Boolean).join(' · ')}</div>
           <div className="lead__title" style={{ fontSize: 24 }}>
-            {task.title}
+            {keepBrand(task.title)}
           </div>
         </div>
       </div>
@@ -112,7 +112,7 @@ export function Tasks() {
               <Link to="/offer" className="card card--row card--dark" style={{ gap: 12, padding: '16px 20px' }}>
                 <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
                   <div className="t-sm muted">Paid offer, only for you</div>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{offer.campaign}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{keepBrand(offer.campaign)}</div>
                 </div>
                 <Icon name="right" size={20} />
               </Link>

@@ -1,6 +1,48 @@
 /* Admin site. The same brand as the creator app: white and black, one red, pills, Onest.
    Red is for what needs a person now (the review queue, a count that is not zero) and for the
    one main action of a screen. The last block of this file, "One red thread", holds the look. */
+/*
+ * TCCC Unity, the Coca-Cola typeface. The files are the property of The Coca-Cola Company and are
+ * not in this repository: they are served from /brand on the server (README, "Brand assets").
+ * Unity has Latin only. Cyrillic, the tenge sign and anything else it lacks fall back to Onest,
+ * and so does everything when the files are missing.
+ */
+@font-face {
+  font-family: 'TCCC Unity Text';
+  src: url('/brand/unity-text-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TCCC Unity Text';
+  src: url('/brand/unity-text-medium.woff2') format('woff2');
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TCCC Unity Text';
+  src: url('/brand/unity-text-bold.woff2') format('woff2');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TCCC Unity Headline';
+  src: url('/brand/unity-headline-bold.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TCCC Unity Headline';
+  src: url('/brand/unity-headline-black.woff2') format('woff2');
+  font-weight: 800 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --red: #f40009;
   --red-dark: #d1000b;
@@ -26,7 +68,8 @@
   --pink: #fff3f2;
   --pink-border: #ffd9d6;
   --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
-  --font: 'Onest Variable', Onest, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font: 'TCCC Unity Text', 'Onest Variable', Onest, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'TCCC Unity Headline', 'Onest Variable', Onest, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 * {
@@ -1394,4 +1437,22 @@ a:not(.btn, .trow, .todo, .plain, .nav a) {
 /* The action of a page stays at the right, also when the title pushes it to a new line. */
 .head > :last-child:not(:first-child) {
   margin-left: auto;
+}
+
+/* Headings and big figures are set in the headline cut of the brand typeface. */
+.h1,
+.h2,
+.kpi__value,
+.todo__count,
+.tile__value {
+  font-family: var(--font-display);
+}
+/* The Coca-Cola script over the name of the product. */
+.brand--logo {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.brand--logo img {
+  display: block;
 }

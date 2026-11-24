@@ -84,13 +84,16 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
     });
   });
 
-  // Brand photos (welcome, task covers, the offer). They are copied next to the code on the
-  // server and are not in git, so a missing file is normal: the app shows a flat block instead.
-  app.get('/brand/:file{[a-z0-9-]+\\.webp}', async (c) => {
+  // Brand assets: photos (welcome, task covers, the offer), the TCCC Unity font and the logo.
+  // They are copied next to the code on the server and are not in git, so a missing file is
+  // normal: the app shows a flat block, the fallback font, or the name set in type.
+  const BRAND_TYPES: Record<string, string> = { webp: 'image/webp', woff2: 'font/woff2', svg: 'image/svg+xml' };
+  app.get('/brand/:file{[a-z0-9-]+\\.(webp|woff2|svg)}', async (c) => {
     try {
-      const data = await readFile(join(config.brandDir, c.req.param('file')));
+      const name = c.req.param('file');
+      const data = await readFile(join(config.brandDir, name));
       return c.body(new Uint8Array(data), 200, {
-        'Content-Type': 'image/webp',
+        'Content-Type': BRAND_TYPES[name.slice(name.lastIndexOf('.') + 1)]!,
         'Cache-Control': 'public, max-age=86400',
         'X-Content-Type-Options': 'nosniff',
       });

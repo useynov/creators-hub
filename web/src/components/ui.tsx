@@ -154,6 +154,49 @@ export function Cover({ src, alt, style, eager, fill }: CoverProps) {
   );
 }
 
+/**
+ * The Coca-Cola script. The file is served from /brand on the server and is not in git;
+ * when it is missing the name is set in type instead.
+ */
+export function Logo({ tone = 'red', height = 26 }: { tone?: 'red' | 'white'; height?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span className="display" style={{ fontSize: Math.round(height * 0.8), color: tone === 'red' ? 'var(--red)' : 'var(--white)' }}>
+        Coca-Cola
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`/brand/logo-${tone}.svg`}
+      alt="Coca-Cola"
+      height={height}
+      width={Math.round((height * 2000) / 627)}
+      style={{ display: 'block', flexShrink: 0 }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/** Keeps "Coca-Cola" on one line: a title must never break the name at its hyphen. */
+export function keepBrand(text: string): ReactNode {
+  const parts = text.split(/(Coca-Cola)/g);
+  if (parts.length === 1) return text;
+  return parts.map((part, index) =>
+    part === 'Coca-Cola' ? (
+      <span key={index} style={{ whiteSpace: 'nowrap' }}>
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
+/** The product's own name, without the brand in front of it: the logo already says "Coca-Cola". */
+export const hubName = (brandName: string): string => brandName.replace(/^coca[-\s]?cola\s*/i, '').trim() || 'Creators Hub';
+
 /** The creator's Instagram picture, or their initial when we have none. */
 export function Avatar({ src, name, size, light }: { src: string | null; name: string; size: number; light?: boolean }) {
   const [failed, setFailed] = useState<string | null>(null);
