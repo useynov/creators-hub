@@ -1,6 +1,6 @@
 // Building blocks shared by the screens: headings, badges, tabs, tables, paging, toasts.
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, isValidElement, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { AdminMe } from '../../server/src/admin/types';
 import { ApiError } from './api';
@@ -215,11 +215,34 @@ export function Pager({ page, pageSize, total, shown, onPage, note }: { page: nu
   );
 }
 
-/** A table built from CSS grid rows, as in the designs. Scrolls sideways on a narrow window. */
+/** The plain text of a column heading: a string as it is, a sortable heading by its label, a wrapped one by its content. */
+function headingText(cell: ReactNode): string {
+  if (typeof cell === 'string' || typeof cell === 'number') return String(cell);
+  if (Array.isArray(cell)) return cell.map(headingText).join('');
+  if (isValidElement<{ label?: unknown; children?: ReactNode }>(cell)) {
+    return typeof cell.props.label === 'string' ? cell.props.label : headingText(cell.props.children);
+  }
+  return '';
+}
+
+/**
+ * A table built from CSS grid rows, as in the designs.
+ *
+ * On a phone every row turns into a small card: the first cell is its title and each other cell
+ * carries the name of its column. The names reach the stylesheet as `--h2`, `--h3`... on the
+ * wrapper, so the screens do not have to repeat them. A column without a heading (the actions)
+ * takes the full width of the card (`--w<n>`).
+ */
 export function Table({ cols, min, head, children, title, footer }: { cols: string; min: number; head: ReactNode[]; children: ReactNode; title?: ReactNode; footer?: ReactNode }) {
+  const style: Record<string, string | number> = { minWidth: min, '--cols': cols };
+  head.forEach((cell, index) => {
+    const text = headingText(cell);
+    if (text) style[`--h${index + 1}`] = JSON.stringify(text);
+    else style[`--w${index + 1}`] = '1 / -1';
+  });
   return (
     <section className="card table">
-      <div style={{ minWidth: min, ['--cols' as string]: cols }}>
+      <div style={style as CSSProperties}>
         {title}
         <div className="trow trow--head" role="row">
           {head.map((cell, index) => (

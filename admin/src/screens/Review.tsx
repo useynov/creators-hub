@@ -220,7 +220,7 @@ function WorkPanel({ id, onDone }: { id: number; onDone: () => void }) {
             </button>
           </>
         )}
-        <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        <div className="review__fix" style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <div className="field" style={{ flex: 1 }}>
             <label htmlFor="fix">{t.review.fixLabel}</label>
             <input id="fix" className="input" maxLength={2000} placeholder={t.review.fixPlaceholder} value={comment} onChange={(e) => setComment(e.target.value)} />
@@ -361,6 +361,8 @@ export function Review() {
   const list = queue === 'works' ? data.works : queue === 'drafts' ? data.drafts : data.stories;
   const ids = queue === 'stories' ? data.stories.map((s) => s.publicationId) : (list as QueueItem[]).map((i) => i.entryId);
   const selected = ids.includes(selectedRaw) ? selectedRaw : (ids[0] ?? null);
+  // On a phone the queue and the work are two steps: the work opens only once it was tapped.
+  const picked = ids.includes(selectedRaw);
   const select = (id: number) => setParams({ queue, id: String(id) }, { replace: true });
   const next = () => {
     void mutate();
@@ -381,8 +383,8 @@ export function Review() {
           <Empty>{t.review.empty[queue]}</Empty>
         </section>
       ) : (
-        <div className="cols">
-          <section className="card" style={{ flex: '1 1 300px', minWidth: 0, overflow: 'hidden' }}>
+        <div className={`cols review${picked ? ' review--picked' : ''}`}>
+          <section className="card review__queue" style={{ flex: '1 1 300px', minWidth: 0, overflow: 'hidden' }}>
             <div className="tiny strong muted" style={{ padding: '14px 16px' }}>
               {t.review.oldestFirst}
             </div>
@@ -407,6 +409,9 @@ export function Review() {
               <QueueList items={list as QueueItem[]} selected={selected} onSelect={select} />
             )}
           </section>
+          <button type="button" className="btn btn--line btn--sm review__back" onClick={() => setParams({ queue }, { replace: true })}>
+            ← {t.review.backToQueue}
+          </button>
           {selected !== null &&
             (queue === 'stories' ? (
               <StoryPanel story={data.stories.find((s) => s.publicationId === selected)!} onDone={next} />

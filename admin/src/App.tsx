@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useState, type ReactNode } from 'react';
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import useSWR, { SWRConfig } from 'swr';
 import type { AdminMe, TeamRole } from '../../server/src/admin/types';
 import { api, ApiError } from './api';
@@ -41,9 +41,38 @@ function Sidebar() {
   const logout = async () => {
     if ((await run(() => api.post('/auth/logout'))) !== null) window.location.replace('/admin/login');
   };
+
+  // On a phone the column folds into a top bar; the sections open as a full-screen menu.
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    document.body.classList.toggle('menu-open', open);
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.classList.remove('menu-open');
+    };
+  }, [open]);
+  const waiting = (c?.pendingAccounts ?? 0) + (c?.review ?? 0) + (c?.newOrders ?? 0) + (c?.payoutRequests ?? 0);
+
   return (
-    <aside className="side">
-      <div className="side__inner">
+    <aside className={`side${open ? ' side--open' : ''}`}>
+      <div className="side__bar">
+        <Link to={homeOf(me.role)} className="side__home" aria-label={t.brand.name}>
+          <BrandLogo tone="white" height={26} />
+          <span className="brand__name">{t.brand.name}</span>
+        </Link>
+        <button type="button" className="side__toggle" aria-expanded={open} aria-controls="side-menu" onClick={() => setOpen((value) => !value)}>
+          <span>{open ? t.nav.close : t.nav.menu}</span>
+          {!open && waiting > 0 && <span className="nav__badge">{waiting}</span>}
+        </button>
+      </div>
+      <div className="side__inner" id="side-menu">
       <div className="brand brand--logo">
         <BrandLogo tone="white" height={30} />
         <div>

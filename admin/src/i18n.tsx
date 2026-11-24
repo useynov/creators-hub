@@ -9,6 +9,8 @@ type Plural = [one: string, few: string, many: string];
 const ru = {
   brand: { name: 'Creators Hub', place: 'Админка, Казахстан' },
   nav: {
+    menu: 'Меню',
+    close: 'Закрыть',
     label: 'Разделы',
     overview: 'Обзор',
     creators: 'Креаторы',
@@ -439,6 +441,7 @@ const ru = {
     queues: 'Очереди',
     tabs: { works: 'Работы', drafts: 'Черновики', stories: 'Цифры сторис' },
     oldestFirst: 'Сначала те, что ждут дольше',
+    backToQueue: 'К очереди',
     empty: { works: 'Работ на ревью нет.', drafts: 'Черновиков на ревью нет.', stories: 'Все цифры сторис проверены.' },
     pick: 'Выберите работу слева.',
     flags: {
@@ -680,6 +683,8 @@ export type Dict = typeof ru;
 const en: Dict = {
   brand: { name: 'Creators Hub', place: 'Admin, Kazakhstan' },
   nav: {
+    menu: 'Menu',
+    close: 'Close',
     label: 'Sections',
     overview: 'Overview',
     creators: 'Creators',
@@ -1109,6 +1114,7 @@ const en: Dict = {
     queues: 'Queues',
     tabs: { works: 'Works', drafts: 'Drafts', stories: 'Story numbers' },
     oldestFirst: 'Oldest first',
+    backToQueue: 'Back to the queue',
     empty: { works: 'No works to review.', drafts: 'No drafts to review.', stories: 'All story numbers are checked.' },
     pick: 'Pick a work on the left.',
     flags: {
