@@ -1,29 +1,32 @@
-/* Admin site. Tokens from the approved designs. White on red only at 14px bold or larger;
-   smaller white-on-red text (badges) uses the darker red. */
+/* Admin site. The same brand as the creator app: white and black, one red, pills, Onest.
+   Red is for what needs a person now (the review queue, a count that is not zero) and for the
+   one main action of a screen. The last block of this file, "One red thread", holds the look. */
 :root {
-  --red: #dc0a17;
-  --red-dark: #b00812;
-  --red-darker: #8a060e;
-  --ink: #1c1414;
-  --ink-2: #4f4545;
-  --muted: #675c5c;
-  --bg: #f6f2ef;
-  --chip: #ede6e1;
-  --line: #e8e1dc;
-  --line-soft: #efe9e5;
-  --border: #d9cfc9;
-  --border-dashed: #bdb2ac;
-  --side-2: #3a2f2f;
-  --side-muted: #cfc6c1;
-  --side-text: #e8e1dc;
-  --green: #0b5d32;
-  --green-bg: #e2f4e8;
-  --amber-bg: #fff0d9;
-  --amber-ink: #5c2d00;
-  --amber: #8a4300;
-  --pink: #fdecec;
-  --pink-border: #f1c9cb;
-  --font: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --red: #f40009;
+  --red-dark: #d1000b;
+  --red-darker: #a80007;
+  --black: #000000;
+  --ink: #111111;
+  --ink-2: #2e2e2e;
+  --muted: #5c5c5c;
+  --bg: #f7f6f4;
+  --chip: #efefef;
+  --line: #dedede;
+  --line-soft: #efefef;
+  --border: #b9b9b9;
+  --border-dashed: #b9b9b9;
+  --side-2: #1f1f1f;
+  --side-muted: #a8a8a8;
+  --side-text: #e6e6e6;
+  --green: #127a44;
+  --green-bg: #e6f3ec;
+  --amber-bg: #fff2dd;
+  --amber-ink: #5e3900;
+  --amber: #b06a00;
+  --pink: #fff3f2;
+  --pink-border: #ffd9d6;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --font: 'Onest Variable', Onest, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 * {
@@ -59,7 +62,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 3px solid #1c64f2;
+  outline: 3px solid var(--red);
   outline-offset: 2px;
 }
 
@@ -1068,4 +1071,327 @@ select.filter--sm {
 
 .kpi__value--quiet {
   color: var(--muted);
+}
+
+/* --- One red thread: the look, shared with the creator app --------------------------------- */
+
+body {
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.side {
+  background: var(--black);
+}
+.brand__mark {
+  border-radius: 50%;
+}
+.nav a {
+  border-radius: 999px;
+  padding: 0 14px;
+  transition:
+    background-color 140ms var(--ease),
+    color 140ms var(--ease);
+}
+.nav a.active {
+  background: #fff;
+  color: var(--black);
+}
+/* The counts in the menu stay quiet: the red numerals live on the Overview. */
+.nav__badge {
+  border-radius: 999px;
+  background: var(--side-2);
+  color: #fff;
+}
+.nav a.active .nav__badge {
+  background: var(--black);
+  color: #fff;
+}
+.lang,
+.lang button {
+  border-radius: 999px;
+}
+
+.h1 {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  color: var(--black);
+}
+.h2 {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--black);
+}
+.h2--big {
+  font-size: 19px;
+}
+/* Section labels are sentence case. Nothing in the admin shouts. */
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+.strong,
+.cell-main > :first-child {
+  color: var(--black);
+}
+/* Onest sets tabular figures wide, which opens gaps beside every 1: figures stay proportional. */
+.num,
+.trow {
+  font-variant-numeric: lining-nums;
+}
+/* Links are black and underlined. Red is not a link colour. */
+a,
+a:hover,
+.linkbtn,
+.linkbtn:hover {
+  color: var(--black);
+}
+a:not(.btn, .trow, .todo, .plain, .nav a) {
+  text-underline-offset: 3px;
+}
+.linkbtn {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.plain:hover {
+  color: var(--black);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.btn--red,
+.btn--red:hover,
+.btn--dark,
+.btn--dark:hover,
+.btn--green,
+.btn--green:hover {
+  color: #fff;
+}
+.btn--danger,
+.btn--danger:hover {
+  color: var(--red-dark);
+}
+
+.card,
+.kpi {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.dark {
+  background: var(--black);
+  border-color: var(--black);
+}
+/* Numbers of the month: one strip, hairlines between, no row of equal boxes. */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  overflow: hidden;
+}
+.strip .kpi {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: -1px 0 0 var(--line), 0 -1px 0 var(--line);
+  padding: 18px 20px;
+}
+.kpi__value {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--black);
+}
+/* What waits for a person: the count is the thing. Red only when it is not zero. */
+.todo {
+  border: 1px solid var(--line);
+  padding: 18px 20px;
+  gap: 8px;
+  transition: border-color 140ms var(--ease);
+}
+.todo:hover {
+  border-color: var(--black);
+}
+.todo__count {
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  color: var(--red);
+}
+.todo--calm .todo__count {
+  color: var(--border);
+}
+.todo__label {
+  color: var(--black);
+}
+.tile__value {
+  color: var(--black);
+  letter-spacing: -0.02em;
+}
+
+.trow {
+  padding: 13px 18px;
+  transition: background-color 140ms var(--ease);
+}
+.trow--head {
+  font-weight: 600;
+}
+.trow:not(.trow--head):hover {
+  background: var(--bg);
+}
+/* The thread: a share of something is a thin red line. */
+.bar,
+.bar > div {
+  height: 3px;
+  border-radius: 0;
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.badge--dark {
+  background: var(--black);
+}
+.badge--line {
+  border: 0;
+  padding: 3px 10px;
+  box-shadow: inset 0 0 0 1.5px var(--border);
+}
+.pill {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.btn {
+  padding: 0 20px;
+  border-radius: 999px;
+  transition:
+    transform 140ms var(--ease),
+    background-color 140ms var(--ease),
+    border-color 140ms var(--ease);
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.btn--dark {
+  background: var(--black);
+}
+.btn--dark:hover:not(:disabled) {
+  background: var(--ink-2);
+}
+.btn--line:hover:not(:disabled),
+.btn--ghost:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--black);
+}
+.btn--sm {
+  padding: 0 14px;
+  border-radius: 999px;
+}
+.input,
+.select,
+.input--sm,
+.select--sm,
+.filter,
+.tag,
+.tag-add,
+.upload {
+  border-radius: 999px;
+}
+.input,
+.select {
+  padding: 0 16px;
+}
+.textarea {
+  padding: 12px 16px;
+  border-radius: 16px;
+}
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--black);
+  box-shadow: inset 0 0 0 1px var(--black);
+}
+.filter {
+  padding: 0 14px;
+}
+.filter--on {
+  background: var(--black);
+  border-color: var(--black);
+}
+.tag {
+  padding: 5px 12px;
+}
+/* Tabs: words on a hairline, the thread under the one you are on. */
+.tabs {
+  gap: 20px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  align-self: stretch;
+}
+.tab {
+  position: relative;
+  height: 40px;
+  padding: 0;
+  border-radius: 0;
+  color: var(--muted);
+}
+.tab[aria-selected='true'],
+.tab[aria-pressed='true'] {
+  background: transparent;
+  color: var(--black);
+}
+.tab[aria-selected='true']::after,
+.tab[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--red);
+}
+.choice {
+  border-radius: 16px;
+}
+.choice--on {
+  border-color: var(--black);
+}
+.toast {
+  border-radius: 24px;
+  background: var(--black);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.login__card {
+  border: 1px solid var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* The work you are looking at: a sunken row, no coloured edge. */
+.queue-item--on {
+  background: var(--chip);
+  box-shadow: none;
+}
+.queue-item:hover {
+  background: var(--bg);
+}
+.queue-item--on:hover {
+  background: var(--chip);
+}
+/* The action of a page stays at the right, also when the title pushes it to a new line. */
+.head > :last-child:not(:first-child) {
+  margin-left: auto;
 }

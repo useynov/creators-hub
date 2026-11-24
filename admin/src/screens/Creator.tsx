@@ -387,7 +387,7 @@ export function Creator() {
                   <span className="ellipsis">
                     {row.title} <span className="tiny">· {f.day(row.createdAt)}</span>
                   </span>
-                  <span className="strong" style={{ color: row.amount < 0 ? 'var(--red-dark)' : 'var(--green)' }}>
+                  <span className="strong" style={{ color: row.amount < 0 ? 'var(--black)' : 'var(--green)' }}>
                     {row.amount > 0 ? '+' : '−'}
                     {f.num(Math.abs(row.amount))}
                   </span>

@@ -49,7 +49,7 @@ export function Creators() {
 
   const onSort = (key: CreatorSort) => set({ sort: key, dir: sort === key && dir === 'asc' ? 'desc' : key === 'name' || key === 'city' || key === 'status' ? 'asc' : 'desc' });
   const filtered = Boolean(get('q') || get('status') || get('city') || get('level') || get('tag') || band);
-  const cols = '2.2fr 1fr 1.1fr 0.7fr 0.9fr 0.9fr 0.7fr 1.3fr 1.2fr';
+  const cols = '2.8fr 1fr 1.1fr 0.7fr 0.9fr 0.9fr 0.7fr 1.2fr 1.2fr';
   const head = (label: string, key: CreatorSort, right = false) => (
     <SortHead label={label} sortKey={key} sort={sort} dir={dir} onSort={onSort} align={right ? 'right' : undefined} />
   );
@@ -174,8 +174,9 @@ export function Creators() {
                 <div className="who">
                   <Avatar name={row.name} url={row.avatarUrl} />
                   <div className="cell-main">
-                    <span className="ellipsis">
-                      {row.name} {row.sample && <Badge tone="mute">{t.common.sample}</Badge>}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <span className="ellipsis">{row.name}</span>
+                      {row.sample && <Badge tone="mute">{t.common.sample}</Badge>}
                     </span>
                     <span className="tiny muted ellipsis">{handle(row.instagram)}</span>
                   </div>

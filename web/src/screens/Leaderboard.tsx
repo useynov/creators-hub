@@ -19,10 +19,8 @@ export function Leaderboard() {
     <Screen>
       <TopBar back="/profile" backLabel="Back to profile" title="Leaderboard" />
       <main className="body">
-        <div className="stack" style={{ gap: 6 }}>
-          <h1 className="display" style={{ fontSize: 30 }}>
-            Top creators
-          </h1>
+        <div className="stack" style={{ gap: 10 }}>
+          <h1 className="display t-display">Top creators</h1>
           <p className="muted" style={{ fontSize: 15 }}>
             {period === 'month' ? monthName() : 'All time'}, by views on Hub tasks
           </p>
@@ -44,12 +42,12 @@ export function Leaderboard() {
           )
         ) : (
           <>
-            <section className="panel panel--red" style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 16 }}>
-              <div className="nums" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1 }}>
-                {data.me ? `#${data.me.rank}` : '–'}
+            <section className="panel panel--red on-red" style={{ flexDirection: 'row', alignItems: 'center', gap: 16, padding: 20 }}>
+              <div className="index" style={{ fontSize: 48, color: 'var(--white)' }}>
+                {data.me ? data.me.rank : '–'}
               </div>
               <div className="stack" style={{ flex: 1, gap: 2 }}>
-                <div style={{ fontSize: 16, fontWeight: 800 }}>Your place</div>
+                <div style={{ fontSize: 17, fontWeight: 700 }}>Your place</div>
                 <div className="nums" style={{ fontSize: 14, fontWeight: 500 }}>
                   {data.me ? `${num(data.me.views)} views ${scope}` : `No approved posts ${scope} yet`}
                 </div>
@@ -57,33 +55,33 @@ export function Leaderboard() {
             </section>
 
             {data.top.length ? (
-              <ol className="rows" style={{ listStyle: 'none', margin: 0, padding: '4px 16px' }}>
+              <ol className="rows" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                 {data.top.map((row) => {
                   const first = row.rank === 1;
                   return (
-                    <li key={row.rank} className="row" style={{ alignItems: 'center', padding: '12px 0', color: 'var(--ink)' }}>
-                      <div className="nums" style={{ width: 28, fontSize: 18, fontWeight: 800, color: first ? 'var(--red-dark)' : 'var(--ink)' }}>
+                    <li key={row.rank} className="row" style={{ alignItems: 'center', padding: '12px 0', color: 'var(--black)' }}>
+                      <div className="index" style={{ width: 30, fontSize: 24, color: first ? 'var(--red)' : 'var(--black)' }}>
                         {row.rank}
                       </div>
                       <div
                         className="avatar"
-                        style={{ width: 40, height: 40, fontSize: 14, fontWeight: 700, background: first ? 'var(--ink)' : 'var(--line)', color: first ? 'var(--white)' : 'var(--ink)' }}
+                        style={{ width: 40, height: 40, fontSize: 14, fontWeight: 700, background: first ? 'var(--black)' : 'var(--line-soft)', color: first ? 'var(--white)' : 'var(--black)' }}
                       >
                         {row.handle.replace(/^@/, '').charAt(0)}
                       </div>
-                      <div className="stack" style={{ flex: 1, gap: 1, minWidth: 0, textAlign: 'left', fontWeight: 700 }}>
+                      <div className="stack" style={{ flex: 1, gap: 1, minWidth: 0, textAlign: 'left', fontWeight: 600 }}>
                         <div style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {row.handle}
                           {row.isMe ? ' (you)' : ''}
                         </div>
                         {first && period === 'month' && settings.topPerformerBonus ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--red-dark)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 500, color: 'var(--muted)' }}>
                             <Icon name="trophy" size={14} stroke={2.2} />
                             <span>Gets the top performer bonus</span>
                           </div>
                         ) : null}
                       </div>
-                      <div className="nums" style={{ fontSize: 15, fontWeight: 800 }}>
+                      <div className="nums" style={{ fontSize: 15, fontWeight: 700 }}>
                         {num(row.views)}
                       </div>
                     </li>
@@ -91,7 +89,7 @@ export function Leaderboard() {
                 })}
               </ol>
             ) : (
-              <div className="card empty">The board is empty so far. The first approved post takes the top spot.</div>
+              <p className="empty" style={{ padding: '12px 0' }}>The board is empty so far. The first approved post takes the top spot.</p>
             )}
 
             <p className="note">

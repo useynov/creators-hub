@@ -1,16 +1,30 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 
 const MEDIA = mkdtempSync(join(tmpdir(), 'hub-photos-'));
 process.env.MEDIA_DIR = MEDIA;
 
-const { openDb, syncContent } = await import('./db.js');
+const { openDb, syncContent: sync } = await import('./db.js');
+const { rootDir } = await import('./config.js');
 const { localizeSeedPhotos, remoteSeedPhotos } = await import('./photos.js');
 
+// The seed file of the app points at our own brand photos. A team may still paste remote
+// addresses into it, so the copying is tested on a seed file where every photo is remote.
+const SEED = join(MEDIA, 'seed.json');
+{
+  const seed = JSON.parse(readFileSync(resolve(rootDir, 'content/seed.json'), 'utf8')) as Record<string, Array<Record<string, unknown>>>;
+  const remote = (name: string) => `https://photos.example/${name}.jpg`;
+  for (const task of seed.tasks!) task.coverUrl = remote(`task-${String(task.id)}`);
+  for (const event of seed.events!) event.coverUrl = remote(`event-${String(event.id)}`);
+  for (const item of seed.shop!) item.imageUrl = remote(`shop-${String(item.id)}`);
+  for (const item of seed.news!) item.coverUrl = remote(`event-${String(item.id)}`);
+  writeFileSync(SEED, JSON.stringify(seed));
+}
 const db = openDb(':memory:');
+const syncContent = (target: typeof db) => sync(target, SEED);
 syncContent(db);
 
 const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(64, 7)]);

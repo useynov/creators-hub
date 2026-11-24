@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.0.0 (24 November 2026)
+
+A new look for the creator app and the admin, built on the Coca-Cola design system. Nothing changes in how the Hub works: the same screens, the same data, the same bot.
+
+**The idea: one red thread.** A white and black base, one red (`#F40009`), a thin red line that runs through the screens, film photos, big numerals.
+
+**Creator app**
+- **Font:** Onest instead of Figtree. It has the same character and it has Cyrillic, so Russian and Kazakh will look right when the app is translated.
+- **Colour:** the warm beige is gone. Pages are white, text is black, and red is kept for the brand moment of a screen and its one main action.
+- **Shape:** everything you can press is a pill; cards have one radius. Lists sit on the page between hairlines instead of in boxes.
+- **The thread:** level progress, the timeline of a work in review, the tab you are on and the tabs inside a screen are all the same thin red line.
+- **Home** leads with one photo, the next task. Level, the next event, news and the chat are quiet rows under it.
+- **Tasks** are photo cards with the title and the reward on the photo. A task opens edge to edge, with numbered steps and the main button always in reach at the bottom.
+- **Events** are led by the day of the month, set big. No photo needed.
+- **Shop:** merch is shown as flat colour tiles with the name set big. We have no real product photos yet and a made-up one would be a promise we cannot keep. A real photo, once added as `imageUrl`, takes the tile.
+- **Welcome and the paid offer** open with a brand photo.
+- One uppercase line per screen at most, sentence case everywhere else. No icons in coloured circles.
+
+**Admin**
+- The same font, colours and pills. The side menu is black; the page you are on is white.
+- **Overview:** what waits for a person is four cards led by the count, red only when it is not zero. The numbers of the month are one strip, not a row of equal boxes.
+- Links are black and underlined; red is not a link colour. Tabs are words on a hairline. The selected work in Review is a sunken row, without a coloured edge.
+- Creator names are no longer cut by the "sample" badge. The page action stays at the right when a long title wraps.
+
+**Photos**
+- The nine AI-made photos are gone. The app now uses cuts of the four brand photos of the design system (`scripts/brand-photos.mjs`).
+- **They are not in this repository**, which is public: they live in `content/brand/` on the server only. See README, "Brand photos". Without them the app works and photo blocks turn flat.
+
+**Going back to 2.1.1.** On the server the previous image is kept as `creators-hub:rollback-v2.1.1-20261124` and the data as `~/creators-hub-backups/data-20261124-before-v3.0.0`. The database is the same in both versions, so going back is only a change of image.
+
 ## 2.1.1 (24 November 2026)
 
 - The brand account creators must tag is **@cocacola_kaz** (Coca-Cola Kazakhstan, checked live). The earlier placeholder did not exist on Instagram.

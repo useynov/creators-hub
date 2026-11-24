@@ -6,7 +6,7 @@ import { setChrome } from '../telegram';
 import { Icon, type IconName } from './Icon';
 
 type Tone = 'light' | 'red' | 'dark';
-const TONE_COLOR: Record<Tone, string> = { light: '#F6F2EF', red: '#DC0A17', dark: '#1C1414' };
+const TONE_COLOR: Record<Tone, string> = { light: '#FFFFFF', red: '#F40009', dark: '#000000' };
 
 interface ScreenProps {
   /** Background of the whole screen. */
@@ -33,21 +33,27 @@ interface TopBarProps {
   right?: ReactNode;
   /** Render the title as the page heading (h1). */
   heading?: boolean;
+  /** Lay the bar over a photo: round glass buttons, no title. */
+  over?: boolean;
 }
 
-export function TopBar({ back, backLabel, title, light, right, heading }: TopBarProps) {
+export function TopBar({ back, backLabel, title, light, right, heading, over }: TopBarProps) {
+  if (over) {
+    return (
+      <header className="topbar topbar--over">
+        <Link to={back} aria-label={backLabel} className="topbar__back">
+          <Icon name="back" />
+        </Link>
+        {right}
+      </header>
+    );
+  }
   return (
     <header className={`topbar${light ? ' topbar--light' : ''}`}>
       <Link to={back} aria-label={backLabel} className="topbar__back">
         <Icon name="back" />
       </Link>
-      {heading ? (
-        <h1 className="topbar__title" style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>
-          {title}
-        </h1>
-      ) : (
-        <div className="topbar__title">{title}</div>
-      )}
+      {heading ? <h1 className="topbar__title">{title}</h1> : <div className="topbar__title">{title}</div>}
       {right}
     </header>
   );
@@ -122,21 +128,23 @@ export function DateBox({ date, monthHint, large, white }: DateBoxProps) {
 interface CoverProps {
   src: string | null;
   alt: string;
-  /** The box is sized before the picture arrives, so nothing jumps while it loads: a height is required. */
-  style: CSSProperties & { height: number };
+  /** The box is sized before the picture arrives, so nothing jumps while it loads: give a height, or `fill`. */
+  style?: CSSProperties;
+  /** Fill the parent (a `.lead` card or any positioned box) instead of taking a height. */
+  fill?: boolean;
   /** Above the fold (the first thing on a screen): load at once instead of lazily. */
   eager?: boolean;
 }
 
 /**
  * A photo in a box of fixed height that it fills (object-fit: cover). With no address, or when
- * the picture does not load, a calm warm block takes its place: never a broken image, never text.
+ * the picture does not load, a flat quiet block takes its place: never a broken image, never text.
  */
-export function Cover({ src, alt, style, eager }: CoverProps) {
+export function Cover({ src, alt, style, eager, fill }: CoverProps) {
   const [failed, setFailed] = useState<string | null>(null);
   const show = src && failed !== src;
   return (
-    <div className={`photo${show ? '' : ' photo--empty'}`} style={style}>
+    <div className={`photo${fill ? ' photo--fill' : ''}${show ? '' : ' photo--empty'}`} style={style}>
       {show ? (
         <img src={src} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" onError={() => setFailed(src)} />
       ) : (
@@ -157,8 +165,8 @@ export function Avatar({ src, name, size, light }: { src: string | null; name: s
         width: size,
         height: size,
         fontSize: Math.round(size * 0.4),
-        background: light ? 'var(--white)' : 'var(--pink)',
-        color: 'var(--red-dark)',
+        background: light ? 'var(--white)' : 'var(--black)',
+        color: light ? 'var(--black)' : 'var(--white)',
         overflow: 'hidden',
       }}
     >
@@ -204,7 +212,7 @@ export function Brief({ text, dark }: { text: string; dark?: boolean }) {
     <section className={`brief${dark ? ' brief--dark' : ''}`}>
       <button type="button" className="brief__toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen((value) => !value)}>
         <Icon name="doc" size={20} />
-        <span>Detailed brief</span>
+        <span>Read the full brief</span>
         <span className="brief__chevron" style={{ transform: open ? 'rotate(90deg)' : undefined }}>
           <Icon name="right" size={18} />
         </span>

@@ -319,3 +319,10 @@ test('a member from v1 (no birth date, no pulled profile) goes through the setup
   assert.deepEqual([mine.status, mine.data.entry?.status, mine.data.entry?.views], [200, 'approved', 900]);
   assert.equal((await call<TaskView>(veteran, 'POST', '/api/tasks/new-year-post/join')).data.entry?.status, 'joined');
 });
+
+test('brand photos: only .webp names are served, and a missing file is a plain 404', async () => {
+  assert.equal((await app.request('/brand/no-such-photo.webp')).status, 404);
+  // Anything that is not a simple .webp name never reaches the folder: it falls through to the app.
+  const other = await app.request('/brand/..%2Fseed.json');
+  assert.notEqual(other.headers.get('content-type'), 'image/webp');
+});

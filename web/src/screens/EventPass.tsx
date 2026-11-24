@@ -76,25 +76,23 @@ export function EventPass() {
     <Screen tone="red">
       <TopBar back={`/events/${id}`} backLabel="Back to the event" title="Your pass" light />
       <main className="body" style={{ gap: 16 }}>
-        <section className="card card--col" style={{ borderRadius: 28, padding: '24px 20px', alignItems: 'center', gap: 18, textAlign: 'center' }}>
+        <section className="card card--col" style={{ borderColor: 'transparent', padding: '28px 20px 20px', alignItems: 'center', gap: 20, textAlign: 'center' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--red-dark)' }}>
-              {event.checkedIn ? 'You are checked in' : 'You are on the list'}
-            </div>
-            <h1 className="display" style={{ fontSize: 28 }}>
+            <div className="label" style={{ color: 'var(--red-600)' }}>{event.checkedIn ? 'You are checked in' : 'You are on the list'}</div>
+            <h1 className="display" style={{ fontSize: 30, color: 'var(--black)' }}>
               {event.title}
             </h1>
             <div className="muted" style={{ fontSize: 15 }}>
               {[dayLong(event.date!), event.place, event.time].filter(Boolean).join(' · ')}
             </div>
           </div>
-          <div style={{ width: 220, height: 220, borderRadius: 20, border: '3px solid var(--ink)', padding: 14, background: 'var(--white)' }}>
+          <div style={{ width: 220, height: 220, background: 'var(--white)' }}>
             <Qr value={payload} />
           </div>
-          <div style={{ width: '100%', borderTop: '2px dashed var(--border)' }} />
+          <div style={{ width: '100%', borderTop: '1.5px dashed var(--border)' }} />
           <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', gap: 12 }}>
             <div className="stack" style={{ gap: 2, minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 800 }}>{me.firstName}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--black)' }}>{me.firstName}</div>
               {handle && (
                 <div className="muted" style={{ fontSize: 14 }}>
                   {handle}
@@ -105,7 +103,7 @@ export function EventPass() {
           </div>
         </section>
 
-        <p style={{ color: 'var(--white)', fontSize: 15, lineHeight: 1.45, textAlign: 'center', fontWeight: 500 }}>
+        <p style={{ fontSize: 15, lineHeight: 1.45, textAlign: 'center', fontWeight: 500 }}>
           Show this code at the entrance.
           {settings.checkinCoins > 0 && !event.checkedIn ? ` +${coins(settings.checkinCoins)} when it is scanned.` : ''}
         </p>

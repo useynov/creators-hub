@@ -159,7 +159,7 @@ test('task: editing a seed task makes it the admin’s; the content file no long
   const row = db.prepare('SELECT title, reward, cover_url FROM tasks WHERE id = ?').get('caravan-shoot') as { title: string; reward: number; cover_url: string };
   assert.equal(row.title, 'Caravan, edited');
   assert.equal(row.reward, 7);
-  assert.match(row.cover_url, /^https:\/\//, 'the cover survived the edit');
+  assert.equal(row.cover_url, '/brand/task-shoot.webp', 'the cover survived the edit');
 });
 
 test('cover upload: images only, by content, into the public zone', async () => {

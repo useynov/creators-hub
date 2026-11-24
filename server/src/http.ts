@@ -84,6 +84,21 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
     });
   });
 
+  // Brand photos (welcome, task covers, the offer). They are copied next to the code on the
+  // server and are not in git, so a missing file is normal: the app shows a flat block instead.
+  app.get('/brand/:file{[a-z0-9-]+\\.webp}', async (c) => {
+    try {
+      const data = await readFile(join(config.brandDir, c.req.param('file')));
+      return c.body(new Uint8Array(data), 200, {
+        'Content-Type': 'image/webp',
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+      });
+    } catch {
+      return c.notFound();
+    }
+  });
+
   // The admin panel has its own login and its own routes. They must be registered
   // before the mini app's auth below, which knows nothing about admin sessions.
   registerAdminRoutes(app, db);

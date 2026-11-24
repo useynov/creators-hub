@@ -45,6 +45,25 @@ export function Task() {
   }
 }
 
+/** The cover runs edge to edge and carries the title, the reward and how the task is reviewed. */
+function TaskHero({ task, mode }: { task: TaskView; mode: string }) {
+  return (
+    <div className="lead lead--square" style={{ minHeight: 348 }}>
+      <Cover src={task.coverUrl} alt="" fill eager />
+      <TopBar over back="/tasks" backLabel="Back to tasks" title="Task" />
+      <div className="lead__body" style={{ gap: 12 }}>
+        <div className="pills">
+          <span className="chip chip--white nums">+{coins(task.reward)}</span>
+          <span className="chip glass">{mode}</span>
+        </div>
+        <h1 className="lead__title" style={{ fontSize: 32 }}>
+          {task.title}
+        </h1>
+      </div>
+    </div>
+  );
+}
+
 const reviewLine = (reviewTime: string | null): string =>
   reviewTime ? `The team usually answers within ${reviewTime}.` : 'The team will answer soon.';
 
@@ -67,18 +86,8 @@ function Brief({ task }: { task: TaskView }) {
   const { me, settings } = useHub();
   return (
     <Screen>
-      <TopBar back="/tasks" backLabel="Back to tasks" title="Task" />
-      <main className="body" style={{ paddingTop: 0 }}>
-        <Cover src={task.coverUrl} alt={task.title} style={{ height: 200, borderRadius: 20 }} eager />
-        <div className="stack" style={{ gap: 10 }}>
-          <h1 className="display" style={{ fontSize: 26, lineHeight: 1.15 }}>
-            {task.title}
-          </h1>
-          <div className="pills">
-            <span className="chip chip--red nums">+{coins(task.reward)}</span>
-            <span className="chip chip--white">Post first, we check after</span>
-          </div>
-        </div>
+      <TaskHero task={task} mode="Post first, we check after" />
+      <main className="body" style={{ paddingTop: 20, gap: 24 }}>
 
         <dl className="rows" style={{ margin: 0 }}>
           {task.date && (
@@ -108,22 +117,27 @@ function Brief({ task }: { task: TaskView }) {
         <AccountNote status={me.accountStatus} note={me.accountNote} confirmTime={settings.accountConfirmTime} />
 
         {(task.steps.length > 0 || task.summary) && (
-          <div className="stack" style={{ gap: 8 }}>
+          <section className="section">
             <h2 className="eyebrow">What to do</h2>
             {task.steps.length ? (
-              <ol className="stack" style={{ paddingLeft: 22, gap: 6, fontSize: 15, lineHeight: 1.4 }}>
-                {task.steps.map((step) => (
-                  <li key={step}>{step}</li>
+              <ol className="steps steps--plain" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {task.steps.map((step, index) => (
+                  <li key={step} className="step">
+                    <span className="step__n" aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    <span className="step__text">{step}</span>
+                  </li>
                 ))}
               </ol>
             ) : (
-              <p style={{ fontSize: 15, lineHeight: 1.45 }}>{task.summary}</p>
+              <p style={{ fontSize: 16, lineHeight: 1.5 }}>{task.summary}</p>
             )}
-          </div>
+          </section>
         )}
 
         {task.viewsBonus && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--ink-2)' }}>
+          <div className="t-sm" style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--black)' }}>
             <Icon name="trophy" size={18} />
             <span>Bonus for the most views on this task</span>
           </div>
@@ -131,25 +145,21 @@ function Brief({ task }: { task: TaskView }) {
 
         {task.brief && <DetailedBrief text={task.brief} />}
 
-        <div className="spacer" />
+        <div className="dock">
         {task.closed ? (
-          <p className="empty" style={{ padding: 12 }}>
-            The deadline for this task has passed.
-          </p>
+          <p className="muted t-sm">The deadline for this task has passed.</p>
         ) : task.locked ? (
           <button type="button" className="btn" disabled>
             Locked
           </button>
         ) : !joined && task.full ? (
-          <p className="empty" style={{ padding: 12 }}>
-            All places on this task are taken.
-          </p>
+          <p className="muted t-sm">All places on this task are taken.</p>
         ) : joined ? (
           <div className="actions">
             <Link to={`/tasks/${task.id}/submit`} className="btn">
               Send the link
             </Link>
-            <div className="textlink" style={{ color: 'var(--green)', gap: 6 }}>
+            <div className="t-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, fontWeight: 600, color: 'var(--green)' }}>
               <Icon name="check" size={18} stroke={2.4} />
               <span>You are in</span>
             </div>
@@ -164,6 +174,7 @@ function Brief({ task }: { task: TaskView }) {
             </Link>
           </div>
         )}
+        </div>
       </main>
     </Screen>
   );
@@ -192,31 +203,20 @@ function DraftBrief({ task }: { task: TaskView }) {
 
   return (
     <Screen>
-      <TopBar back="/tasks" backLabel="Back to tasks" title="Task" />
-      <main className="body" style={{ gap: 16, paddingTop: 0 }}>
-        <Cover src={task.coverUrl} alt={task.title} style={{ height: 180, borderRadius: 20 }} eager />
-        <div className="stack" style={{ gap: 10 }}>
-          <h1 className="display" style={{ fontSize: 26, lineHeight: 1.15 }}>
-            {task.title}
-          </h1>
-          <div className="pills">
-            <span className="chip chip--red nums">+{coins(task.reward)}</span>
-            <span className="chip chip--amber">Draft first, then post</span>
-          </div>
-          <p style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--ink-2)' }}>
-            {[task.summary, `Post by ${day(task.deadline)}.`].filter(Boolean).join(' ')}
-          </p>
-        </div>
+      <TaskHero task={task} mode="Draft first, then post" />
+      <main className="body" style={{ gap: 24, paddingTop: 20 }}>
+        <p style={{ fontSize: 16, lineHeight: 1.5 }}>{[task.summary, `Post by ${day(task.deadline)}.`].filter(Boolean).join(' ')}</p>
         <AccountNote status={me.accountStatus} note={me.accountNote} confirmTime={settings.accountConfirmTime} />
 
-        <div className="card steps">
+        <section className="section">
           <h2 className="eyebrow">Four steps</h2>
+          <div className="steps">
           {steps.map((step, index) => {
             const number = index + 1;
             const state = number < current ? 'done' : number === current ? 'now' : 'todo';
             return (
               <div key={step.title} className="step" data-state={state}>
-                <div className="step__n">{state === 'done' ? <Icon name="check" size={16} stroke={3} /> : number}</div>
+                <div className="step__n">{state === 'done' ? <Icon name="check" size={26} stroke={3} /> : number}</div>
                 <div className="step__text">
                   {step.title}
                   <small>{step.text}</small>
@@ -224,29 +224,26 @@ function DraftBrief({ task }: { task: TaskView }) {
               </div>
             );
           })}
-        </div>
+          </div>
+        </section>
 
         {task.brief && <DetailedBrief text={task.brief} />}
 
-        <div className="spacer" />
+        <div className="dock">
         {task.closed ? (
-          <p className="empty" style={{ padding: 12 }}>
-            The deadline for this task has passed.
-          </p>
+          <p className="muted t-sm">The deadline for this task has passed.</p>
         ) : task.locked ? (
           <button type="button" className="btn" disabled>
             Locked
           </button>
         ) : !task.entry && task.full ? (
-          <p className="empty" style={{ padding: 12 }}>
-            All places on this task are taken.
-          </p>
+          <p className="muted t-sm">All places on this task are taken.</p>
         ) : draftApproved ? (
           <div className="actions">
             <Link to={`/tasks/${task.id}/submit`} className="btn">
               Send the link
             </Link>
-            <div className="textlink" style={{ color: 'var(--green)', gap: 6 }}>
+            <div className="t-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, fontWeight: 600, color: 'var(--green)' }}>
               <Icon name="check" size={18} stroke={2.4} />
               <span>Your draft is approved: post it</span>
             </div>
@@ -262,6 +259,7 @@ function DraftBrief({ task }: { task: TaskView }) {
             </Link>
           </div>
         )}
+        </div>
       </main>
     </Screen>
   );
@@ -301,10 +299,7 @@ function InReview({ task }: { task: TaskView }) {
       <TopBar back="/tasks" backLabel="Back to tasks" title={task.title} />
       <main className="body" style={{ gap: 18 }}>
         <section className="panel panel--dark">
-          <div className="panel__icon">
-            <Icon name="clock" size={28} />
-          </div>
-          <h1 className="display" style={{ fontSize: 30 }}>
+          <h1 className="display" style={{ fontSize: 34 }}>
             {draft ? 'Draft in review' : 'In review'}
           </h1>
           <p className="lede">
@@ -313,10 +308,10 @@ function InReview({ task }: { task: TaskView }) {
           </p>
         </section>
 
-        <div className="card timeline">
+        <div className="timeline">
           {rows.map((row) => (
             <div key={row.label} className="timeline__row" data-state={row.state}>
-              <span className={`dot dot--${row.state}`}>{row.state === 'done' && <Icon name="check" size={16} stroke={3} />}</span>
+              <span className={`dot dot--${row.state}`}>{row.state === 'done' && <Icon name="check" size={14} stroke={3} />}</span>
               <span>{row.label}</span>
               <span>{row.when}</span>
             </div>
@@ -362,16 +357,13 @@ function NeedsChanges({ task }: { task: TaskView }) {
       <TopBar back="/tasks" backLabel="Back to tasks" title={task.title} />
       <main className="body" style={{ gap: 18 }}>
         <section className="panel panel--amber">
-          <div className="panel__icon">
-            <Icon name="alert" size={28} />
-          </div>
-          <h1 className="display" style={{ fontSize: 30 }}>
+          <h1 className="display" style={{ fontSize: 34 }}>
             Needs changes
           </h1>
           <p className="lede">Almost there. Fix one thing and send it again. Your coins are waiting.</p>
         </section>
 
-        <div className="card card--col" style={{ gap: 10 }}>
+        <div className="card card--col card--flat" style={{ gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div className="avatar" style={{ width: 36, height: 36, background: 'var(--red)', color: 'var(--white)', fontSize: 12 }}>
               {settings.brandInitials}
@@ -391,7 +383,7 @@ function NeedsChanges({ task }: { task: TaskView }) {
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '0 4px', fontSize: 14, lineHeight: 1.45, color: 'var(--ink-2)' }}>
           <Icon name="refresh" size={20} />
           <div>
-            You can fix and resend <strong style={{ color: 'var(--ink)' }}>as many times as you need</strong> until{' '}
+            You can fix and resend <strong style={{ color: 'var(--black)' }}>as many times as you need</strong> until{' '}
             {dayTime(task.deadline)}.
           </div>
         </div>
@@ -421,45 +413,34 @@ function Approved({ task }: { task: TaskView }) {
 
   return (
     <Screen top="red">
-      <section className="hero hero--round" style={{ padding: '56px 24px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
-        <div className="avatar" style={{ width: 64, height: 64, background: 'var(--white)', color: 'var(--red-dark)' }}>
-          <Icon name="check" size={34} stroke={3} />
-        </div>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>Approved</div>
-        <h1 className="display nums" style={{ fontSize: 64, lineHeight: 1 }}>
+      <section className="hero" style={{ padding: '56px 20px 28px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="label">Approved</div>
+        <h1 className="display nums" style={{ fontSize: 68 }}>
           +{coins(reward)}
         </h1>
-        <div style={{ fontSize: 16, lineHeight: 1.4, fontWeight: 500 }}>{task.title}</div>
+        <div style={{ fontSize: 17, lineHeight: 1.4, fontWeight: 500, maxWidth: '26ch' }}>{task.title}</div>
       </section>
 
-      <main className="body" style={{ paddingTop: 20 }}>
+      <main className="body" style={{ paddingTop: 24, gap: 24 }}>
         <div className="grid2">
-          <div className="card card--col" style={{ gap: 4 }}>
-            <div className="muted" style={{ fontSize: 13, fontWeight: 600 }}>
-              Your balance
-            </div>
-            <div className="nums" style={{ fontSize: 26, fontWeight: 800 }}>
-              {coins(me.balance)}
-            </div>
+          <div className="tile">
+            <b>{coins(me.balance)}</b>
+            <span>Your balance</span>
           </div>
-          <div className="card card--col" style={{ gap: 4 }}>
-            <div className="muted" style={{ fontSize: 13, fontWeight: 600 }}>
-              Your rating
-            </div>
-            <div className="nums" style={{ fontSize: 26, fontWeight: 800 }}>
-              {me.rating}{' '}
-              {entry.ratingDelta ? (
-                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--green)' }}>+{entry.ratingDelta}</span>
-              ) : null}
-            </div>
+          <div className="tile">
+            <b>
+              {me.rating}
+              {entry.ratingDelta ? <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)' }}> +{entry.ratingDelta}</span> : null}
+            </b>
+            <span>Your rating</span>
           </div>
         </div>
 
         <StoryAsk publications={task.publications} />
         {task.publications.length > 0 && <Publications task={task} replace={false} />}
 
-        <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <Icon name="trophy" color="var(--red-dark)" />
+        <div className="card card--flat" style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <Icon name="trophy" color="var(--black)" />
           <div className="stack" style={{ gap: 4 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>The views still count</div>
             <div className="muted" style={{ fontSize: 14, lineHeight: 1.45 }}>
@@ -496,10 +477,8 @@ function Checking({ task, onDone }: { task: TaskView; onDone: () => void }) {
       <TopBar back="/tasks" backLabel="Back to tasks" title={task.title} />
       <main className="body" style={{ gap: 18 }}>
         <section className="panel panel--dark" role="status">
-          <div className="panel__icon">
-            <div className="spinner" style={{ width: 26, height: 26 }} />
-          </div>
-          <h1 className="display" style={{ fontSize: 30 }}>
+          <div className="spinner" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'var(--white)' }} />
+          <h1 className="display" style={{ fontSize: 34 }}>
             Checking your link
           </h1>
           <p className="lede">
@@ -547,18 +526,14 @@ function numbersOf(publication: PublicationView): ReactNode {
 /** Each link with its numbers so far. Measured at sending, after 24 hours, 7 days and 14 days. */
 function Publications({ task, replace }: { task: TaskView; replace: boolean }) {
   return (
-    <div className="card card--col" style={{ gap: 12, padding: '14px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+    <section className="section">
+      <div className="section__head">
         <h2 className="eyebrow">Your {task.publications.length > 1 ? 'publications' : 'publication'}</h2>
-        {replace && (
-          <Link to={`/tasks/${task.id}/submit`} className="textlink" style={{ fontSize: 14, minHeight: 0 }}>
-            Replace
-          </Link>
-        )}
+        {replace && <Link to={`/tasks/${task.id}/submit`}>Replace</Link>}
       </div>
       {task.publications.map((publication) => (
         <div key={publication.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <span className="chip chip--sm" style={{ background: 'var(--bg)', color: 'var(--ink-2)' }}>
+          <span className="chip chip--sm" style={{ background: 'var(--line-soft)', color: 'var(--black)' }}>
             {KIND[publication.kind]}
           </span>
           <div className="stack" style={{ gap: 2, minWidth: 0, flex: 1 }}>
@@ -569,10 +544,8 @@ function Publications({ task, replace }: { task: TaskView; replace: boolean }) {
           </div>
         </div>
       ))}
-      <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
-        We count the numbers four times: when you send the link, after 24 hours, 7 days and 14 days.
-      </div>
-    </div>
+      <div className="muted t-cap">We count the numbers four times: when you send the link, after 24 hours, 7 days and 14 days.</div>
+    </section>
   );
 }
 
@@ -581,10 +554,10 @@ function StoryAsk({ publications }: { publications: PublicationView[] }) {
   const open = publications.find((publication) => publication.storyViewsOpen && publication.viewsSource !== 'creator');
   if (!open) return null;
   return (
-    <Link to={`/stories/${open.id}`} className="card card--row" style={{ gap: 12, padding: '14px 16px', background: 'var(--amber-bg)', color: 'var(--amber-ink)' }}>
+    <Link to={`/stories/${open.id}`} className="card card--row" style={{ gap: 12, padding: '14px 16px', background: 'var(--amber-bg)', borderColor: 'transparent', color: 'var(--amber-ink)' }}>
       <Icon name="eye" size={22} />
       <div className="stack" style={{ flex: 1, gap: 2 }}>
-        <div style={{ fontSize: 15, fontWeight: 800 }}>How many people saw your story?</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>How many people saw your story?</div>
         <div style={{ fontSize: 13 }}>Send us the number, it takes a minute.</div>
       </div>
       <Icon name="right" size={20} />

@@ -59,13 +59,17 @@ export function Redeem() {
     <Screen>
       <TopBar back="/shop" backLabel="Back to shop" title="Your order" />
       <form className="body" style={{ gap: 16 }} onSubmit={submit} noValidate>
-        <div className="card card--row" style={{ gap: 14, padding: 12 }}>
-          <Cover src={item.imageUrl} alt={`${item.title} photo`} style={{ width: 84, height: 84, borderRadius: 14, flexShrink: 0 }} eager />
-          <div className="stack" style={{ gap: 4 }}>
-            <h1 className="display" style={{ fontSize: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {item.imageUrl ? (
+            <Cover src={item.imageUrl} alt={`${item.title} photo`} style={{ width: 84, height: 84, borderRadius: 16, flexShrink: 0 }} eager />
+          ) : (
+            <div className="block block--red" style={{ width: 84, height: 84, flexShrink: 0, borderRadius: 16 }} aria-hidden="true" />
+          )}
+          <div className="stack" style={{ gap: 6 }}>
+            <h1 className="display" style={{ fontSize: 28 }}>
               {item.title}
             </h1>
-            <div className="nums" style={{ fontSize: 17, fontWeight: 800, color: 'var(--red-dark)' }}>
+            <div className="nums" style={{ fontSize: 16, fontWeight: 600, color: 'var(--black)' }}>
               {coins(item.price)}
             </div>
           </div>

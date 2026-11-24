@@ -3,7 +3,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import type { OfferView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { Brief, Loading, Problem, Screen, TopBar } from '../components/ui';
+import { Brief, Cover, Loading, Problem, Screen, TopBar } from '../components/ui';
 import { useAction, useHub, useToast } from '../hub';
 import { buzz } from '../telegram';
 
@@ -32,9 +32,7 @@ export function PaidOffer() {
       title="Paid offer"
       light
       right={
-        <span className="chip chip--white chip--sm" style={{ fontWeight: 800, padding: '6px 12px', borderRadius: 12 }}>
-          Partner
-        </span>
+        <span className="chip chip--white chip--sm">Partner</span>
       }
     />
   );
@@ -49,7 +47,7 @@ export function PaidOffer() {
           <Problem error={error} onRetry={() => void reload()} />
         ) : (
           <main className="body">
-            <p className="lede" style={{ color: 'var(--white)', padding: '24px 4px' }}>
+            <p className="lede" style={{ padding: '24px 0' }}>
               No open offers right now. When we have a paid campaign for you, the bot will message you.
             </p>
             <div className="spacer" />
@@ -64,20 +62,21 @@ export function PaidOffer() {
 
   return (
     <Screen tone="dark">
-      {bar}
-      <main className="body" style={{ gap: 16 }}>
-        <div className="stack" style={{ color: 'var(--white)', gap: 8 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            Only for you, {me.firstName}
-          </div>
-          <h1 className="display" style={{ fontSize: 32 }}>
+      <div className="lead lead--square" style={{ minHeight: 360 }}>
+        <Cover src="/brand/offer.webp" alt="" fill eager />
+        <TopBar over back="/tasks" backLabel="Back to tasks" title="Paid offer" right={<span className="chip glass">Partner</span>} />
+        <div className="lead__body" style={{ gap: 12 }}>
+          <div className="label">Paid offer · Only for you, {me.firstName}</div>
+          <h1 className="lead__title" style={{ fontSize: 34 }}>
             {offer.campaign}
           </h1>
         </div>
-
-        <section className="panel panel--red" style={{ padding: 20, gap: 4 }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>We pay per publication</div>
-          <div className="display nums" style={{ fontSize: 44, lineHeight: 1.05 }}>
+      </div>
+      <hr className="thread" />
+      <main className="body" style={{ gap: 24, paddingTop: 24 }}>
+        <section className="stack" style={{ gap: 8 }}>
+          <div className="t-sm muted">We pay per publication</div>
+          <div className="display nums" style={{ fontSize: 56 }}>
             {offer.fee} {settings.currencySign}
           </div>
         </section>
@@ -110,8 +109,7 @@ export function PaidOffer() {
           </p>
         </div>
 
-        <div className="spacer" />
-        <div className="actions">
+        <div className="dock actions" style={{ background: 'var(--black)' }}>
           <button type="button" className="btn" onClick={() => answer(true)} disabled={answering}>
             Accept the offer
           </button>

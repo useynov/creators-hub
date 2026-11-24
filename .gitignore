@@ -4,3 +4,6 @@ data
 .env
 *.log
 .DS_Store
+
+# Brand photos: internal material, kept out of this public repository (see scripts/brand-photos.mjs).
+content/brand/

@@ -146,9 +146,6 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
     return shell(
       <div className="body" style={{ gap: 20, padding }}>
         <section className="panel panel--amber">
-          <div className="panel__icon">
-            <Icon name="calendar" size={26} stroke={2.2} />
-          </div>
           <h1 className="display" style={{ fontSize: 28, lineHeight: 1.15 }}>
             You entered {dateInWords(birthDate)}. Is that right?
           </h1>
@@ -246,7 +243,7 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
             </div>
           </div>
         ) : (
-          <div className="card muted" style={{ borderRadius: 16, padding: '14px 16px', fontSize: 14, lineHeight: 1.45 }}>
+          <div className="card muted" style={{ padding: '14px 16px', fontSize: 14, lineHeight: 1.45 }}>
             <strong style={{ color: 'var(--ink)' }}>Your profile must be open.</strong> We never log in to your account and never
             ask for a password.
           </div>
@@ -299,7 +296,7 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
 
         {handleRow('ok', <Icon name="check" size={22} stroke={3} color="var(--green)" />)}
 
-        <section className="card card--col" style={{ borderRadius: 24, padding: 20, gap: 16 }}>
+        <section className="card card--col" style={{ padding: 20, gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <Avatar src={profile.avatarUrl} name={profile.fullName ?? profile.handle} size={72} />
             <div className="stack" style={{ gap: 2, minWidth: 0 }}>
@@ -423,9 +420,6 @@ function Connect({ mode }: { mode: 'setup' | 'change' }) {
     <div className="body" style={{ gap: 20, padding }}>
       {handleRow('warn', lock)}
       <section className="panel panel--amber">
-        <div className="panel__icon">
-          <Icon name={panel.icon} size={26} stroke={2.2} />
-        </div>
         <h1 className="display" style={{ fontSize: 28, lineHeight: 1.15 }}>
           {panel.title}
         </h1>

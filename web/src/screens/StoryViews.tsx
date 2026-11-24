@@ -73,7 +73,7 @@ export function StoryViews() {
   };
 
   const copyCard = (
-    <div className="card card--row" style={{ gap: 12, padding: 12, borderRadius: 18 }}>
+    <div className="card card--row" style={{ gap: 12, padding: 12 }}>
       <div className={`photo${copy ? '' : ' photo--empty'}`} style={{ width: 48, height: 84, borderRadius: 10 }}>
         {copy ? <img src={copy} alt="Your story" width={48} height={84} decoding="async" /> : <Icon name="image" size={20} stroke={1.6} />}
       </div>
@@ -99,9 +99,6 @@ export function StoryViews() {
         <TopBar back={back} backLabel="Back to the task" title={story.taskTitle} />
         <main className="body" style={{ gap: 16 }}>
           <section className="panel panel--dark">
-            <div className="panel__icon">
-              <Icon name="check" size={28} stroke={3} />
-            </div>
             <h1 className="display nums" style={{ fontSize: 30 }}>
               {num(story.views!)} views
             </h1>
