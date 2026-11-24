@@ -12,7 +12,7 @@ export type TaskStatus = 'draft' | 'active' | 'closed';
 export type PublicationKind = 'reel' | 'post' | 'story' | 'tiktok' | 'unknown';
 export type PublicationStatus = 'tracking' | 'final' | 'removed' | 'unreachable';
 export type CheckResult = 'pass' | 'fail' | 'unknown';
-export type OrderStatus = 'new' | 'packed' | 'shipped' | 'delivered';
+export type OrderStatus = 'new' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
 export type PayoutStatus = 'new' | 'paid' | 'rejected';
 export type SnapshotKind = 'submit' | 'h24' | 'd7' | 'd14';
 
@@ -554,13 +554,58 @@ export interface OrderRowView {
   id: number;
   creator: { id: number; name: string; instagram: string | null };
   title: string;
+  /** The cover of the item as it is now; null when it has no photo or is gone. */
+  imageUrl: string | null;
   size: string | null;
+  /** 'courier' goes to the address; 'message' is sent to the creator in Telegram. */
+  delivery: 'courier' | 'message';
   address: string;
   phone: string;
   coins: number;
   status: OrderStatus;
   createdAt: string;
   statusAt: string | null;
+  cancelledBy: 'creator' | 'team' | null;
+  cancelNote: string | null;
+}
+
+/** One item of the shop, as the team edits it. */
+export interface ShopItemAdmin {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  category: 'merch' | 'gift';
+  /** Photos, the cover first. Only photos uploaded here can be saved. */
+  images: string[];
+  sizes: string[];
+  delivery: 'courier' | 'message';
+  /** How many are left; null when the team does not count. */
+  stock: number | null;
+  perCreator: number | null;
+  visible: boolean;
+  /** Orders that were not cancelled, and those of them still waiting to be packed. */
+  ordered: number;
+  waiting: number;
+  updatedAt: string | null;
+}
+
+export interface ShopItemsList {
+  items: ShopItemAdmin[];
+}
+
+/** What the editor sends. `images` are addresses returned by the upload. */
+export interface ShopItemInput {
+  title: string;
+  description: string | null;
+  price: number;
+  category: 'merch' | 'gift';
+  images: string[];
+  sizes: string[];
+  delivery: 'courier' | 'message';
+  stock: number | null;
+  perCreator: number | null;
+  visible: boolean;
 }
 
 export interface OrderList extends Page<OrderRowView> {

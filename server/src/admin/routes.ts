@@ -19,6 +19,7 @@ import { creatorRoutes } from './creators.js';
 import { bad } from './input.js';
 import { inviteRoutes } from './invites.js';
 import { orderRoutes } from './orders.js';
+import { shopRoutes } from './shop.js';
 import { overviewRoutes } from './overview.js';
 import { payoutRoutes } from './payouts.js';
 import { seedPreview } from './preview.js';
@@ -119,6 +120,7 @@ export function registerAdminRoutes(app: Hono<any>, db: DB): void {
   reviewRoutes(api, db);
   reportRoutes(api, db);
   orderRoutes(api, db);
+  shopRoutes(api, db);
   payoutRoutes(api, db);
   teamRoutes(api, db);
 

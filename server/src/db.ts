@@ -427,6 +427,19 @@ export interface ShopItemRow {
   needs_size: number;
   sort: number;
   active: number;
+  description: string | null;
+  /** JSON array of photo addresses, the cover first. */
+  images: string | null;
+  /** JSON array of sizes on offer; null for an item without sizes. */
+  sizes: string | null;
+  /** How many are left; null when the team does not count. */
+  stock: number | null;
+  /** How many one creator may order; null for no limit. */
+  per_creator: number | null;
+  delivery: 'courier' | 'message';
+  /** 'seed' until someone edits the item on the admin site; then the file never touches it again. */
+  source: 'seed' | 'admin';
+  updated_at: string | null;
 }
 
 export interface OfferRow {
@@ -540,10 +553,13 @@ export interface OrderRow {
   size: string | null;
   address: string;
   phone: string;
-  status: 'new' | 'packed' | 'shipped' | 'delivered';
+  status: 'new' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
   created_at: string;
   status_at: string | null;
   status_by: number | null;
+  delivery: 'courier' | 'message';
+  cancelled_by: 'creator' | 'team' | null;
+  cancel_note: string | null;
 }
 
 export interface CashoutRow {
@@ -607,6 +623,20 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   // Who moved an order or a payout, and when.
   ['orders', 'status_at', 'TEXT'],
   ['orders', 'status_by', 'INTEGER'],
+  // The shop, managed on the admin site: a description, several photos (image_url stays the
+  // first of them), the sizes on offer, how many are left, a limit per creator, how it is delivered.
+  ['shop_items', 'description', 'TEXT'],
+  ['shop_items', 'images', 'TEXT'],
+  ['shop_items', 'sizes', 'TEXT'],
+  ['shop_items', 'stock', 'INTEGER'],
+  ['shop_items', 'per_creator', 'INTEGER'],
+  ['shop_items', 'delivery', "TEXT NOT NULL DEFAULT 'courier'"],
+  ['shop_items', 'source', "TEXT NOT NULL DEFAULT 'seed'"],
+  ['shop_items', 'updated_at', 'TEXT'],
+  // An order remembers how it is delivered, and who cancelled it and why.
+  ['orders', 'delivery', "TEXT NOT NULL DEFAULT 'courier'"],
+  ['orders', 'cancelled_by', 'TEXT'],
+  ['orders', 'cancel_note', 'TEXT'],
   ['cashouts', 'decided_at', 'TEXT'],
   ['cashouts', 'decided_by', 'INTEGER'],
   ['cashouts', 'note', 'TEXT'],
@@ -705,8 +735,11 @@ interface SeedFile {
     title: string;
     price: number;
     category?: 'merch' | 'gift';
+    description?: string | null;
     imageUrl?: string | null;
     needsSize?: boolean;
+    sizes?: string[];
+    delivery?: 'courier' | 'message';
   }>;
   news?: Array<{
     id: string;
@@ -723,9 +756,12 @@ interface SeedFile {
 /**
  * Mirrors content/seed.json into the database.
  *
- * Events, shop items and news: the file is the source of truth. Rows are upserted
- * by id, and anything removed from the file is hidden (never deleted, creators may
- * reference it).
+ * Events and news: the file is the source of truth. Rows are upserted by id, and
+ * anything removed from the file is hidden (never deleted, creators may reference it).
+ *
+ * Shop items: the file only seeds the shop. An item added or edited on the admin site
+ * (its source becomes 'admin') is never touched here, and the file never changes how
+ * many are left of anything.
  *
  * Tasks: the file only owns tasks whose source is 'seed'. A task created in the
  * admin panel, or a seed task the team has edited there (the admin sets its source
@@ -736,7 +772,7 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
 
   const run = db.transaction(() => {
     db.exec(
-      "UPDATE tasks SET active = 0 WHERE source = 'seed'; UPDATE events SET active = 0; UPDATE shop_items SET active = 0; UPDATE news SET active = 0;",
+      "UPDATE tasks SET active = 0 WHERE source = 'seed'; UPDATE events SET active = 0; UPDATE shop_items SET active = 0 WHERE source = 'seed'; UPDATE news SET active = 0;",
     );
 
     const task = db.prepare(`
@@ -802,10 +838,12 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
     );
 
     const item = db.prepare(`
-      INSERT INTO shop_items (id, title, price, category, image_url, needs_size, sort, active)
-      VALUES (@id, @title, @price, @category, @imageUrl, @needsSize, @sort, 1)
+      INSERT INTO shop_items (id, title, price, category, image_url, images, needs_size, sizes, description, delivery, sort, active, source)
+      VALUES (@id, @title, @price, @category, @imageUrl, @images, @needsSize, @sizes, @description, @delivery, @sort, 1, 'seed')
       ON CONFLICT(id) DO UPDATE SET title=excluded.title, price=excluded.price, category=excluded.category,
-        image_url=excluded.image_url, needs_size=excluded.needs_size, sort=excluded.sort, active=1`);
+        image_url=excluded.image_url, images=excluded.images, needs_size=excluded.needs_size, sizes=excluded.sizes,
+        description=excluded.description, delivery=excluded.delivery, sort=excluded.sort, active=1
+      WHERE shop_items.source = 'seed'`);
     (seed.shop ?? []).forEach((s, sort) =>
       item.run({
         id: s.id,
@@ -813,7 +851,11 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
         price: s.price,
         category: s.category ?? 'merch',
         imageUrl: s.imageUrl ?? null,
-        needsSize: s.needsSize ? 1 : 0,
+        images: s.imageUrl ? JSON.stringify([s.imageUrl]) : null,
+        needsSize: s.needsSize || s.sizes?.length ? 1 : 0,
+        sizes: s.sizes?.length ? JSON.stringify(s.sizes) : null,
+        description: s.description ?? null,
+        delivery: s.delivery ?? 'courier',
         sort,
       }),
     );

@@ -46,7 +46,8 @@ This is **version 2**. What changed, how to see which version is running and how
 | Lift an age refusal after a typo | `/allowage ID`, owners only |
 | Look at the Hub with sample creators | `/sampledata on` loads 20 made-up creators with work and reports, `/sampledata off` removes them. Owners only. Remove before real creators join |
 | Add or edit tasks | The admin site, Tasks. Tasks from `content/seed.json` are a starting set: once edited on the site, the file no longer overwrites them |
-| Add or edit events, shop, news | Edit `content/seed.json` and redeploy |
+| Add or edit shop items and their photos | The admin site, Shop. Items from `content/seed.json` only fill an empty shop: once edited on the site, the file no longer overwrites them |
+| Add or edit events, news | Edit `content/seed.json` and redeploy |
 
 Send `/help` to the bot as an admin for the full command list.
 
@@ -127,7 +128,7 @@ Run a single instance. The bot uses long polling, so two copies would fight over
 
 ## Content
 
-`content/seed.json` is the source of truth for tasks, events, shop items and news. On every start rows are added or updated by `id`. Anything removed from the file is hidden, never deleted, so a creator's history stays intact.
+`content/seed.json` is the source of truth for events and news, and a starting set for tasks and shop items. On every start rows are added or updated by `id`; a task or a shop item that was edited on the admin site is left alone. Anything removed from the file is hidden, never deleted, so a creator's history stays intact.
 
 A task:
 

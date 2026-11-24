@@ -16,6 +16,7 @@ import type {
 } from '../../../server/src/admin/types';
 import { api, query } from '../api';
 import { useI18n } from '../i18n';
+import { shrinkPhoto } from '../photo';
 import { Badge, Crumbs, Loading, Problem, useAction, useSession, useToast } from '../ui';
 
 const FORMATS: PublicationKind[] = ['reel', 'post', 'story', 'tiktok'];
@@ -246,7 +247,9 @@ function Editor({ task }: { task: TaskDetail | null }) {
 
   const upload = async (file: File) => {
     setUploading(true);
-    const saved = await run(() => api.upload<{ url: string }>('/uploads/cover', file));
+    // Phone photos are large: they are scaled down in the browser first.
+    const small = await shrinkPhoto(file);
+    const saved = await run(() => api.upload<{ url: string }>('/uploads/cover', small));
     setUploading(false);
     if (saved) setForm((current) => ({ ...current, coverUrl: saved.url, coverTouched: true }));
   };

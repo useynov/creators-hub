@@ -57,7 +57,8 @@ const WORDS = {
     phone: 'Телефон',
     coins: 'Монеты',
     date: 'Дата',
-    orderStatuses: { new: 'Новый', packed: 'Собран', shipped: 'Отправлен', delivered: 'Доставлен' },
+    orderStatuses: { new: 'Новый', packed: 'Собран', shipped: 'Отправлен', delivered: 'Доставлен', cancelled: 'Отменён' },
+    inTelegram: 'Отправить в Telegram',
   },
   en: {
     report: 'Report',
@@ -106,7 +107,8 @@ const WORDS = {
     phone: 'Phone',
     coins: 'Coins',
     date: 'Date',
-    orderStatuses: { new: 'New', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered' },
+    orderStatuses: { new: 'New', packed: 'Packed', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' },
+    inTelegram: 'Send in Telegram',
   },
 };
 
@@ -225,7 +227,7 @@ export async function ordersWorkbook(rows: OrderRowView[], lang: Lang): Promise<
       instagram: row.creator.instagram ? `@${row.creator.instagram}` : '',
       item: row.title,
       size: row.size ?? '',
-      address: row.address,
+      address: row.delivery === 'message' ? w.inTelegram : row.address,
       phone: row.phone,
       coins: row.coins,
       date: dayCell(row.createdAt),

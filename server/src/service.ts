@@ -828,65 +828,6 @@ export function wallet(db: DB, userId: number): WalletView {
   return { balance: balanceOf(db, userId), history };
 }
 
-export function shop(db: DB, userId: number): ShopView {
-  const items = db.prepare('SELECT * FROM shop_items WHERE active = 1 ORDER BY sort ASC').all() as ShopItemRow[];
-  return {
-    balance: balanceOf(db, userId),
-    items: items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      price: item.price,
-      category: item.category,
-      imageUrl: item.image_url,
-      needsSize: Boolean(item.needs_size),
-    })),
-  };
-}
-
-export function placeOrder(db: DB, user: UserRow, itemId: string, body: Record<string, unknown>): number {
-  const item = db.prepare('SELECT * FROM shop_items WHERE id = ? AND active = 1').get(itemId) as ShopItemRow | undefined;
-  if (!item) throw new HubError('item_not_found', 'This item is no longer in the shop.', 404);
-
-  const size = text(body.size, 8);
-  const address = text(body.address, 300);
-  const phone = text(body.phone, 30);
-  if (item.needs_size && !size) throw new HubError('size_required', 'Choose a size.');
-  if (!address) throw new HubError('address_required', 'Add a delivery address.');
-  if (!phone || phone.replace(/\D/g, '').length < 7) throw new HubError('phone_required', 'Add a phone number for the courier.');
-
-  const orderId = db.transaction(() => {
-    if (balanceOf(db, user.id) < item.price) throw new HubError('not_enough_coins', 'You do not have enough coins yet.');
-    const order = db
-      .prepare(`INSERT INTO orders (user_id, item_id, title, price, size, address, phone, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(user.id, item.id, item.title, item.price, item.needs_size ? size : null, address, phone, now());
-    db.prepare(`INSERT INTO ledger (user_id, amount, title, kind, ref, created_at) VALUES (?, ?, ?, 'order', ?, ?)`).run(
-      user.id,
-      -item.price,
-      item.title,
-      String(order.lastInsertRowid),
-      now(),
-    );
-    db.prepare('UPDATE users SET size = COALESCE(?, size), address = ?, phone = ? WHERE id = ?').run(
-      item.needs_size ? size : null,
-      address,
-      phone,
-      user.id,
-    );
-    return Number(order.lastInsertRowid);
-  })();
-
-  void notifyAdmins(
-    db,
-    [
-      `<b>Order #${orderId}</b>: ${esc(item.title)}${item.needs_size ? `, size ${esc(size)}` : ''} (${item.price} coins)`,
-      `Creator: ${creatorLine(user)}`,
-      `Address: ${esc(address)}`,
-      `Phone: ${esc(phone)}`,
-    ].join('\n'),
-  );
-  return balanceOf(db, user.id);
-}
-
 export function requestCashout(db: DB, user: UserRow, body: Record<string, unknown>): number {
   const { rateKzt, minCoins } = settings.cashout;
   if (levelRank(levelOf(user, ratingOf(db, user.id))) < levelRank('pro')) {
