@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.2.1 (24 November 2026)
+
+- **Older iPhones.** The build shortened the phone rule of the admin to a newer notation that iOS before 16.4 does not read, so those phones would have shown the laptop layout. Styles are now written out for phones a few years old (`cssTarget` in both Vite configs).
+- **Creator app, Home:** "Creators Hub" next to the logo no longer runs into the coin balance on a narrow phone.
+
 ## 3.2.0 (24 November 2026)
 
 The admin works on a phone. Nothing changes on a laptop.
