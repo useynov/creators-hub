@@ -11,6 +11,8 @@ const { createBot } = await import('./bot.js');
 const { openDb, syncContent } = await import('./db.js');
 const { setApi } = await import('./notify.js');
 const service = await import('./service.js');
+const account = await import('./account.js');
+const { idle } = await import('./background.js');
 
 const db = openDb(':memory:');
 syncContent(db);
@@ -79,8 +81,8 @@ test('/invite then /start: welcome and one button that opens the mini app', asyn
 test('review in the bot: submission reaches the team, comment and approval reach the creator', async () => {
   const user = service.getUser(db, 42)!;
   calls.length = 0;
-  service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/abc'] });
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/abc'] });
+  await idle();
   const toTeam = calls.find((call) => call.payload.chat_id === 900)!;
   assert.match(toTeam.payload.text, /New submission #1/);
   assert.equal(toTeam.payload.reply_markup.inline_keyboard[1][0].callback_data, 'nc:1');
@@ -93,7 +95,17 @@ test('review in the bot: submission reaches the team, comment and approval reach
   assert.equal(commented.find((call) => call.payload.chat_id === 42)!.payload.reply_markup.inline_keyboard[0][0].web_app.url, 'https://hub.example/tasks/caravan-shoot');
   assert.equal(service.oneTask(db, 42, 'caravan-shoot').entry?.comment, 'The truck is hard to see.');
 
-  service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/def'] });
+  await service.submitLinks(db, user, 'caravan-shoot', { links: ['https://instagram.com/reel/def'] });
+  await idle();
+
+  // The account is not confirmed yet: the reviewer is told why, and no coins move.
+  const early = await press(admin, 'ap:1:5', 'Resubmitted #1');
+  const alert = early.find((call) => call.method === 'answerCallbackQuery')!;
+  assert.equal(alert.payload.show_alert, true);
+  assert.match(alert.payload.text, /not confirmed[\s\S]*\/confirm 42, then approve again/);
+  assert.equal(service.balanceOf(db, 42), 0);
+
+  account.setAccountStatus(db, 42, 'confirmed', 900);
   const approved = await press(admin, 'ap:1:5', 'Resubmitted #1');
   assert.match(texts(approved, 42)[0]!, /\+5 coins are in your wallet/);
   assert.ok(approved.some((call) => call.method === 'editMessageText' && /Approved by Dana, score 5/.test(call.payload.text)));
@@ -205,8 +217,10 @@ test('demo mode: everyone on the invite list gets the team side, and /quiet stop
 
   // A tester's own submission comes back to them with the review buttons, and they approve it themselves.
   calls.length = 0;
-  service.submitLinks(db, service.getUser(db, 78)!, 'caravan-shoot', { links: ['https://instagram.com/reel/igor'] });
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  account.setAccountStatus(db, 78, 'confirmed', 900);
+  calls.length = 0;
+  await service.submitLinks(db, service.getUser(db, 78)!, 'caravan-shoot', { links: ['https://instagram.com/reel/igor'] });
+  await idle();
   const review = toChat([...calls], 78).find((call) => /New submission #\d+/.test(call.payload.text))!;
   const entryId = Number(review.payload.text.match(/New submission #(\d+)/)![1]);
   assert.equal(review.payload.reply_markup.inline_keyboard[1][0].callback_data, `nc:${entryId}`);
@@ -230,4 +244,158 @@ test('demo mode: everyone on the invite list gets the team side, and /quiet stop
   assert.deepEqual(team.teamChats(db), [900]);
   assert.doesNotMatch(texts(await say(igor, '/help'), 78)[0]!, /Team commands/);
   assert.doesNotMatch(texts(await say(igor, '/start'), 78).join('\n'), /Demo mode/);
+});
+
+test('/allowage: an age refusal stays until an owner lifts it, then the person can try again', async () => {
+  const typo = { id: 81, first_name: 'Typo' };
+  const team = await import('./team.js');
+  service.addInvite(db, '81');
+  db.prepare(`INSERT INTO age_refusals (telegram_id, created_at) VALUES (81, '2026-11-23T00:00:00.000Z')`).run();
+
+  // Refused: the bot says so kindly, nothing else opens, and the refusal does not wear off.
+  assert.match(texts(await say(typo, '/start'), 81)[0]!, /aged 18 and over/);
+  assert.match(texts(await say(typo, 'Hello?'), 81)[0]!, /aged 18 and over/);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users WHERE id = 81').get()!.n, 0, 'no user row comes back');
+
+  // Only an owner can lift it: not a creator, not a demo-mode tester.
+  await say(creator, '/allowage 81');
+  team.setDemoMode(db, true);
+  assert.match(texts(await say({ id: 78, first_name: 'Igor' }, '/allowage 81'), 78)[0]!, /Only the owners/);
+  team.setDemoMode(db, false);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM age_refusals WHERE telegram_id = 81').get()!.n, 1);
+
+  assert.match(texts(await say(admin, '/allowage someone'), 900)[0]!, /for example: \/allowage 123456789/);
+  assert.match(texts(await say(admin, '/allowage 81'), 900)[0]!, /Done\. 81 can open the Hub and answer the age question again/);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM age_refusals WHERE telegram_id = 81').get()!.n, 0);
+  assert.match(texts(await say(admin, '/allowage 81'), 900)[0]!, /was not refused for age/);
+  assert.match(texts(await say(typo, '/start'), 81)[0]!, /Welcome, Typo!/);
+  assert.match(texts(await say(admin, '/help'), 900)[0]!, /\/allowage ID/);
+});
+
+test('account buttons: the team confirms or rejects in the bot, with a stamp; creators cannot; demo testers can', async () => {
+  const team = await import('./team.js');
+  const { idle } = await import('./background.js');
+  const people = [
+    { id: 85, first_name: 'Saule', username: 'saule' },
+    { id: 86, first_name: 'Erlan', username: 'erlan' },
+    { id: 87, first_name: 'Gulnar', username: 'gulnar' },
+  ];
+  const connect = async (person: (typeof people)[number], handle: string): Promise<Call> => {
+    service.addInvite(db, String(person.id));
+    service.upsertUser(db, person);
+    account.startLookup(db, service.getUser(db, person.id)!, { birthDate: '1996-04-04', instagram: handle });
+    await idle();
+    calls.length = 0;
+    account.confirmLookup(db, service.getUser(db, person.id)!, { city: 'Almaty' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    return calls.find((call) => call.method === 'sendMessage' && call.payload.chat_id === 900 && /New account to confirm/.test(call.payload.text))!;
+  };
+
+  // The team's message carries the two buttons.
+  const notice = await connect(people[0]!, 'saule.cooks');
+  assert.deepEqual(
+    notice.payload.reply_markup.inline_keyboard[0].map((button: { text: string; callback_data: string }) => [button.text, button.callback_data]),
+    [['Confirm', 'ac:85'], ['Reject', 'ar:85']],
+  );
+
+  // A creator pressing them changes nothing.
+  await press(creator as any, 'ac:85', notice.payload.text);
+  assert.equal(service.getUser(db, 85)!.account_status, 'pending');
+
+  // The team confirms: status, who decided, the stamp, and the creator's message.
+  const confirmed = await press(admin, 'ac:85', notice.payload.text);
+  const saule = service.getUser(db, 85)!;
+  assert.deepEqual([saule.account_status, saule.account_reviewed_by], ['confirmed', 900]);
+  assert.ok(confirmed.some((call) => call.method === 'editMessageText' && /✅ Account confirmed by Dana/.test(call.payload.text)));
+  assert.match(texts(confirmed, 85)[0]!, /Your account is confirmed/);
+  const again = await press(admin, 'ac:85', notice.payload.text);
+  assert.match(again.find((call) => call.method === 'answerCallbackQuery')!.payload.text, /already confirmed/);
+
+  // Reject asks for the reason; /cancel drops it; the reply rejects with the note and stamps the message.
+  const second = await connect(people[1]!, 'erlan.not.mine');
+  const asked = await press(admin, 'ar:86', second.payload.text);
+  assert.match(texts(asked, 900)[0]!, /Why can we not confirm @erlan\.not\.mine\?/);
+  await say(admin, '/cancel');
+  await say(admin, 'Random chat after cancel');
+  assert.equal(service.getUser(db, 86)!.account_status, 'pending');
+  await press(admin, 'ar:86', second.payload.text);
+  const rejected = await say(admin, 'The profile belongs to a café, not to you.');
+  const erlan = service.getUser(db, 86)!;
+  assert.deepEqual([erlan.account_status, erlan.account_note, erlan.account_reviewed_by], ['rejected', 'The profile belongs to a café, not to you.', 900]);
+  assert.match(texts(rejected, 86)[0]!, /could not confirm your account[\s\S]*belongs to a café/);
+  assert.equal(rejected.find((call) => call.payload.chat_id === 86)!.payload.reply_markup.inline_keyboard[0][0].web_app.url, 'https://hub.example/profile/instagram');
+  assert.ok(rejected.some((call) => call.method === 'editMessageText' && /❌ Account rejected by Dana/.test(call.payload.text)));
+  assert.match(texts(rejected, 900)[0]!, /could not be confirmed/);
+
+  // The commands do the same.
+  assert.match(texts(await say(admin, '/confirm @erlan'), 900)[0]!, /erlan\.not\.mine \(Erlan\) is confirmed/);
+  assert.equal(service.getUser(db, 86)!.account_status, 'confirmed');
+  assert.match(texts(await say(admin, '/reject 86'), 900)[0]!, /Whose account, and why\?/);
+  assert.match(texts(await say(admin, '/reject 86 Wrong person'), 900)[0]!, /is rejected/);
+  assert.equal(service.getUser(db, 86)!.account_note, 'Wrong person');
+  await say(creator, '/confirm 86');
+  assert.equal(service.getUser(db, 86)!.account_status, 'rejected', 'a creator cannot use the commands');
+
+  // An approval refused for an unconfirmed account tells the reviewer what to do next.
+  const third = await connect(people[2]!, 'gulnar.eats');
+  await service.submitLinks(db, service.getUser(db, 87)!, 'new-year-post', { links: ['https://www.instagram.com/gulnar.eats/p/GUL1/'] });
+  await idle();
+  const entryId = (db.prepare(`SELECT id FROM entries WHERE user_id = 87`).get() as { id: number }).id;
+  const refused = await press(admin, `ap:${entryId}:5`, 'New submission');
+  const alert = refused.find((call) => call.method === 'answerCallbackQuery')!;
+  assert.equal(alert.payload.show_alert, true);
+  assert.match(alert.payload.text, /Press Confirm under their "New account to confirm" message, or send \/confirm 87, then approve again/);
+  assert.equal(service.balanceOf(db, 87), 0);
+
+  // In demo mode a tester (no admin site) confirms with the button, then approves their test work.
+  team.setDemoMode(db, true);
+  const tester = { id: 78, first_name: 'Igor' };
+  await press(tester as any, 'ac:87', third.payload.text);
+  assert.equal(service.getUser(db, 87)!.account_status, 'confirmed');
+  const paid = await press(tester as any, `ap:${entryId}:5`, 'New submission');
+  assert.match(texts(paid, 87)[0]!, /coins are in your wallet/);
+  team.setDemoMode(db, false);
+});
+
+test('a Manager from the admin site works in the bot, but coins, levels and paid offers stay with the owners', async () => {
+  const { setDemoMode } = await import('./team.js');
+  setDemoMode(db, false);
+  const managerUser = { id: 950, first_name: 'Aliya', username: 'aliya_cm' };
+  const viewerUser = { id: 951, first_name: 'Agency', username: 'agency_kz' };
+  const stamp = new Date().toISOString();
+  db.prepare(`INSERT OR IGNORE INTO users (id, username, first_name, created_at) VALUES (950, 'aliya_cm', 'Aliya', ?)`).run(stamp);
+  db.prepare(`INSERT OR IGNORE INTO users (id, username, first_name, created_at) VALUES (951, 'agency_kz', 'Agency', ?)`).run(stamp);
+  db.prepare(`INSERT INTO team_members (telegram_id, name, role, created_at) VALUES (950, 'Aliya', 'manager', ?)`).run(stamp);
+  db.prepare(`INSERT INTO team_members (telegram_id, name, role, created_at) VALUES (951, 'Agency', 'viewer', ?)`).run(stamp);
+
+  // The Manager has the team commands.
+  const help = await say(managerUser, '/help');
+  assert.match(texts(help, 950)[0]!, /Team commands/);
+  assert.match(texts(help, 950)[0]!, /\/admin: a one-time link/);
+
+  // But not the owners' three.
+  const balance = () => service.balanceOf(db, creator.id);
+  const before = balance();
+  const bonus = await say(managerUser, '/bonus @aruzhan 500 Just because');
+  assert.match(texts(bonus, 950)[0]!, /Only the owners can add coins by hand/);
+  assert.equal(balance(), before, 'no coins moved');
+  const level = await say(managerUser, '/level @aruzhan partner');
+  assert.match(texts(level, 950)[0]!, /Only the owners can set a level by hand/);
+  assert.equal((db.prepare('SELECT level_override AS l FROM users WHERE id = ?').get(creator.id) as { l: string | null }).l, null);
+  const offers = () => (db.prepare('SELECT COUNT(*) AS n FROM offers').get() as { n: number }).n;
+  const offersBefore = offers();
+  const offer = await say(managerUser, '/offer @aruzhan | New Year | 150 000 KZT | 1 reel | 5 Jan | 15 Dec');
+  assert.match(texts(offer, 950)[0]!, /Only the owners can send a paid offer/);
+  assert.equal(offers(), offersBefore);
+
+  // An owner still can.
+  const owned = await say(admin, '/bonus @aruzhan 5 Thanks');
+  assert.match(texts(owned, 900)[0]!, /\+5 coins for Aruzhan/);
+  assert.equal(balance(), before + 5);
+
+  // A Viewer has nothing in the bot: the team's commands do not answer them as team.
+  const viewerHelp = await say(viewerUser, '/help');
+  assert.ok(!texts(viewerHelp, 951).some((text) => /Team commands/.test(text)));
+  await say(viewerUser, '/bonus @aruzhan 500 x');
+  assert.equal(balance(), before + 5);
 });

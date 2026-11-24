@@ -34,22 +34,22 @@ export function CashOut() {
     request();
   };
 
-  const terms = (
+  // Only terms the team has set: an unset one is left out, never shown as a placeholder.
+  const known: Array<[string, string]> = [
+    ['Rate', rateKzt ? `1 coin = ${num(rateKzt)} ${settings.currencySign}` : ''],
+    ['Minimum', minCoins ? coins(minCoins) : ''],
+    ['Paid to', method ?? ''],
+  ].filter((term): term is [string, string] => Boolean(term[1]));
+  const terms = known.length ? (
     <dl className="rows rows--roomy" style={{ margin: 0 }}>
-      <div className="row">
-        <dt>Rate</dt>
-        <dd style={{ margin: 0 }}>{rateKzt ? `1 coin = ${num(rateKzt)} ${settings.currencySign}` : 'To be announced'}</dd>
-      </div>
-      <div className="row">
-        <dt>Minimum</dt>
-        <dd style={{ margin: 0 }}>{minCoins ? coins(minCoins) : 'To be announced'}</dd>
-      </div>
-      <div className="row">
-        <dt>Paid to</dt>
-        <dd style={{ margin: 0 }}>{method ?? 'To be announced'}</dd>
-      </div>
+      {known.map(([label, value]) => (
+        <div key={label} className="row">
+          <dt>{label}</dt>
+          <dd style={{ margin: 0 }}>{value}</dd>
+        </div>
+      ))}
     </dl>
-  );
+  ) : null;
 
   if (locked) {
     return (

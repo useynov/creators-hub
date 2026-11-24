@@ -1,7 +1,10 @@
 import { Bot, GrammyError, type Context } from 'grammy';
+import { allowAgeAgain, isAgeRefused, isSetUp, setAccountStatus } from './account.js';
+import { registerAdminBot } from './admin/bot.js';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
 import { appButton, copyToAdmins, esc, notifyAdmins } from './notify.js';
+import { submissionText } from './pipeline.js';
 import {
   addInvite,
   announceTask,
@@ -30,7 +33,7 @@ import {
   setViews,
   upsertUser,
 } from './service.js';
-import { demoMode, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
+import { demoMode, isManagerOnly, isOwner, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
 import type { Level } from './types.js';
 
 const HTML = { parse_mode: 'HTML' as const };
@@ -44,13 +47,17 @@ const ADMIN_HELP = [
   '/invitelink: one link that lets in whoever opens it (add "new" to replace it, "off" to turn it off)',
   '/pending: submissions waiting for review',
   '/tasks: tasks and their IDs',
-  '/announce task-id: tell every creator about a task',
+  '/announce task-id: tell the creators in the task\'s audience about it',
   '/views submission-number views: set the views of an approved post',
-  '/bonus @username coins reason: add coins by hand',
-  '/level @username member|pro|partner|auto: set a level by hand',
-  '/offer @username | campaign | fee | what we need | post by | answer by',
+  '/bonus @username coins reason: add coins by hand (owners only)',
+  '/level @username member|pro|partner|auto: set a level by hand (owners only)',
+  '/confirm @username or ID: confirm that the Instagram account is theirs (their work can then be paid)',
+  '/reject @username or ID reason: we could not confirm the account; the creator gets the reason',
+  '/offer @username | campaign | fee | what we need | post by | answer by (owners only)',
+  '/admin: a one-time link to sign in to the admin site (in a private chat with me)',
   '/quiet on|off: stop or resume the team\'s messages coming to you in private',
   '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
+  '/allowage ID: let someone refused for age answer the question again, after a typo in the date (owners only)',
   '/id: show this chat ID and your user ID',
   '',
   'Reply to a creator\'s message to answer them. Scan an event pass with your phone camera to check a creator in.',
@@ -72,6 +79,12 @@ export function createBot(db: DB): Bot {
         '',
         'Were you invited by our team? Check that you opened the bot from the same Telegram account you gave us.',
       ].join('\n'),
+      HTML,
+    );
+
+  const tooYoung = (ctx: Context) =>
+    ctx.reply(
+      `The ${esc(settings.brandName)} is open to people aged ${settings.minAge} and over, so we cannot let you in. Thank you for your interest, and all the best!`,
       HTML,
     );
 
@@ -108,6 +121,7 @@ export function createBot(db: DB): Bot {
     }
 
     if (!isInvited(db, ctx.from)) return notInvited(ctx);
+    if (isAgeRefused(db, ctx.from.id)) return tooYoung(ctx);
     const user = upsertUser(db, ctx.from);
 
     await ctx.reply(`<b>Welcome, ${esc(user.first_name)}!</b> You are now part of the ${esc(settings.brandName)}.`, HTML);
@@ -122,7 +136,7 @@ export function createBot(db: DB): Bot {
         '<b>• Free product</b>',
         '<b>• Our latest news first</b>',
       ].join('\n'),
-      { ...HTML, reply_markup: appButton('Open Creators Hub', user.onboarded_at ? '/' : '/welcome') },
+      { ...HTML, reply_markup: appButton('Open Creators Hub', isSetUp(db, user) ? '/' : '/welcome') },
     );
     if (demoMode(db)) {
       await ctx.reply(
@@ -241,17 +255,19 @@ export function createBot(db: DB): Bot {
     for (const row of rows) {
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id) as UserRow;
       const isDraft = row.status === 'draft_review';
-      const links = isDraft ? [row.draft_link ?? '(sent as a file)'] : (JSON.parse(row.links) as string[]);
+      const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(row.task_id) as TaskRow;
       await ctx.reply(
-        [
-          `<b>${isDraft ? 'Draft' : 'Submission'} #${row.id}</b>`,
-          `Task: ${esc(row.title)} (+${row.task_reward})`,
-          `Creator: ${creatorLine(user)}`,
-          ...links.map((link) => esc(link)),
-          row.note ? `Note: ${esc(row.note)}` : '',
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        isDraft
+          ? [
+              `<b>Draft #${row.id}</b>`,
+              `Task: ${esc(row.title)} (+${row.task_reward})`,
+              `Creator: ${creatorLine(user)}`,
+              esc(row.draft_link ?? '(sent as a file)'),
+              row.note ? `Note: ${esc(row.note)}` : '',
+            ]
+              .filter(Boolean)
+              .join('\n')
+          : submissionText(db, row, task, user, 'Submission'),
         { ...HTML, reply_markup: isDraft ? draftKeyboard(row.id) : reviewKeyboard(row.id), link_preview_options: { is_disabled: true } },
       );
     }
@@ -271,7 +287,13 @@ export function createBot(db: DB): Bot {
     return ctx.reply(`Submission #${entryId} (${result.title}) now has ${Math.round(views!).toLocaleString('en-US')} views.`);
   });
 
+  // Coins by hand, levels by hand and paid offers are the owners' decisions, as on the admin site.
+  const ownersOnly = (ctx: Context, what: string): string | null =>
+    isManagerOnly(db, ctx.from!.id) ? `Only the owners can ${what}. Ask one of them.` : null;
+
   admin.command('bonus', (ctx) => {
+    const refusal = ownersOnly(ctx, 'add coins by hand');
+    if (refusal) return ctx.reply(refusal);
     const [ref, amount, ...reason] = ctx.match.trim().split(/\s+/);
     const coins = Number(amount);
     const user = ref ? findUser(db, ref) : undefined;
@@ -281,6 +303,8 @@ export function createBot(db: DB): Bot {
   });
 
   admin.command('level', (ctx) => {
+    const refusal = ownersOnly(ctx, 'set a level by hand');
+    if (refusal) return ctx.reply(refusal);
     const [ref, level] = ctx.match.trim().toLowerCase().split(/\s+/);
     const user = ref ? findUser(db, ref) : undefined;
     if (!user || !level || !['member', 'pro', 'partner', 'auto'].includes(level)) {
@@ -291,6 +315,8 @@ export function createBot(db: DB): Bot {
   });
 
   admin.command('offer', (ctx) => {
+    const refusal = ownersOnly(ctx, 'send a paid offer');
+    if (refusal) return ctx.reply(refusal);
     const [ref, ...fields] = ctx.match.split('|').map((part) => part.trim());
     const user = ref ? findUser(db, ref) : undefined;
     if (!user || fields.length !== 5 || fields.some((field) => !field)) {
@@ -327,6 +353,18 @@ export function createBot(db: DB): Bot {
     );
   });
 
+  // Undo of an age refusal, for an adult who mistyped their date of birth. Owners only.
+  admin.command('allowage', (ctx) => {
+    if (!isOwner(db, ctx.from!.id)) return ctx.reply('Only the owners can lift an age refusal.');
+    const id = Number(ctx.match.trim());
+    if (!Number.isInteger(id) || id <= 0) return ctx.reply('Send the Telegram ID, for example: /allowage 123456789');
+    return ctx.reply(
+      allowAgeAgain(db, id)
+        ? `Done. ${id} can open the Hub and answer the age question again.`
+        : `${id} was not refused for age, so there was nothing to lift.`,
+    );
+  });
+
   admin.command('cancel', (ctx) => {
     db.prepare('DELETE FROM admin_pending WHERE admin_id = ?').run(ctx.from!.id);
     return ctx.reply('Cancelled.');
@@ -347,7 +385,13 @@ export function createBot(db: DB): Bot {
     };
 
     if (action === 'ap') {
-      const result = approveEntry(db, entryId, Number(score));
+      let result: { title: string; reward: number };
+      try {
+        result = approveEntry(db, entryId, Number(score));
+      } catch (error) {
+        if (!(error instanceof HubError) || error.code !== 'account_not_confirmed') throw error;
+        return ctx.answerCallbackQuery({ text: notConfirmedHelp(entryId), show_alert: true });
+      }
       await ctx.answerCallbackQuery({ text: `Approved. +${result.reward} coins sent.` });
       await stamp(`✅ Approved by ${reviewer}, score ${score} of 5`);
     } else if (action === 'da') {
@@ -364,6 +408,80 @@ export function createBot(db: DB): Bot {
     }
   });
 
+  // --- Account confirmation ------------------------------------------------
+
+  /** What the reviewer should do when a work cannot be approved because the account is not confirmed. */
+  const notConfirmedHelp = (entryId: number): string => {
+    const row = db.prepare('SELECT u.id, u.account_status FROM entries e JOIN users u ON u.id = e.user_id WHERE e.id = ?').get(entryId) as
+      | { id: number; account_status: string }
+      | undefined;
+    if (row?.account_status === 'rejected') {
+      return `Not paid: this creator's Instagram account was rejected. If that was a mistake, send /confirm ${row.id}, then approve again.`;
+    }
+    return `Not paid yet: the creator's Instagram account is not confirmed. Press Confirm under their "New account to confirm" message, or send /confirm ${row?.id ?? 'ID'}, then approve again.`;
+  };
+
+  /** The creator behind a button, or a refusal the presser can read. */
+  const accountOwner = (userId: number): UserRow => {
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
+    if (!user?.instagram) throw new HubError('user_not_found', 'This creator has no connected account.', 404);
+    return user;
+  };
+
+  admin.callbackQuery(/^(ac|ar):(\d+)$/, async (ctx) => {
+    const [, action, id] = ctx.match;
+    const user = accountOwner(Number(id));
+    const decider = esc(ctx.from.first_name);
+    const original = ctx.callbackQuery.message;
+    const text = original && 'text' in original ? original.text : undefined;
+
+    if (action === 'ac') {
+      if (user.account_status === 'confirmed') {
+        return ctx.answerCallbackQuery({ text: 'This account is already confirmed.', show_alert: true });
+      }
+      setAccountStatus(db, user.id, 'confirmed', ctx.from.id);
+      await ctx.answerCallbackQuery({ text: 'Account confirmed.' });
+      if (text) {
+        await ctx
+          .editMessageText(`${esc(text)}\n\n✅ Account confirmed by ${decider}`, { ...HTML, link_preview_options: { is_disabled: true } })
+          .catch(() => undefined);
+      }
+      return;
+    }
+
+    // Reject: the reason comes as the next reply, like "Needs changes".
+    db.prepare(
+      `INSERT OR REPLACE INTO admin_pending (admin_id, entry_id, created_at, kind, chat_id, message_id, message_text)
+       VALUES (?, ?, ?, 'account', ?, ?, ?)`,
+    ).run(ctx.from.id, user.id, now(), original?.chat.id ?? null, original?.message_id ?? null, text?.slice(0, 3500) ?? null);
+    await ctx.answerCallbackQuery();
+    await ctx.reply(`Why can we not confirm @${user.instagram}? Reply to this message with the reason, the creator will see it. /cancel to drop it.`, {
+      reply_markup: { force_reply: true, selective: true },
+      reply_parameters: original ? { message_id: original.message_id } : undefined,
+    });
+  });
+
+  admin.command('confirm', (ctx) => {
+    const user = ctx.match.trim() ? findUser(db, ctx.match.trim().split(/\s+/)[0]!) : undefined;
+    if (!user?.instagram) return ctx.reply('Whose account? For example: /confirm @username or /confirm 123456789');
+    if (user.account_status === 'confirmed') return ctx.reply(`@${user.instagram} is already confirmed.`);
+    setAccountStatus(db, user.id, 'confirmed', ctx.from!.id);
+    return ctx.reply(`✅ @${user.instagram} (${user.first_name}) is confirmed. Their work can be approved now.`);
+  });
+
+  admin.command('reject', (ctx) => {
+    const [ref, ...reason] = ctx.match.trim().split(/\s+/);
+    const user = ref ? findUser(db, ref) : undefined;
+    const note = reason.join(' ').trim();
+    if (!user?.instagram || !note) return ctx.reply('Whose account, and why? For example: /reject @username The profile belongs to someone else');
+    setAccountStatus(db, user.id, 'rejected', ctx.from!.id, note);
+    return ctx.reply(`@${user.instagram} (${user.first_name}) is rejected. They got your reason and can connect another account.`);
+  });
+
+  // --- Admin panel -------------------------------------------------------
+
+  registerAdminBot(bot, db);
+
   // --- Messages ----------------------------------------------------------
 
   bot.on('message', async (ctx) => {
@@ -373,11 +491,26 @@ export function createBot(db: DB): Bot {
     const body = message.text ?? message.caption ?? '';
 
     if (canAdmin(ctx)) {
-      // 1. A comment for "Needs changes".
-      const pending = db.prepare('SELECT entry_id FROM admin_pending WHERE admin_id = ?').get(from.id) as { entry_id: number } | undefined;
+      // 1. A comment for "Needs changes", or the reason for rejecting an account.
+      const pending = db.prepare('SELECT * FROM admin_pending WHERE admin_id = ?').get(from.id) as
+        | { entry_id: number; kind: string; chat_id: number | null; message_id: number | null; message_text: string | null }
+        | undefined;
       const repliesToBot = message.reply_to_message?.from?.id === ctx.me.id;
       if (pending && message.text && (isPrivate || repliesToBot)) {
         db.prepare('DELETE FROM admin_pending WHERE admin_id = ?').run(from.id);
+        if (pending.kind === 'account') {
+          const user = accountOwner(pending.entry_id);
+          setAccountStatus(db, user.id, 'rejected', from.id, message.text);
+          if (pending.chat_id && pending.message_id && pending.message_text) {
+            await ctx.api
+              .editMessageText(pending.chat_id, pending.message_id, `${esc(pending.message_text)}\n\n❌ Account rejected by ${esc(from.first_name)}`, {
+                ...HTML,
+                link_preview_options: { is_disabled: true },
+              })
+              .catch(() => undefined);
+          }
+          return ctx.reply(`Sent to the creator: @${user.instagram} could not be confirmed.`);
+        }
         const title = requestChanges(db, pending.entry_id, message.text);
         return ctx.reply(`Sent to the creator: “${title}” needs changes.`);
       }
@@ -401,6 +534,7 @@ export function createBot(db: DB): Bot {
 
     if (!isPrivate) return;
     if (!isInvited(db, from)) return notInvited(ctx);
+    if (isAgeRefused(db, from.id)) return tooYoung(ctx);
     const user = upsertUser(db, from);
 
     // 3. A draft file we asked for.
@@ -420,7 +554,7 @@ export function createBot(db: DB): Bot {
     // 4. A command we do not know: point back to the app.
     if (message.text?.startsWith('/')) {
       return ctx.reply('Everything lives in the Hub. Open it with the button below, or just write here to reach the team.', {
-        reply_markup: appButton('Open Creators Hub', user.onboarded_at ? '/' : '/welcome'),
+        reply_markup: appButton('Open Creators Hub', isSetUp(db, user) ? '/' : '/welcome'),
       });
     }
 

@@ -37,6 +37,21 @@ const paths = {
     </>
   ),
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  image: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="3" />
+      <circle cx="9" cy="10" r="2" />
+      <path d="M4 18l5-5 4 4 3-3 4 4" />
+    </>
+  ),
+  doc: (
+    <>
+      <path d="M7 3h7l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M14 3v5h5M9 13h6M9 17h6" />
+    </>
+  ),
+  cross: <path d="M6 6l12 12M18 6L6 18" />,
+  circle: <circle cx="12" cy="12" r="8" />,
   trophy: <path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4" />,
   eye: (
     <>

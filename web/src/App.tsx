@@ -18,7 +18,8 @@ import { Levels } from './screens/Levels';
 import { PaidOffer } from './screens/PaidOffer';
 import { Profile } from './screens/Profile';
 import { Redeem } from './screens/Redeem';
-import { Setup } from './screens/Setup';
+import { ChangeHandle, Setup } from './screens/Setup';
+import { StoryViews } from './screens/StoryViews';
 import { Shop } from './screens/Shop';
 import { Submit } from './screens/Submit';
 import { Task } from './screens/Task';
@@ -41,6 +42,24 @@ function NotInvited() {
         <p className="lede muted">
           Were you invited by our team? Check that you opened the bot from the same Telegram account you gave us.
         </p>
+      </div>
+    </Screen>
+  );
+}
+
+/** Shown, and nothing else, to someone the age question turned away. */
+function AgeRefused() {
+  return (
+    <Screen>
+      <div className="center">
+        <div className="panel__icon" style={{ background: 'var(--pink)', color: 'var(--red-dark)' }}>
+          <Icon name="lock" size={26} stroke={2.2} />
+        </div>
+        <h1 className="display" style={{ fontSize: 26 }}>
+          The Hub is for adults
+        </h1>
+        <p className="lede">Our community is open to people aged 18 and over, so we cannot let you in.</p>
+        <p className="lede muted">Thank you for your interest. We have not kept your date of birth. All the best!</p>
       </div>
     </Screen>
   );
@@ -77,13 +96,15 @@ function Shell() {
     [data, mutate],
   );
 
+  if (error instanceof ApiError && error.code === 'age_refused') return <AgeRefused />;
   if (error instanceof ApiError && error.status === 403) return <NotInvited />;
   if (error instanceof ApiError && error.status === 401) return <OutsideTelegram />;
   if (!hub) return error ? <Problem error={error} onRetry={() => void mutate()} /> : <Loading />;
 
-  // First open: benefits, then the two-field setup. Nothing else until that is done.
+  // First open: benefits, then the setup. A member from before the age question and the
+  // profile check (they already have a handle) goes straight to the setup. Nothing else until it is done.
   const onboarding = pathname === '/welcome' || pathname === '/setup';
-  if (!hub.me.onboarded && !onboarding) return <Navigate to="/welcome" replace />;
+  if (!hub.me.onboarded && !onboarding) return <Navigate to={hub.me.instagram ? '/setup' : '/welcome'} replace />;
 
   return (
     <HubProvider value={hub}>
@@ -103,6 +124,8 @@ function Shell() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/details" element={<Details />} />
+        <Route path="/profile/instagram" element={<ChangeHandle />} />
+        <Route path="/stories/:id" element={<StoryViews />} />
         <Route path="/levels" element={<Levels />} />
         <Route path="/offer" element={<PaidOffer />} />
         <Route path="*" element={<Navigate to="/" replace />} />

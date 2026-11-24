@@ -7,6 +7,8 @@ process.env.BOT_TOKEN = TOKEN;
 process.env.ADMIN_IDS = '900';
 process.env.WEBAPP_URL = 'https://hub.example';
 delete process.env.DEV_USER_ID;
+delete process.env.APIFY_TOKEN;
+process.env.MEDIA_DIR = (await import('node:fs')).mkdtempSync((await import('node:path')).join((await import('node:os')).tmpdir(), 'hub-flow-'));
 
 const { signInitData, validateInitData } = await import('./auth.js');
 const { openDb, syncContent } = await import('./db.js');
@@ -14,6 +16,8 @@ const { createApp } = await import('./http.js');
 const { outbox } = await import('./notify.js');
 const service = await import('./service.js');
 const { settings } = await import('./config.js');
+const account = await import('./account.js');
+const { idle } = await import('./background.js');
 
 const db = openDb(':memory:');
 syncContent(db);
@@ -56,12 +60,26 @@ test('an invite by @username binds to the account and opens the Hub', async () =
   assert.equal(boot.data.me.onboarded, false);
   assert.equal(boot.data.me.level, 'member');
 
-  const setup = await call<import('./types.js').Me>(creator, 'POST', '/api/me/setup', {
-    instagram: '@aruzhan.vibes',
-    city: 'Almaty',
+  // Nothing but the setup is open before it is done.
+  const early = await call<{ error: string }>(creator, 'GET', '/api/tasks');
+  assert.equal(early.data.error, 'setup_required');
+
+  // Age and handle, "Find my profile", "Yes, this is me" with the city.
+  const found = await call<import('./types.js').ConnectView>(creator, 'POST', '/api/me/connect', {
+    birthDate: '2000-05-14',
+    instagram: '@Aruzhan.Vibes',
   });
+  assert.equal(found.status, 200);
+  await idle();
+  const view = await call<import('./types.js').ConnectView>(creator, 'GET', '/api/me/connect');
+  assert.equal(view.data.status, 'found');
+  const setup = await call<import('./types.js').Me>(creator, 'POST', '/api/me/connect/confirm', { city: 'Almaty' });
   assert.equal(setup.data.onboarded, true);
   assert.equal(setup.data.instagram, 'aruzhan.vibes');
+  assert.equal(setup.data.accountStatus, 'pending');
+  assert.ok(outbox.some((message) => message.chatId === 900 && message.html.includes('New account to confirm')));
+  // The team confirms the account, so that work can be paid.
+  account.setAccountStatus(db, creator.id, 'confirmed', 900);
 });
 
 test('post-first task: join, send the link, changes, resend, approve, coins and rating', async () => {
@@ -72,12 +90,14 @@ test('post-first task: join, send the link, changes, resend, approve, coins and 
   const bad = await call<{ error: string }>(creator, 'POST', '/api/tasks/caravan-shoot/submit', { links: ['not a link'] });
   assert.equal(bad.status, 400);
 
+  // Photo posts have no public view count, so the rating below is publications and score only.
   const sent = await call<Task>(creator, 'POST', '/api/tasks/caravan-shoot/submit', {
-    links: ['instagram.com/reel/abc'],
+    links: ['instagram.com/p/abc'],
     note: 'Shot at the gate',
   });
   assert.equal(sent.data.entry?.status, 'in_review');
-  assert.deepEqual(sent.data.entry?.links, ['https://instagram.com/reel/abc']);
+  assert.deepEqual(sent.data.entry?.links, ['https://instagram.com/p/abc']);
+  assert.equal(sent.data.publications[0]?.kind, 'post');
   const entryId = sent.data.entry!.id;
 
   service.requestChanges(db, entryId, 'The truck is hard to see.');
@@ -85,7 +105,7 @@ test('post-first task: join, send the link, changes, resend, approve, coins and 
   assert.equal(changes.data.entry?.status, 'needs_changes');
   assert.equal(changes.data.entry?.comment, 'The truck is hard to see.');
 
-  await call<Task>(creator, 'POST', '/api/tasks/caravan-shoot/submit', { links: ['https://instagram.com/reel/def'] });
+  await call<Task>(creator, 'POST', '/api/tasks/caravan-shoot/submit', { links: ['https://instagram.com/p/def'] });
   service.approveEntry(db, entryId, 4);
   assert.throws(() => service.approveEntry(db, entryId, 4), /not waiting/);
 
@@ -164,4 +184,16 @@ test('levels: views push the rating over the Pro line and unlock cash-out', asyn
   const board = await call<import('./types.js').LeaderboardView>(creator, 'GET', '/api/leaderboard');
   assert.equal(board.data.top[0]?.handle, '@aruzhan.vibes');
   assert.equal(board.data.me?.rank, 1);
+});
+
+test('a JSON body over 64 KB is refused with 413, before anything reads it', async () => {
+  const big = { note: 'x'.repeat(70 * 1024), links: ['https://www.instagram.com/p/BIG/'] };
+  const refused = await call<{ error: string; message: string }>(creator, 'POST', '/api/tasks/new-year-post/submit', big);
+  assert.equal(refused.status, 413);
+  assert.equal(refused.data.error, 'too_large');
+  const entry = db.prepare(`SELECT 1 FROM entries WHERE user_id = 42 AND task_id = 'new-year-post'`).get();
+  assert.equal(entry, undefined, 'nothing was stored');
+  // A normal body still goes through.
+  const ok = await call(creator, 'PATCH', '/api/me', { size: 'M' });
+  assert.equal(ok.status, 200);
 });

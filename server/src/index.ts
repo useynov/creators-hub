@@ -3,6 +3,7 @@ import { configureBot, createBot } from './bot.js';
 import { config } from './config.js';
 import { openDb, syncContent } from './db.js';
 import { createApp } from './http.js';
+import { startJobs } from './jobs.js';
 import { setApi } from './notify.js';
 import { sendEventReminders } from './service.js';
 
@@ -42,8 +43,11 @@ const reminders = setInterval(() => {
   }
 }, 15 * 60 * 1000);
 
+const stopJobs = startJobs(db);
+
 async function shutdown(): Promise<void> {
   clearInterval(reminders);
+  stopJobs();
   await stopBot?.();
   server.close();
   db.close();

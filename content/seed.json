@@ -4,31 +4,41 @@
       "id": "caravan-shoot",
       "title": "Shoot the New Year caravan",
       "summary": "Come to the caravan, shoot it your way and post it.",
+      "brief": "What it is\nThe New Year caravan stops at Dostyk on 25 December. Come, feel the mood and show it to your followers the way only you can.\n\nWhat to shoot\nThe truck and the lights, the people around it, your own reaction. A photo, a reel or a story: your choice.\n\nMust have\nThe caravan is clearly visible in the frame.\nTag @cocacola_kz in the post or story.\nPost it on the day, then send us the link.\n\nPlease avoid\nOther drink brands in the frame.\nAlcohol, smoking, swearing.\nMusic you have no right to use.\n\nGood to know\nA story link works for 24 hours only, so send it the same day. A day later the bot will ask how many people saw your story.",
+      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135823_0fc81543-fff1-4f23-a2f9-1434412a7ad6.png",
       "reward": 5,
       "format": "Photo, reel or story",
+      "formats": ["post", "reel", "story"],
+      "requiredMention": "cocacola_kz",
       "date": "2026-12-25",
       "place": "Dostyk, Almaty",
+      "startsAt": "2026-12-20T00:00:00+05:00",
       "deadline": "2026-12-25T23:59:00+05:00",
       "reviewMode": "post_first",
       "viewsBonus": false,
       "steps": [
         "Come to the caravan.",
         "Shoot it your way and post it.",
-        "Tag us in the post, then send us the link."
+        "Tag @cocacola_kz, then send us the link."
       ]
     },
     {
       "id": "new-year-post",
       "title": "New Year post with Coca-Cola",
       "summary": "A New Year post in your own style with Coca-Cola in the frame.",
+      "brief": "What it is\nOne New Year reel or post in your own style. Coca-Cola is part of the moment, not an ad break.\n\nIdeas\nDecorating the tree with friends. Your family table. A gift you are wrapping. The first snow in your yard.\n\nMust have\nCoca-Cola is in the frame for at least a few seconds.\nTag @cocacola_kz.\nYour own voice: say it the way you always do.\n\nPlease avoid\nOther drink brands in the frame.\nAlcohol, smoking, swearing.\nReading an ad text to the camera.\n\nBonus\nThe creator with the most views on this task gets extra coins. We count views four times: when you send the link, after 24 hours, after 7 days and after 14 days. The last number is the one that counts.",
+      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135821_c02e1014-4ad2-40f4-8533-dfcff1232934.png",
       "reward": 15,
       "format": "Reel or post",
+      "formats": ["reel", "post"],
+      "requiredMention": "cocacola_kz",
+      "startsAt": "2026-12-01T00:00:00+05:00",
       "deadline": "2026-12-31T23:59:00+05:00",
       "reviewMode": "post_first",
       "viewsBonus": true,
       "steps": [
         "Make a New Year reel or post with Coca-Cola in the frame.",
-        "Post it and tag us.",
+        "Post it and tag @cocacola_kz.",
         "Send us the link."
       ]
     },
@@ -36,12 +46,21 @@
       "id": "new-year-table-reel",
       "title": "New Year table reel",
       "summary": "Show your New Year table with Coca-Cola on it. One reel, your own style.",
+      "brief": "What it is\nOne reel about your New Year table: how you set it, what is on it, who sits at it. Coca-Cola stands on the table.\n\nHow it goes\nYou send us the draft first. We approve it or ask for a fix. You post only after the bot says Approved.\n\nMust have\nThe table and the people, not only the bottle.\nCoca-Cola is clearly visible.\nTag @cocacola_kz when you post.\n\nPlease avoid\nOther drink brands on the table.\nAlcohol in the frame.\nMusic you have no right to use.",
+      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135823_75137236-379d-406c-a4db-ab2fd4be3816.png",
       "reward": 15,
       "format": "Reel",
+      "formats": ["reel"],
+      "requiredMention": "cocacola_kz",
+      "startsAt": "2026-12-01T00:00:00+05:00",
       "deadline": "2026-12-28T23:59:00+05:00",
       "reviewMode": "draft_first",
       "viewsBonus": false,
-      "steps": []
+      "steps": [
+        "Send us your draft.",
+        "Post it after the bot says Approved.",
+        "Tag @cocacola_kz and send us the link."
+      ]
     }
   ],
   "events": [
@@ -49,17 +68,64 @@
       "id": "new-year-caravan",
       "title": "New Year Caravan",
       "date": "2026-12-25",
-      "time": null,
+      "time": "18:00",
       "place": "Dostyk, Almaty",
       "description": "Come, meet the team and other creators.",
+      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135820_1c2b5202-9807-4128-84f6-4fb41e7696fa.png",
       "taskId": "caravan-shoot"
+    },
+    {
+      "id": "creators-ny-party",
+      "title": "Creators New Year Party",
+      "date": "2026-12-26",
+      "time": "19:00",
+      "place": "Creators Loft, Almaty",
+      "description": "Our own New Year party for the creators of the Hub. Music, food, gifts and the people you have only seen in the feed.",
+      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135821_5b8a799c-430c-4fb4-8222-f0aecde69c8b.png"
     }
   ],
   "shop": [
-    { "id": "t-shirt", "title": "T-shirt", "price": 30, "category": "merch", "needsSize": true },
-    { "id": "tote-bag", "title": "Tote bag", "price": 20, "category": "merch", "needsSize": false },
-    { "id": "hoodie", "title": "Hoodie", "price": 60, "category": "merch", "needsSize": true },
-    { "id": "cinema-tickets", "title": "Cinema tickets for two", "price": 45, "category": "gift", "needsSize": false }
+    {
+      "id": "t-shirt",
+      "title": "T-shirt",
+      "price": 30,
+      "category": "merch",
+      "needsSize": true,
+      "imageUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135829_8d6e4627-7a80-4f97-8479-a876f4aa1c8a.png"
+    },
+    {
+      "id": "tote-bag",
+      "title": "Tote bag",
+      "price": 20,
+      "category": "merch",
+      "needsSize": false,
+      "imageUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135822_c7fe2c14-1439-41ce-ac24-b183894dde65.png"
+    },
+    {
+      "id": "hoodie",
+      "title": "Hoodie",
+      "price": 60,
+      "category": "merch",
+      "needsSize": true,
+      "imageUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135827_b62221b5-9007-4285-a4bb-afa33dadb9b4.png"
+    },
+    {
+      "id": "cinema-tickets",
+      "title": "Cinema tickets for two",
+      "price": 45,
+      "category": "gift",
+      "needsSize": false,
+      "imageUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135822_2f478101-4aae-4b1f-862a-ca17b15e194e.png"
+    }
   ],
-  "news": []
+  "news": [
+    {
+      "id": "creators-ny-party",
+      "title": "We are planning a Creators New Year Party, and you are invited",
+      "summary": "26 December in Almaty. Save the date and tell us you are coming.",
+      "date": "2026-12-01",
+      "path": "/events",
+      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135821_5b8a799c-430c-4fb4-8222-f0aecde69c8b.png"
+    }
+  ]
 }

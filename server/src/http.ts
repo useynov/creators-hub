@@ -1,14 +1,18 @@
 import { Hono, type Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, sep } from 'node:path';
+import { confirmLookup, connectView, isAgeRefused, isSetUp, startLookup } from './account.js';
+import { registerAdminRoutes } from './admin/routes.js';
 import { validateInitData, type TelegramUser } from './auth.js';
 import { config } from './config.js';
 import type { DB, UserRow } from './db.js';
+import { readMedia, saveMedia } from './media.js';
+import { seedPreview } from './preview.js';
 import {
   answerOffer,
   buildMe,
   cancelRsvp,
-  completeSetup,
   currentOffer,
   getUser,
   home,
@@ -19,13 +23,16 @@ import {
   listEvents,
   listTasks,
   oneTask,
+  parseViews,
   placeOrder,
   publicSettings,
   remindMe,
   requestCashout,
   requestDraftUpload,
   rsvp,
+  sendStoryViews,
   shop,
+  storyOf,
   submitDraftLink,
   submitLinks,
   updateDetails,
@@ -61,9 +68,40 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   });
 
   app.get('/healthz', (c) => c.text('ok'));
+  // Which version is running: the first thing to check after a deploy or a rollback.
+  app.get('/version', (c) => c.json({ name: 'creators-hub', version: config.version }));
 
-  // Every API call carries Telegram's signed launch data.
+  // Files we keep ourselves and show to everyone: task covers, avatars, thumbnails.
+  // Private files (story copies, screenshots) are never served here, only by the admin API.
+  app.get('/media/*', async (c) => {
+    const relative = decodeURIComponent(new URL(c.req.url).pathname.slice('/media/'.length));
+    const file = await readMedia('public', relative);
+    if (!file) return c.notFound();
+    return c.body(new Uint8Array(file.data), 200, {
+      'Content-Type': file.mime,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+  });
+
+  // The admin panel has its own login and its own routes. They must be registered
+  // before the mini app's auth below, which knows nothing about admin sessions.
+  registerAdminRoutes(app, db);
+
+  // Request bodies of the mini app are small JSON. The story screenshot route has its own, larger
+  // limit, and the admin panel's routes set their own rules.
+  const jsonLimit = bodyLimit({
+    maxSize: 64 * 1024,
+    onError: (c) => c.json({ error: 'too_large', message: 'That is more than the Hub can take in one go.' }, 413),
+  });
+  app.use('/api/*', (c, next) => {
+    if (c.req.path.startsWith('/api/admin/') || /^\/api\/stories\/[^/]+\/views$/.test(c.req.path)) return next();
+    return jsonLimit(c, next);
+  });
+
+  // Every mini app API call carries Telegram's signed launch data.
   app.use('/api/*', async (c, next) => {
+    if (c.req.path.startsWith('/api/admin/')) return next();
     const header = c.req.header('authorization') ?? '';
     let identity: TelegramUser | null = header.startsWith('tma ')
       ? validateInitData(header.slice(4), config.botToken)
@@ -76,10 +114,21 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
       preview = true;
     }
     if (!identity) return c.json({ error: 'unauthorized', message: 'Open the Hub from Telegram.' }, 401);
+    // Someone refused for age stays refused, and we do not even keep their name again.
+    if (isAgeRefused(db, identity.id)) {
+      return c.json({ error: 'age_refused', message: 'The Hub is open to adults only.' }, 403);
+    }
     if (!preview && !isInvited(db, identity)) {
       return c.json({ error: 'not_invited', message: 'The Hub is open by invitation only.' }, 403);
     }
-    c.set('user', upsertUser(db, identity));
+    if (preview) await seedPreview(db, identity.id);
+    const user = upsertUser(db, identity);
+    // Until the setup is done (age, confirmed profile, city) only the setup itself is open.
+    const setupPath = c.req.path === '/api/bootstrap' || c.req.path.startsWith('/api/me/connect');
+    if (!isSetUp(db, user) && !setupPath) {
+      return c.json({ error: 'setup_required', message: 'Finish the setup first.' }, 403);
+    }
+    c.set('user', user);
     await next();
   });
 
@@ -91,8 +140,11 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
 
   app.get('/api/bootstrap', (c) => c.json({ me: me(c), settings: publicSettings(botUsername()) } satisfies Bootstrap));
 
-  app.post('/api/me/setup', async (c) => {
-    completeSetup(db, c.var.user, await body(c));
+  // Connecting the Instagram account: on the first setup (with the date of birth) and when the handle changes.
+  app.get('/api/me/connect', (c) => c.json(connectView(db, c.var.user.id)));
+  app.post('/api/me/connect', async (c) => c.json(startLookup(db, c.var.user, await body(c))));
+  app.post('/api/me/connect/confirm', async (c) => {
+    confirmLookup(db, c.var.user, await body(c));
     return c.json(me(c));
   });
   app.patch('/api/me', async (c) => {
@@ -105,12 +157,63 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   app.get('/api/tasks', (c) => c.json(listTasks(db, c.var.user.id)));
   app.get('/api/tasks/:id', (c) => c.json(oneTask(db, c.var.user.id, c.req.param('id'))));
   app.post('/api/tasks/:id/join', (c) => c.json(joinTask(db, c.var.user, c.req.param('id'))));
-  app.post('/api/tasks/:id/submit', async (c) => c.json(submitLinks(db, c.var.user, c.req.param('id'), await body(c))));
+  app.post('/api/tasks/:id/submit', async (c) => c.json(await submitLinks(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft', async (c) => c.json(submitDraftLink(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft-upload', (c) => {
     requestDraftUpload(db, c.var.user, c.req.param('id'));
     return c.json({ ok: true });
   });
+
+  // Story views: the number and a screenshot of the statistics. Both stay private to the team.
+  const storyId = (c: Context): number => {
+    const id = Number(c.req.param('id'));
+    if (!Number.isInteger(id) || id <= 0) throw new HubError('story_not_found', 'This story is not one of yours.', 404);
+    return id;
+  };
+  app.get('/api/stories/:id', (c) => c.json(storyOf(db, c.var.user.id, storyId(c)).view));
+  // The creator may see the copy we kept of their own story, nobody else may (no static route for it).
+  app.get('/api/stories/:id/copy', async (c) => {
+    const { publication, view } = storyOf(db, c.var.user.id, storyId(c));
+    const file = view.copyIsImage && publication.media_path ? await readMedia('private', publication.media_path) : null;
+    if (!file) return c.json({ error: 'not_found', message: 'Not found.' }, 404);
+    return c.body(new Uint8Array(file.data), 200, {
+      'Content-Type': file.mime,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+  });
+  app.post(
+    '/api/stories/:id/views',
+    bodyLimit({
+      maxSize: 9 * 1024 * 1024,
+      onError: (c) => c.json({ error: 'too_large', message: 'The screenshot is too large. Send one under 8 MB.' }, 413),
+    }),
+    async (c) => {
+      const id = storyId(c);
+      const form = (c.req.header('content-type') ?? '').startsWith('multipart/form-data')
+        ? await c.req.parseBody()
+        : ((await body(c)) as Record<string, unknown>);
+      // Refuse someone else's story, a closed one or a bad number before any file is written.
+      if (!storyOf(db, c.var.user.id, id).view.editable) {
+        throw new HubError('story_closed', 'This work is approved: the number can no longer change. Write to the team if it is wrong.');
+      }
+      parseViews(form.views);
+      let screenshot: string | null = null;
+      const file = form.screenshot;
+      if (file instanceof File && file.size > 0) {
+        try {
+          const saved = await saveMedia('private', 'screens', Buffer.from(await file.arrayBuffer()), {
+            maxBytes: 8 * 1024 * 1024,
+            allow: ['jpg', 'png', 'webp'],
+          });
+          screenshot = saved.path;
+        } catch {
+          throw new HubError('bad_screenshot', 'The screenshot must be a picture (JPG, PNG or WebP) under 8 MB.');
+        }
+      }
+      return c.json(sendStoryViews(db, c.var.user, id, form.views, screenshot));
+    },
+  );
 
   app.get('/api/wallet', (c) => c.json(wallet(db, c.var.user.id)));
   app.get('/api/shop', (c) => c.json(shop(db, c.var.user.id)));
@@ -145,21 +248,31 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
 
   app.all('/api/*', (c) => c.json({ error: 'not_found', message: 'Not found.' }, 404));
 
-  // The built mini app. Any unknown path falls back to index.html so that
+  // The built admin panel lives under /admin. Unknown paths there fall back to its index.html.
+  // The built mini app serves everything else, and falls back to its own index.html so that
   // links from the bot (for example /tasks/caravan-shoot) open the right screen.
   app.get('*', async (c) => {
-    const requested = normalize(decodeURIComponent(new URL(c.req.url).pathname)).replace(/^(\.\.[/\\])+/, '');
-    const isAsset = Boolean(extname(requested));
-    const file = join(config.webDist, isAsset ? requested : 'index.html');
-    if (!file.startsWith(config.webDist)) return c.notFound();
+    let requested: string;
+    try {
+      requested = normalize(decodeURIComponent(new URL(c.req.url).pathname)).replace(/^(\.\.[/\\])+/, '');
+    } catch {
+      return c.notFound();
+    }
+    const isAdmin = requested === '/admin' || requested.startsWith('/admin/');
+    const root = isAdmin ? config.adminDist : config.webDist;
+    const inside = isAdmin ? requested.slice('/admin'.length) || '/' : requested;
+    const isAsset = Boolean(extname(inside));
+    const file = join(root, isAsset ? inside : 'index.html');
+    if (file !== root && !file.startsWith(root + sep)) return c.notFound();
     try {
       const data = await readFile(file);
-      return c.body(data, 200, {
+      return c.body(new Uint8Array(data), 200, {
         'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
-        'Cache-Control': requested.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+        'Cache-Control': inside.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+        'X-Content-Type-Options': 'nosniff',
       });
     } catch {
-      return isAsset ? c.notFound() : c.text('The mini app is not built yet. Run: npm run build', 503);
+      return isAsset ? c.notFound() : c.text('This part of the app is not built yet. Run: npm run build', 503);
     }
   });
 

@@ -1,9 +1,15 @@
 import { Link } from 'react-router-dom';
 import { Icon } from '../components/Icon';
-import { Progress, Screen, TabBar } from '../components/ui';
+import { Avatar, Progress, Screen, TabBar } from '../components/ui';
 import { levelName, num } from '../format';
 import { useHub } from '../hub';
 import { openTelegram } from '../telegram';
+
+const ACCOUNT = {
+  confirmed: { label: 'Confirmed', color: 'var(--green)' },
+  pending: { label: 'Being checked', color: 'var(--amber)' },
+  rejected: { label: 'Not confirmed', color: 'var(--red-dark)' },
+};
 
 /** Level, rating and its three inputs. Details to fill in later, chat, leaderboard, help. */
 export function Profile() {
@@ -14,8 +20,8 @@ export function Profile() {
   return (
     <Screen top="red">
       <section className="hero" style={{ padding: '24px 20px 56px', display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div className="avatar" style={{ width: 64, height: 64, background: 'var(--white)', color: 'var(--red-dark)', fontSize: 26 }}>
-          {me.firstName.charAt(0)}
+        <div style={{ display: 'flex', borderRadius: '50%', border: '3px solid rgba(255,255,255,0.9)' }}>
+          <Avatar src={me.avatarUrl} name={me.firstName} size={64} light />
         </div>
         <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
           <h1 className="display" style={{ fontSize: 24 }}>
@@ -63,6 +69,17 @@ export function Profile() {
             <span className="menu__label">
               My details
               <small>Size, address, payout: add when you need them</small>
+            </span>
+            {chevron}
+          </Link>
+          <Link to="/profile/instagram">
+            <Icon name="star" size={22} />
+            <span className="menu__label">
+              Instagram account
+              <small>{me.instagram ? `@${me.instagram}` : 'Not connected'}</small>
+            </span>
+            <span className="menu__value" style={{ color: ACCOUNT[me.accountStatus].color, fontWeight: 700 }}>
+              {ACCOUNT[me.accountStatus].label}
             </span>
             {chevron}
           </Link>
