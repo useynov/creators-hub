@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.1 (24 November 2026)
+
+- The brand account creators must tag is **@cocacola_kaz** (Coca-Cola Kazakhstan, checked live). The earlier placeholder did not exist on Instagram.
+
 ## 2.1.0 (24 November 2026)
 
 - **Event pages.** The Events tab is a list; tapping an event opens its own page with the photo, date and place, the programme, how many creators are coming, the linked task, and the RSVP. Events in `content/seed.json` have a new `details` text for that page.

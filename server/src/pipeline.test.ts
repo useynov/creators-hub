@@ -48,8 +48,8 @@ const post = (url: string, fields: Partial<PostData> = {}): PostResult => ({
     externalId: 'X',
     authorHandle: 'zhanna.films',
     publishedAt: new Date(Date.now() - 3600_000).toISOString(),
-    caption: 'Winter evening with @cocacola_kz #coke_winter',
-    mentions: ['cocacola_kz'],
+    caption: 'Winter evening with @cocacola_kaz #coke_winter',
+    mentions: ['cocacola_kaz'],
     hashtags: ['coke_winter'],
     views: 100,
     likes: 10,
@@ -103,7 +103,7 @@ function task(id: string, fields: Partial<Record<string, unknown>> = {}): void {
     deadline: new Date(Date.now() + 10 * 24 * 3600_000).toISOString(),
     starts: new Date(Date.now() - 24 * 3600_000).toISOString(),
     formats: '["reel","story"]',
-    mention: 'cocacola_kz',
+    mention: 'cocacola_kaz',
     hashtag: null,
     max: 2,
     ...fields,
@@ -160,7 +160,7 @@ test('flags: published early, no mention, no hashtag, wrong format and a dead li
   assert.deepEqual([third!.checks.reachable, third!.checks.ownAccount, third!.checks.mention], ['fail', 'unknown', 'unknown']);
 
   const message = toTeam().at(-1)!;
-  for (const words of ['Published before the task started', 'No @cocacola_kz found', 'No #coke_winter found', 'Format story is not one the task asks for', 'The link does not open', 'Could not see who posted it']) {
+  for (const words of ['Published before the task started', 'No @cocacola_kaz found', 'No #coke_winter found', 'Format story is not one the task asks for', 'The link does not open', 'Could not see who posted it']) {
     assert.ok(message.includes(words), words);
   }
   assert.equal(service.getUser(db, 701)!.account_status, 'confirmed');

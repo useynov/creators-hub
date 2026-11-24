@@ -314,7 +314,7 @@ export async function loadSampleData(db: DB, by: number | null = config.adminIds
       `INSERT INTO tasks (id, title, summary, brief, cover_url, reward, format, formats, required_mention, required_hashtag, place,
          starts_at, deadline, review_mode, views_bonus, bonus_coins, max_publications, max_participants, steps, sort, active, status,
          audience, source, created_by, created_at, updated_at, announced_at)
-       VALUES (@id, @title, @summary, @brief, @cover, @reward, @format, @formats, 'cocacola', @hashtag, NULL, @starts, @deadline,
+       VALUES (@id, @title, @summary, @brief, @cover, @reward, @format, @formats, 'cocacola_kaz', @hashtag, NULL, @starts, @deadline,
          'post_first', 0, @bonus, 1, NULL, @steps, @sort, @active, @status, @audience, 'admin', @by, @created, @created, @announced)`,
     );
     const steps = JSON.stringify(['Pick your moment.', 'Shoot it your way and post it.', 'Send us the link.']);
@@ -442,7 +442,7 @@ export async function loadSampleData(db: DB, by: number | null = config.adminIds
         kind: work.kind,
         author: creator.handle,
         published: at(sent - 25 * 60 * 1000),
-        mentions: JSON.stringify(checks.mention === 'pass' ? ['cocacola'] : []),
+        mentions: JSON.stringify(checks.mention === 'pass' ? ['cocacola_kaz'] : []),
         hashtags: JSON.stringify(checks.hashtag === 'pass' ? [work.task === AUTUMN ? 'autumntable' : 'firstsnow'] : []),
         thumb: isStory ? null : thumbs[n % thumbs.length],
         media: isStory ? storyCopy.path : null,

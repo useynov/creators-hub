@@ -97,7 +97,7 @@ async function seed(db: DB, userId: number): Promise<void> {
     const task = db.prepare(
       `INSERT OR IGNORE INTO tasks (id, title, summary, brief, cover_url, reward, format, formats, required_mention, required_hashtag,
          starts_at, deadline, review_mode, views_bonus, steps, sort, active, status, audience, source, created_by, created_at, max_publications)
-       VALUES (@id, @title, @summary, @brief, @cover, @reward, @format, @formats, 'cocacola_kz', @hashtag, @starts, @deadline, @mode, 0,
+       VALUES (@id, @title, @summary, @brief, @cover, @reward, @format, @formats, 'cocacola_kaz', @hashtag, @starts, @deadline, @mode, 0,
          @steps, @sort, 1, 'active', '{"mode":"all"}', 'admin', 0, @now, 1)`,
     );
     const extra = [
@@ -111,7 +111,7 @@ async function seed(db: DB, userId: number): Promise<void> {
         id: item.id,
         title: item.title,
         summary: 'A short task for the preview.',
-        brief: 'What it is\nA short sample task, so that this preview shows every state of the Hub.\n\nMust have\nCoca-Cola in the frame.\nTag @cocacola_kz.',
+        brief: 'What it is\nA short sample task, so that this preview shows every state of the Hub.\n\nMust have\nCoca-Cola in the frame.\nTag @cocacola_kaz.',
         cover: item.cover?.url ?? null,
         reward: item.reward,
         format: item.format,
@@ -120,7 +120,7 @@ async function seed(db: DB, userId: number): Promise<void> {
         starts: ago(24 * 10),
         deadline: ahead(20 + index),
         mode: item.mode,
-        steps: JSON.stringify(['Shoot it your way.', 'Tag @cocacola_kz.', 'Send us the link.']),
+        steps: JSON.stringify(['Shoot it your way.', 'Tag @cocacola_kaz.', 'Send us the link.']),
         sort: 10 + index,
         now: stamp,
       }),
@@ -174,7 +174,7 @@ async function seed(db: DB, userId: number): Promise<void> {
     const publication = db.prepare(
       `INSERT INTO publications (entry_id, user_id, task_id, url, platform, kind, external_id, author_handle, published_at, mentions, hashtags,
          media_path, checks, status, views, likes, comments, views_source, story_asked_at, created_at, data_source)
-       VALUES (@entry, @user, @task, @url, 'instagram', @kind, @external, 'aruzhan.vibes', @published, '["cocacola_kz"]', '[]',
+       VALUES (@entry, @user, @task, @url, 'instagram', @kind, @external, 'aruzhan.vibes', @published, '["cocacola_kaz"]', '[]',
          @media, @checks, 'tracking', @views, @likes, @comments, @source, @asked, @created, 'demo')`,
     );
     const allPass = JSON.stringify({ ownAccount: 'pass', afterStart: 'pass', mention: 'pass', hashtag: 'pass', format: 'pass', reachable: 'pass' });
@@ -240,7 +240,7 @@ async function seed(db: DB, userId: number): Promise<void> {
       '5 Jan 2027',
       '15 Dec 2026',
       ago(5),
-      'The idea\nOne hero reel about your New Year evening with the people you love. Coca-Cola is part of the moment, not an ad break.\n\nMust have\nThe bottle is clearly visible for at least three seconds.\nTag @cocacola_kz and mark the post as paid partnership.\n\nHow it goes\nYou send us the draft first. We agree the idea on a call, then you post by 5 January.',
+      'The idea\nOne hero reel about your New Year evening with the people you love. Coca-Cola is part of the moment, not an ad break.\n\nMust have\nThe bottle is clearly visible for at least three seconds.\nTag @cocacola_kaz and mark the post as paid partnership.\n\nHow it goes\nYou send us the draft first. We agree the idea on a call, then you post by 5 January.',
     );
 
     // Other creators, so the leaderboard has company.
