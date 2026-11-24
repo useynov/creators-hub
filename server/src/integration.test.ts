@@ -17,7 +17,8 @@ delete process.env.ADMIN_CHAT_ID;
 const { openDb, now } = await import('./db.js');
 const { saveMedia, readMedia, sniff } = await import('./media.js');
 const { isManagerOnly, isOwner, isTeam, setDemoMode, teamChats } = await import('./team.js');
-const { applyInviteTags, tagsOf } = await import('./account.js');
+const { applyInviteTags, tagsOf, refreshProfile } = await import('./account.js');
+const { setProvider } = await import('./social/index.js');
 const sharp = (await import('sharp')).default;
 
 const db = openDb(':memory:');
@@ -124,4 +125,63 @@ test('tags chosen at invitation reach the creator once they are in the Hub, and 
   db.prepare(`INSERT INTO users (id, username, first_name, created_at) VALUES (2002, 'dana', 'Dana', ?)`).run(now());
   applyInviteTags(db);
   assert.deepEqual(tagsOf(db, 2002), ['later']);
+});
+
+test('a profile refresh fills in the average reel views from the second reader', async () => {
+  db.prepare(`INSERT INTO users (id, username, first_name, instagram, birth_date, onboarded_at, created_at) VALUES (3001, 'mira', 'Mira', 'mira.films', '1998-02-02', ?, ?)`).run(now(), now());
+  db.prepare(`INSERT INTO social_profiles (user_id, platform, handle, status, source, fetched_at) VALUES (3001, 'instagram', 'mira.films', 'ok', 'apify', ?)`).run(now());
+  const post = (code: string, kind: 'post' | 'reel', day: string) => ({
+    url: `https://www.instagram.com/p/${code}/`,
+    kind,
+    publishedAt: `2026-11-${day}T10:00:00.000Z`,
+    views: null,
+    likes: 200,
+    comments: 0,
+    thumbUrl: null,
+  });
+  const asked: string[] = [];
+  setProvider({
+    name: 'apify',
+    // As the real profile reader answers: recent posts, reels among them, none with views.
+    fetchProfile: async () => ({
+      status: 'ok',
+      profile: {
+        platform: 'instagram', handle: 'mira.films', externalId: '1', fullName: 'Mira', bio: null, avatarUrl: null,
+        followers: 10_000, following: 10, postsCount: 3, isPrivate: false, isVerified: false,
+        recent: [post('A', 'reel', '20'), post('B', 'post', '19'), post('C', 'reel', '18')],
+      },
+    }),
+    fetchPost: async () => ({ status: 'gone' }),
+    fetchReels: async (handle, limit) => {
+      asked.push(`${handle}:${limit}`);
+      return [{ ...post('A', 'reel', '20'), views: 30_000 }, { ...post('C', 'reel', '18'), views: 10_000 }];
+    },
+  });
+  try {
+    const row = await refreshProfile(db, 3001, 'instagram');
+    assert.deepEqual(asked, ['mira.films:12']);
+    assert.equal(row?.avg_reel_views, 20_000, 'the average of the two reels, the photo post has no views');
+    assert.equal(row?.engagement_rate, 2, '200 likes on 10,000 followers');
+
+    // The second reader fails: the profile is still stored, only without the average.
+    setProvider({
+      name: 'apify',
+      fetchProfile: async () => ({
+        status: 'ok',
+        profile: {
+          platform: 'instagram', handle: 'mira.films', externalId: '1', fullName: 'Mira', bio: null, avatarUrl: null,
+          followers: 12_000, following: 10, postsCount: 3, isPrivate: false, isVerified: false, recent: [post('A', 'reel', '20')],
+        },
+      }),
+      fetchPost: async () => ({ status: 'gone' }),
+      fetchReels: async () => {
+        throw new Error('quota');
+      },
+    });
+    const again = await refreshProfile(db, 3001, 'instagram');
+    assert.equal(again?.followers, 12_000);
+    assert.equal(again?.avg_reel_views, null);
+  } finally {
+    setProvider(null);
+  }
 });

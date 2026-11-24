@@ -15,7 +15,7 @@ import { HubError } from './errors.js';
 import { downloadMedia, saveMedia } from './media.js';
 import { accountKeyboard, creatorLine, esc, notifyAdmins, notifyUser } from './notify.js';
 import { cleanHandle, getProvider } from './social/index.js';
-import type { ProfileData, ProfileResult, RecentPost } from './social/types.js';
+import { mergeReelViews, type ProfileData, type ProfileResult, type RecentPost } from './social/types.js';
 import type { ConnectView, Level } from './types.js';
 
 export function profileOf(db: DB, userId: number, platform: Platform = 'instagram'): SocialProfileRow | undefined {
@@ -257,6 +257,15 @@ export async function refreshProfile(db: DB, userId: number, platform: Platform 
   const provider = getProvider();
   const result = await askProvider(platform, handle);
   const avatarUrl = result.status === 'ok' ? await keepAvatar(result.profile.avatarUrl) : null;
+  // Reel views come from a second, slower read: the profile's own list of posts has none.
+  if (result.status === 'ok' && platform === 'instagram' && provider.fetchReels) {
+    try {
+      const reels = await withTimeout(provider.fetchReels(handle, settings.metrics.profileSample), PROVIDER_WAIT_MS, 'reel views');
+      result.profile.recent = mergeReelViews(result.profile.recent, reels);
+    } catch {
+      // No numbers this time: the profile is stored without them.
+    }
+  }
 
   // The creator may have changed the handle while we were reading: then this answer is stale.
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
@@ -414,6 +423,9 @@ export function confirmLookup(db: DB, user: UserRow, body: Record<string, unknow
   })();
   // Tags the team chose when inviting this person start working now: tasks for a tag reach them at once.
   applyInviteTags(db);
+  // "Is this you?" is answered from the quick profile read. The reel views behind the averages
+  // need a slower one, so they are filled in now, in the background, before the team looks.
+  if (getProvider().fetchReels) track('reel views after connect', refreshProfile(db, user.id, 'instagram'));
 
   // The team hears about every account it has not confirmed yet, including members from v1.
   if (!backToPending && user.account_status === 'confirmed') return;

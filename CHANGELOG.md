@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1 (24 November 2026)
+
+Found by the first live test with a real Apify token.
+
+- **Fixed:** an Instagram handle that does not exist was accepted at sign-up with an empty profile. It is now refused as "not found", as decided.
+- **Added:** average reel views. The profile reader returns recent posts without view counts, so the views are now read with a second reader in the background, right after a creator connects and at every refresh. "Is this you?" stays fast.
+
 ## 2.0.0 (November 2026)
 
 The second version of Creators Hub. Version 1 is kept as the branch `v1`.
@@ -25,7 +32,7 @@ The second version of Creators Hub. Version 1 is kept as the branch `v1`.
 
 ### Which version is running
 
-Open `https://<your address>/version`. Version 2 answers `{"name":"creators-hub","version":"2.0.0"}`. Version 1 does not answer with a version there.
+Open `https://<your address>/version`. Version 2 answers with its number, for example `{"name":"creators-hub","version":"2.0.1"}`. Version 1 does not answer with a version there.
 
 ### Going back to version 1
 

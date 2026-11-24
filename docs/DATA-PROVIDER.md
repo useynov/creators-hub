@@ -33,6 +33,7 @@ Content-Type: application/json
 | Use | Actor | Input we send | Docs |
 | --- | --- | --- | --- |
 | Instagram profile (connect, weekly refresh) | `apify/instagram-profile-scraper` | `{ "usernames": ["<handle>"] }` | [page](https://apify.com/apify/instagram-profile-scraper), [input](https://apify.com/apify/instagram-profile-scraper/input-schema) |
+| Instagram reel views for the averages (right after connect, weekly refresh) | `apify/instagram-reel-scraper` | `{ "username": ["<handle>"], "resultsLimit": 12 }` | [page](https://apify.com/apify/instagram-reel-scraper) |
 | Instagram post or reel link | `apify/instagram-scraper` | `{ "directUrls": ["<link>"], "resultsType": "posts", "resultsLimit": 1, "addParentData": false }` | [page](https://apify.com/apify/instagram-scraper), [input](https://apify.com/apify/instagram-scraper/input-schema) |
 | Instagram story link | `memo23/instagram-stories-highlights-scraper` | `{ "usernames": ["<author>"], "dataToScrape": "stories", "maxStoriesPerUser": 100 }` | [page](https://apify.com/memo23/instagram-stories-highlights-scraper) |
 | TikTok profile (optional handle) | `clockworks/tiktok-scraper` | `{ "profiles": ["<handle>"], "resultsPerPage": 12, "profileScrapeSections": ["videos"] }` | [page](https://apify.com/clockworks/tiktok-scraper), [input](https://apify.com/clockworks/tiktok-scraper/input-schema) |
@@ -94,3 +95,18 @@ The mapping is covered by fixture tests (`server/src/apify.test.ts`) built from 
 4. `clockworks/tiktok-scraper` with `postURLs` (including a `vm.tiktok.com` short link) and with `profiles` for a private and a missing account: confirm the `errorCode` values.
 5. Timing: how long each synchronous call takes, against our 200-second wait.
 6. Avatar and thumbnail downloads from `scontent.cdninstagram.com` and `p16.tiktokcdn.com` work from the server (no hotlink refusal).
+
+
+## Live check, 24 November 2026
+
+Run on the production server with a real token, against public accounts.
+
+| Read | Result | Time | Cost of one call |
+| --- | --- | --- | --- |
+| Instagram profile | Works: name, avatar, followers, 12 recent posts with likes and comments | 4 to 9 s | about $0.002 |
+| Account that does not exist | Apify answers with the username plus `error: "not_found"`. This was read as a profile by mistake and is fixed in 2.0.1 | 4 s | about $0.002 |
+| Reel views | The profile reader returns **no view counts** for recent posts. Version 2.0.1 reads them with `apify/instagram-reel-scraper` (`videoPlayCount`) in the background | about 25 s | about $0.03 for 12 reels |
+| Post or reel link | Works: author, time, caption, mentions, views (reels), likes, comments | under 10 s | about $0.002 |
+| Stories | Works: `sourceUsername`, `mediaPk`, `takenAt`, `expiringAt`, `imageUrl` or `videoUrl`, `mentions` | 8 s | well under $0.001 |
+
+So a creator joining costs about 3 cents, a weekly refresh the same, and each of the four measurements of a publication about a fifth of a cent. TikTok was not checked live yet.

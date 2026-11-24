@@ -10,6 +10,7 @@ import {
   mapTiktokProfile,
 } from './social/apify.js';
 import { parseLink } from './social/links.js';
+import { instagramCode, mergeReelViews, type RecentPost } from './social/types.js';
 
 // Fixtures follow the output shapes documented on the actors' Apify pages (see docs/DATA-PROVIDER.md).
 // They are trimmed to the fields we read, plus a few we ignore, the way the actors return them.
@@ -73,6 +74,15 @@ test('apify: Instagram profile that is private, missing or broken', () => {
   assert.equal(mapInstagramProfile([{ ...igProfile, private: true, latestPosts: [] }], 'aruzhan.vibes').status, 'private');
   assert.equal(mapInstagramProfile([], 'nobody').status, 'not_found');
   assert.equal(mapInstagramProfile([{ url: 'https://www.instagram.com/nobody', error: 'not_found', errorDescription: 'Profile does not exist' }], 'nobody').status, 'not_found');
+  // The exact answer Apify gave on 24 Nov 2026 for an account that does not exist: the username is there, with an error.
+  assert.equal(
+    mapInstagramProfile([{ url: 'https://www.instagram.com/cocacola_kz', username: 'cocacola_kz', error: 'not_found', errorDescription: 'Profile does not exist' }], 'cocacola_kz').status,
+    'not_found',
+    'a username with an error is not a profile',
+  );
+  assert.equal(mapInstagramProfile([{ username: 'shy', error: 'restricted', errorDescription: 'Restricted profile' }], 'shy').status, 'private');
+  assert.equal(mapInstagramProfile([{ username: 'busy', error: 'rate_limited', errorDescription: 'Too many requests' }], 'busy').status, 'error');
+  assert.equal(mapInstagramProfile([{ username: 'ghost' }], 'ghost').status, 'not_found', 'a bare username with no id and no followers is nobody');
   assert.equal(mapInstagramProfile([{ error: 'restricted', errorDescription: 'Empty or private data for provided input' }], 'shy').status, 'private');
   assert.equal(mapInstagramProfile([{ error: 'rate_limited', errorDescription: 'Too many requests' }], 'busy').status, 'error');
   assert.equal(mapInstagramProfile([{ username: 'someone.else', followersCount: 1 }], 'aruzhan.vibes').status, 'not_found', 'another account is not this one');
@@ -245,4 +255,66 @@ test('links: handles and publication addresses', () => {
   assert.deepEqual(parseLink('https://instagram.com/p/XYZ'), { platform: 'instagram', kind: 'post', author: null, id: 'XYZ' });
   assert.equal(parseLink('https://evil.com/instagram.com/p/XYZ').platform, 'other');
   assert.equal(parseLink('https://instagram.com.evil.com/p/XYZ').platform, 'other');
+});
+
+
+// --- Reel views: the profile reader has none, a second reader fills them in -----------------
+// Shapes as Apify returned them on 24 Nov 2026 for a public account.
+
+test('reel views: the reels reader is asked for the account and its plays are mapped', async () => {
+  const seen: Array<{ url: string; body: Record<string, unknown> }> = [];
+  let answer: () => Response = () =>
+    Response.json([
+      { type: 'Video', productType: 'clips', shortCode: 'Df79c9PN-Qk', url: 'https://www.instagram.com/p/Df79c9PN-Qk/', videoPlayCount: 87328, likesCount: 917, commentsCount: 85, timestamp: '2026-11-19T20:42:41.000Z', ownerUsername: 'Aruzhan.Vibes', displayUrl: 'https://cdn.example/t.jpg' },
+      { type: 'Video', productType: 'clips', shortCode: 'OTHER', url: 'https://www.instagram.com/p/OTHER/', videoPlayCount: 5, ownerUsername: 'someone.else' },
+      { username: 'aruzhan.vibes', error: 'no_items', errorDescription: 'Empty' },
+    ]);
+  const fakeFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    seen.push({ url: String(url), body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown> });
+    return answer();
+  }) as typeof fetch;
+  const provider = createApifyProvider('secret-token-123', fakeFetch);
+
+  const reels = await provider.fetchReels!('@Aruzhan.Vibes', 12);
+  assert.ok(seen[0]!.url.includes(ACTORS.instagramReels));
+  assert.deepEqual(seen[0]!.body, { username: ['aruzhan.vibes'], resultsLimit: 12 });
+  assert.equal(reels.length, 1, 'only this account’s reels, no error items');
+  assert.equal(reels[0]!.kind, 'reel');
+  assert.equal(reels[0]!.views, 87328);
+
+  // Trouble with the second reader never breaks a profile: it is simply "no numbers this time".
+  answer = () => new Response('{}', { status: 402 });
+  assert.deepEqual(await provider.fetchReels!('aruzhan.vibes', 12), []);
+  assert.deepEqual(await provider.fetchReels!('not a handle!', 12), []);
+});
+
+test('reel views: merged into the profile’s recent posts by short code', () => {
+  const post = (code: string, kind: RecentPost['kind'], path = 'p'): RecentPost => ({
+    url: `https://www.instagram.com/${path}/${code}/`,
+    kind,
+    publishedAt: '2026-11-19T20:42:41.000Z',
+    views: null,
+    likes: 100,
+    comments: 5,
+    thumbUrl: null,
+  });
+  assert.equal(instagramCode('https://www.instagram.com/p/Df79c9PN-Qk/'), 'Df79c9PN-Qk');
+  assert.equal(instagramCode('https://www.instagram.com/aruzhan.vibes/reel/ABC_1-x/?igsh=1'), 'ABC_1-x');
+  assert.equal(instagramCode('https://www.instagram.com/stories/aruzhan.vibes/123/'), null);
+
+  // The profile lists a reel as a plain /p/ link with no views; the reels reader knows its plays.
+  const recent = [post('PHOTO', 'post'), post('REEL1', 'reel'), post('REEL2', 'unknown')];
+  const reels = [
+    { ...post('REEL1', 'reel', 'reel'), views: 35805, likes: 640 },
+    { ...post('REEL2', 'reel'), views: 57969 },
+    { ...post('OLDER', 'reel'), views: 1000 },
+    { ...post('NOVIEWS', 'reel'), views: null },
+  ];
+  const merged = mergeReelViews(recent, reels);
+  assert.deepEqual(
+    merged.map((item) => [instagramCode(item.url), item.kind, item.views]),
+    [['PHOTO', 'post', null], ['REEL1', 'reel', 35805], ['REEL2', 'reel', 57969], ['OLDER', 'reel', 1000]],
+  );
+  assert.equal(merged[1]!.likes, 100, 'the profile’s own numbers are kept');
+  assert.equal(mergeReelViews(recent, []), recent, 'nothing to merge changes nothing');
 });
