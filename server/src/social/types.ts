@@ -81,6 +81,41 @@ export interface SocialProvider {
   readonly name: 'apify' | 'demo';
   fetchProfile(platform: Platform, handle: string): Promise<ProfileResult>;
   fetchPost(url: string): Promise<PostResult>;
+  /**
+   * The latest reels of an Instagram account WITH their public play counts. The profile reader
+   * lists recent posts without views, so this second, slower read (about half a minute) fills
+   * them in. Optional: a provider whose profile answer already carries views does not need it.
+   * Never throws: an empty list means "no numbers this time".
+   */
+  fetchReels?(handle: string, limit: number): Promise<RecentPost[]>;
+}
+
+/** The short code of an Instagram link (/p/CODE/, /reel/CODE/, /reels/CODE/, /tv/CODE/), or null. */
+export function instagramCode(url: string): string | null {
+  return /instagram\.com\/(?:[^/]+\/)?(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/.exec(url)?.[1] ?? null;
+}
+
+/**
+ * Puts the reels' view counts into a profile's recent posts. A post and a reel are the same
+ * publication when their short codes match; reels the profile list did not have are added.
+ */
+export function mergeReelViews(recent: RecentPost[], reels: RecentPost[]): RecentPost[] {
+  const byCode = new Map<string, RecentPost>();
+  for (const reel of reels) {
+    const code = instagramCode(reel.url);
+    if (code && reel.views !== null) byCode.set(code, reel);
+  }
+  if (!byCode.size) return recent;
+  const seen = new Set<string>();
+  const merged = recent.map((post) => {
+    const code = instagramCode(post.url);
+    const reel = code ? byCode.get(code) : undefined;
+    if (!code || !reel) return post;
+    seen.add(code);
+    return { ...post, kind: 'reel' as const, views: reel.views, likes: post.likes ?? reel.likes, comments: post.comments ?? reel.comments };
+  });
+  for (const [code, reel] of byCode) if (!seen.has(code)) merged.push(reel);
+  return merged;
 }
 
 /** Result of one automatic check on a submitted link. */

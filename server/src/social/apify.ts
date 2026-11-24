@@ -11,6 +11,8 @@ import type { PostData, PostResult, ProfileData, ProfileResult, RecentPost, Soci
 
 export const ACTORS = {
   instagramProfile: 'apify~instagram-profile-scraper',
+  /** The profile reader lists recent posts without view counts; this one returns reels with their plays. */
+  instagramReels: 'apify~instagram-reel-scraper',
   instagramPost: 'apify~instagram-scraper',
   /** The official Instagram actors no longer read stories (deprecated 26 Nov 2025). This one reads them without a login. */
   instagramStories: 'memo23~instagram-stories-highlights-scraper',
@@ -100,13 +102,19 @@ export function mapInstagramProfile(items: unknown[], handle: string): ProfileRe
   const wanted = handle.toLowerCase();
   const objects = items.filter(isObject);
   const item = objects.find((candidate) => str(candidate.username)?.toLowerCase() === wanted);
-  if (!item) {
-    const failure = objects.map(errorOf).find(Boolean);
+  // A missing account comes back as an item with the username AND an error
+  // ({ username, error: 'not_found', errorDescription: 'Profile does not exist' }),
+  // so the error is read before the item is trusted as a profile.
+  const failure = (item ? errorOf(item) : null) ?? (item ? null : objects.map(errorOf).find(Boolean)) ?? null;
+  if (failure || !item) {
     if (failure && saysPrivate(failure)) return { status: 'private', handle: wanted };
     if (!failure || saysMissing(failure)) return { status: 'not_found', handle: wanted };
     return { status: 'error', message: 'The profile reader returned an error' };
   }
   if (bool(item.private)) return { status: 'private', handle: wanted };
+  // A real profile always has an id and a follower count. Without both there is nothing to show
+  // the creator as "Is this you?", and nobody is let in on an empty answer.
+  if (item.id == null && count(item.followersCount) === null) return { status: 'not_found', handle: wanted };
 
   const profile: ProfileData = {
     platform: 'instagram',
@@ -310,6 +318,22 @@ export function createApifyProvider(token: string, fetchImpl: Fetch = fetch): So
         return mapInstagramProfile(await run(ACTORS.instagramProfile, { usernames: [handle] }), handle);
       } catch (error) {
         return failure(error);
+      }
+    },
+
+    async fetchReels(handle: string, limit: number): Promise<RecentPost[]> {
+      const wanted = cleanHandle(handle);
+      if (!wanted) return [];
+      try {
+        const items = await run(ACTORS.instagramReels, { username: [wanted], resultsLimit: Math.max(1, Math.min(30, Math.round(limit))) });
+        return items
+          .filter(isObject)
+          .filter((item) => !errorOf(item) && str(item.ownerUsername)?.toLowerCase() === wanted)
+          .map(igRecent)
+          .filter((post): post is RecentPost => Boolean(post));
+      } catch {
+        // The averages simply stay as they were; the profile itself has been read already.
+        return [];
       }
     },
 
