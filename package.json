@@ -1,7 +1,7 @@
 {
   "name": "creators-hub",
   "private": true,
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Creators Hub: Telegram bot and mini app for an invite-only creator community",
   "workspaces": [
     "server",

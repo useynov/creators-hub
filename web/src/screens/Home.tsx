@@ -20,7 +20,7 @@ export function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <Logo height={28} />
           <span aria-hidden="true" style={{ width: 1, height: 22, background: 'var(--line)' }} />
-          <span className="label" style={{ color: 'var(--black)', whiteSpace: 'nowrap' }}>
+          <span className="label" style={{ color: 'var(--black)', maxWidth: '9ch', lineHeight: 1.15 }}>
             {hubName(settings.brandName)}
           </span>
         </div>
