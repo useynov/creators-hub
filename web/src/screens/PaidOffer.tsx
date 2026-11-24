@@ -3,7 +3,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import type { OfferView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { Brief, Cover, Loading, Problem, Screen, TopBar } from '../components/ui';
+import { Brief, Cover, Loading, Problem, Screen, TopBar, keepBrand } from '../components/ui';
 import { useAction, useHub, useToast } from '../hub';
 import { buzz } from '../telegram';
 
@@ -67,8 +67,8 @@ export function PaidOffer() {
         <TopBar over back="/tasks" backLabel="Back to tasks" title="Paid offer" right={<span className="chip glass">Partner</span>} />
         <div className="lead__body" style={{ gap: 12 }}>
           <div className="label">Paid offer · Only for you, {me.firstName}</div>
-          <h1 className="lead__title" style={{ fontSize: 34 }}>
-            {offer.campaign}
+          <h1 className="lead__title" style={{ fontSize: 32 }}>
+            {keepBrand(offer.campaign)}
           </h1>
         </div>
       </div>

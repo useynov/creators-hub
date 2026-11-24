@@ -320,9 +320,13 @@ test('a member from v1 (no birth date, no pulled profile) goes through the setup
   assert.equal((await call<TaskView>(veteran, 'POST', '/api/tasks/new-year-post/join')).data.entry?.status, 'joined');
 });
 
-test('brand photos: only .webp names are served, and a missing file is a plain 404', async () => {
-  assert.equal((await app.request('/brand/no-such-photo.webp')).status, 404);
-  // Anything that is not a simple .webp name never reaches the folder: it falls through to the app.
-  const other = await app.request('/brand/..%2Fseed.json');
-  assert.notEqual(other.headers.get('content-type'), 'image/webp');
+test('brand assets: only photo, font and logo names are served, and a missing file is a plain 404', async () => {
+  for (const name of ['no-such-photo.webp', 'no-such-font.woff2', 'no-such-logo.svg']) {
+    assert.equal((await app.request(`/brand/${name}`)).status, 404, name);
+  }
+  // Anything else never reaches the folder: it falls through to the app.
+  for (const path of ['/brand/..%2Fseed.json', '/brand/settings.json', '/brand/notes.txt']) {
+    const other = await app.request(path);
+    assert.ok(!/^(image|font)\//.test(other.headers.get('content-type') ?? ''), path);
+  }
 });

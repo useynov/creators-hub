@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import type { HomeView, NewsView } from '../../../server/src/types';
 import { Icon } from '../components/Icon';
-import { AccountNote, Avatar, Cover, DateBox, Loading, Problem, Progress, Screen, TabBar } from '../components/ui';
+import { AccountNote, Cover, DateBox, Loading, Logo, Problem, Progress, Screen, TabBar, hubName, keepBrand } from '../components/ui';
 import { coins, day, levelName } from '../format';
 import { useHub } from '../hub';
 import { openExternal, openTelegram } from '../telegram';
@@ -17,10 +17,13 @@ export function Home() {
   return (
     <Screen>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 20px 0' }}>
-        <Link to="/profile" aria-label="Your profile" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, color: 'var(--black)' }}>
-          <Avatar src={me.avatarUrl} name={me.firstName} size={40} />
-          <span className="label" style={{ maxWidth: '16ch' }}>{settings.brandName}</span>
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <Logo height={28} />
+          <span aria-hidden="true" style={{ width: 1, height: 22, background: 'var(--line)' }} />
+          <span className="label" style={{ color: 'var(--black)', whiteSpace: 'nowrap' }}>
+            {hubName(settings.brandName)}
+          </span>
+        </div>
         <Link to="/wallet" className="chip chip--line chip--lg nums" aria-label={`${coins(me.balance)}, open rewards`}>
           <Icon name="coin" size={18} />
           <span>{coins(me.balance)}</span>
@@ -59,7 +62,7 @@ export function Home() {
               <Link to="/offer" className="card card--row card--dark" style={{ gap: 12, padding: '16px 20px' }}>
                 <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
                   <div className="t-sm muted">Paid offer, only for you</div>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{data.offer.campaign}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{keepBrand(data.offer.campaign)}</div>
                 </div>
                 <Icon name="right" size={20} />
               </Link>
@@ -83,7 +86,7 @@ export function Home() {
                         ? `${day(data.nextTask.date)}, ${data.nextTask.place}`
                         : [data.nextTask.format, `until ${day(data.nextTask.deadline)}`].filter(Boolean).join(' · ')}
                     </div>
-                    <div className="lead__title">{data.nextTask.title}</div>
+                    <div className="lead__title">{keepBrand(data.nextTask.title)}</div>
                     <div className="lead__foot">
                       <span className="btn btn--white btn--sm">Open task</span>
                     </div>

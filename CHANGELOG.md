@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.0 (24 November 2026)
+
+The real brand assets, found on Tarlan's Mac.
+
+- **Font: TCCC Unity**, the Coca-Cola typeface, in the creator app and the admin. Headlines and big figures use the Headline cut (Black and Bold), everything else the Text cut (Regular, Medium, Bold).
+- **Unity has Latin letters only.** Russian and Kazakh text, and the tenge sign, are shown in Onest, which stays as the second font. When the app is translated, Cyrillic screens will be in Onest unless a Cyrillic Unity is found.
+- **Logo: the Coca-Cola script.** On Home it stands next to "Creators Hub"; it is on the welcome photo, on the event pass, in the admin menu and on the admin login. It was traced from the PNG in Downloads into a clean vector and coloured in the exact brand red.
+- "Coca-Cola" in a title is never broken at its hyphen.
+- **The font and the logo are not in this repository**, like the photos: they live in `content/brand/` on the server and are served at `/brand/`. See README, "Brand assets". Without them the app falls back to Onest and sets the name in type.
+
+**Going back to 3.0.0:** image `creators-hub:rollback-v3.0.0-20261124` on the server. Same database.
+
 ## 3.0.0 (24 November 2026)
 
 A new look for the creator app and the admin, built on the Coca-Cola design system. Nothing changes in how the Hub works: the same screens, the same data, the same bot.

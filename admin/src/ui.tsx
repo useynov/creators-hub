@@ -145,6 +145,22 @@ export function Tabs<K extends string>({
   );
 }
 
+/**
+ * The Coca-Cola script. The file is served from /brand on the server and is not in git;
+ * when it is missing the old round mark takes its place.
+ */
+export function BrandLogo({ tone, height }: { tone: 'red' | 'white'; height: number }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <div className="brand__mark" aria-hidden="true">
+        CH
+      </div>
+    );
+  }
+  return <img src={`/brand/logo-${tone}.svg`} alt="Coca-Cola" height={height} width={Math.round((height * 2000) / 627)} onError={() => setBroken(true)} />;
+}
+
 export function Avatar({ name, url, size = 36 }: { name: string; url: string | null; size?: number }) {
   const [broken, setBroken] = useState(false);
   const style: CSSProperties = { width: size, height: size, fontSize: Math.max(12, Math.round(size / 2.8)) };

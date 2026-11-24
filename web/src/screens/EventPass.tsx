@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import type { EventsView, EventView } from '../../../server/src/types';
 import { api } from '../api';
-import { Loading, Problem, Screen, TopBar } from '../components/ui';
+import { Loading, Logo, Problem, Screen, TopBar } from '../components/ui';
 import { coins, dayLong, levelName } from '../format';
 import { useAction, useHub, useToast } from '../hub';
 import { openExternal } from '../telegram';
@@ -77,6 +77,7 @@ export function EventPass() {
       <TopBar back={`/events/${id}`} backLabel="Back to the event" title="Your pass" light />
       <main className="body" style={{ gap: 16 }}>
         <section className="card card--col" style={{ borderColor: 'transparent', padding: '28px 20px 20px', alignItems: 'center', gap: 20, textAlign: 'center' }}>
+          <Logo height={30} />
           <div className="stack" style={{ gap: 6 }}>
             <div className="label" style={{ color: 'var(--red-600)' }}>{event.checkedIn ? 'You are checked in' : 'You are on the list'}</div>
             <h1 className="display" style={{ fontSize: 30, color: 'var(--black)' }}>
