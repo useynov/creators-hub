@@ -24,14 +24,12 @@ import {
   listTasks,
   oneTask,
   parseViews,
-  placeOrder,
   publicSettings,
   remindMe,
   requestCashout,
   requestDraftUpload,
   rsvp,
   sendStoryViews,
-  shop,
   storyOf,
   submitDraftLink,
   submitLinks,
@@ -39,6 +37,7 @@ import {
   upsertUser,
   wallet,
 } from './service.js';
+import { cancelOrder, myOrders, placeOrder, shop } from './shop.js';
 import type { Bootstrap } from './types.js';
 
 type Env = { Variables: { user: UserRow } };
@@ -234,10 +233,14 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   );
 
   app.get('/api/wallet', (c) => c.json(wallet(db, c.var.user.id)));
-  app.get('/api/shop', (c) => c.json(shop(db, c.var.user.id)));
-  app.post('/api/shop/:id/order', async (c) =>
-    c.json({ balance: placeOrder(db, c.var.user, c.req.param('id'), await body(c)) }),
-  );
+  app.get('/api/shop', (c) => c.json(shop(db, c.var.user.id, c.req.query('preview'))));
+  app.get('/api/shop/orders', (c) => c.json(myOrders(db, c.var.user.id)));
+  app.post('/api/shop/orders/:id/cancel', (c) => {
+    const id = Number(c.req.param('id'));
+    if (!Number.isSafeInteger(id) || id <= 0) throw new HubError('order_not_found', 'This order does not exist.', 404);
+    return c.json({ balance: cancelOrder(db, c.var.user, id) });
+  });
+  app.post('/api/shop/:id/order', async (c) => c.json(placeOrder(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/cashout', async (c) => c.json({ balance: requestCashout(db, c.var.user, await body(c)) }));
 
   app.get('/api/events', (c) => c.json(listEvents(db, c.var.user.id)));

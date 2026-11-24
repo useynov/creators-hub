@@ -22,6 +22,8 @@ import { Redeem } from './screens/Redeem';
 import { ChangeHandle, Setup } from './screens/Setup';
 import { StoryViews } from './screens/StoryViews';
 import { Shop } from './screens/Shop';
+import { ShopItem } from './screens/ShopItem';
+import { ShopOrders } from './screens/ShopOrders';
 import { Submit } from './screens/Submit';
 import { Task } from './screens/Task';
 import { Tasks } from './screens/Tasks';
@@ -118,7 +120,9 @@ function Shell() {
         <Route path="/tasks/:id/submit" element={<Submit />} />
         <Route path="/wallet" element={<Wallet />} />
         <Route path="/shop" element={<Shop />} />
-        <Route path="/shop/:id" element={<Redeem />} />
+        <Route path="/shop/orders" element={<ShopOrders />} />
+        <Route path="/shop/:id" element={<ShopItem />} />
+        <Route path="/shop/:id/order" element={<Redeem />} />
         <Route path="/cashout" element={<CashOut />} />
         <Route path="/events" element={<Events />} />
         <Route path="/events/:id" element={<Event />} />

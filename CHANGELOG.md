@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.3.0 (24 November 2026)
+
+The shop, rebuilt end to end. Before this version an item could only be added by editing a file on the server, it could not have a photo from the admin site, and a creator had no page for an item and no way to follow an order.
+
+**Admin: a Shop section**
+- **Add and change items on the site**, from a laptop or a phone: name, description, price, section, sizes, how it is delivered, how many are left, a limit per creator, shown or hidden.
+- **Photos:** up to six per item, uploaded right there (several at once, also straight from a phone camera). The first one is the cover; photos can be reordered and removed. Large phone photos are turned upright and scaled down in the browser before upload, so the 5 MB limit is no longer in the way. The same now applies to task covers.
+- **Check before you show:** the editor shows the item as the creator will see it, in the list and on its page, while you type. "Open in the app" makes the bot send you a button that opens the item in the real app on your phone, also while it is still hidden from creators.
+- **The shelf:** items can be moved up and down; creators see them in that order. An item with orders can be hidden but not removed, so old orders keep their name.
+- **The content file no longer overwrites the shop.** `content/seed.json` only fills an empty shop. An item added or edited on the site is never touched by it again, and neither is a stock count.
+
+**Admin: orders**
+- Each order shows the photo of the item, and "Send in Telegram" instead of an address for things that are not shipped.
+- **Cancel with a reason**, until the order is delivered: the coins go back to the creator, the item goes back to the stock, and the bot tells the creator why. Cancelled orders have their own tab.
+
+**Creator app**
+- **Every item has its own page:** photos to swipe through, the description, sizes, how it arrives, and how many are left. Items that are still out of reach can be opened too, with a line showing how many coins are missing.
+- **Stock and limits:** "Only 2 left", "Sold out", "You already ordered it". The last one goes to whoever orders first.
+- **Ordering:** the sizes the item really has; no address is asked for something sent in Telegram; one line says what is still missing instead of a silently grey button.
+- **Your orders:** a new screen with every order and where it stands (ordered, packed, on its way, delivered). An order can be cancelled by the creator until the team has packed it; the coins come straight back. The bot's order messages open this screen.
+
+**Data.** New columns are added to `shop_items` and `orders` on start; nothing is removed. Going back to 3.2.1 (image `creators-hub:rollback-v3.2.1-20261124`) works on the same database, but that version does not know cancelled orders or the Shop section.
+
 ## 3.2.1 (24 November 2026)
 
 - **Older iPhones.** The build shortened the phone rule of the admin to a newer notation that iOS before 16.4 does not read, so those phones would have shown the laptop layout. Styles are now written out for phones a few years old (`cssTarget` in both Vite configs).

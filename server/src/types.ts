@@ -265,15 +265,54 @@ export interface WalletView {
 export interface ShopItemView {
   id: string;
   title: string;
+  description: string | null;
   price: number;
   category: 'merch' | 'gift';
+  /** The cover: the first photo, or null when the item has none. */
   imageUrl: string | null;
+  images: string[];
+  /** Sizes on offer; empty for an item without sizes. */
+  sizes: string[];
   needsSize: boolean;
+  /** 'courier' needs an address and a phone; 'message' is sent by the team in Telegram. */
+  delivery: 'courier' | 'message';
+  /** How many are left; null when the team does not count. */
+  left: number | null;
+  perCreator: number | null;
+  /** How many of this the creator has ordered (cancelled orders do not count). */
+  mine: number;
+  /** Coins the creator still lacks for it. */
+  missing: number;
+  /** Why this creator cannot order it now. 'hidden' is only ever seen by the team, in preview. */
+  blocked: null | 'hidden' | 'sold_out' | 'limit' | 'coins';
 }
 
 export interface ShopView {
   balance: number;
   items: ShopItemView[];
+  /** Orders that are still on their way to the creator. */
+  openOrders: number;
+}
+
+export interface MyOrderView {
+  id: number;
+  itemId: string;
+  title: string;
+  imageUrl: string | null;
+  size: string | null;
+  price: number;
+  delivery: 'courier' | 'message';
+  address: string | null;
+  status: 'new' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
+  createdAt: string;
+  statusAt: string | null;
+  canCancel: boolean;
+  cancelledBy: 'creator' | 'team' | null;
+  cancelNote: string | null;
+}
+
+export interface MyOrdersView {
+  orders: MyOrderView[];
 }
 
 export interface LeaderRow {

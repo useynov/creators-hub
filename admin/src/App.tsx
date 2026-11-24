@@ -9,6 +9,8 @@ import { Creators } from './screens/Creators';
 import { Invite } from './screens/Invite';
 import { Login } from './screens/Login';
 import { Orders } from './screens/Orders';
+import { Shop } from './screens/Shop';
+import { ShopEdit } from './screens/ShopEdit';
 import { Overview } from './screens/Overview';
 import { Payouts } from './screens/Payouts';
 import { Report } from './screens/Report';
@@ -35,6 +37,7 @@ function Sidebar() {
     { to: '/review', label: t.nav.review, badge: c?.review, roles: STAFF },
     { to: '/reports', label: t.nav.reports, roles: ['owner', 'manager', 'viewer'] },
     { to: '/orders', label: t.nav.orders, badge: c?.newOrders, roles: STAFF },
+    { to: '/shop', label: t.nav.shop, roles: STAFF },
     { to: '/payouts', label: t.nav.payouts, badge: c?.payoutRequests, roles: STAFF },
     { to: '/team', label: t.nav.team, roles: ['owner'] },
   ];
@@ -142,6 +145,9 @@ function Shell() {
             <Route path="/reports" element={<Report />} />
             <Route path="/reports/:id" element={<Report />} />
             <Route path="/orders" element={<Only roles={STAFF}><Orders /></Only>} />
+            <Route path="/shop" element={<Only roles={STAFF}><Shop /></Only>} />
+            <Route path="/shop/new" element={<Only roles={STAFF}><ShopEdit /></Only>} />
+            <Route path="/shop/:id" element={<Only roles={STAFF}><ShopEdit /></Only>} />
             <Route path="/payouts" element={<Only roles={STAFF}><Payouts /></Only>} />
             <Route path="/team" element={<Only roles={['owner']}><Team /></Only>} />
             <Route path="*" element={<Navigate to={homeOf(me.role)} replace />} />

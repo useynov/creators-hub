@@ -968,7 +968,7 @@ select.filter--sm {
 }
 .thumb {
   border-radius: 10px;
-  background: repeating-linear-gradient(135deg, #e8e1dc 0 10px, #efe9e5 10px 20px);
+  background: var(--chip);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1781,5 +1781,275 @@ a:not(.btn, .trow, .todo, .plain, .nav a) {
   }
   .login__card {
     padding: 20px;
+  }
+}
+
+/* --- Shop -------------------------------------------------------------------------------- */
+
+/* The shelf: one card per item, the cover on top. */
+.shopgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.shopcard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.shopcard--hidden .shopcard__face img,
+.shopcard--hidden .shopcard__none {
+  opacity: 0.45;
+}
+.shopcard__flag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+.shopcard__face {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  background: var(--chip);
+  color: var(--muted);
+  text-decoration: none;
+}
+.shopcard__face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shopcard__none {
+  font-size: 13px;
+  font-weight: 600;
+}
+.shopcard__count {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.shopcard__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 16px;
+  flex: 1;
+}
+.shopcard__actions {
+  margin-top: auto;
+  padding-top: 10px;
+}
+.btn--icon {
+  width: 36px;
+  padding: 0;
+  font-size: 16px;
+}
+/* The photos of an item in the editor: the cover first, then the rest, then "add". */
+.photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.photo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.photo img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--chip);
+}
+.photo__cover {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--black);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.photo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.photo--add {
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  padding: 12px;
+  border: 1.5px dashed var(--border-dashed);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--black);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+.photo--add:hover:not(:disabled) {
+  background: var(--bg);
+}
+/* A small picture of an ordered item. */
+.thumb--item {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.thumb--none {
+  display: block;
+}
+.cancelbox__why {
+  flex: 1 1 320px;
+}
+.cancelbox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  align-content: flex-start;
+  gap: 12px;
+  background: var(--bg);
+  border-top: 1px solid var(--line-soft);
+}
+/* "What the creator sees": the look of the app, small. */
+.pv-card {
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pv-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 4px;
+}
+.pv-face {
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+.pv-face--tall {
+  aspect-ratio: 4 / 5;
+  font-size: 20px;
+}
+.pv-face span {
+  padding: 12px;
+  overflow-wrap: anywhere;
+}
+.pv-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pv-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.pv-strip img {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.pv-title {
+  font-weight: 600;
+  color: var(--black);
+}
+.pv-h {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--black);
+}
+.pv-price {
+  font-weight: 700;
+  color: var(--black);
+}
+.pv-text {
+  margin: 0;
+  white-space: pre-line;
+}
+.pv-rows {
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.pv-rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.pv-rows dt {
+  color: var(--muted);
+}
+.pv-rows dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+.pv-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+}
+.pv-btn--off {
+  opacity: 0.4;
+}
+@media (max-width: 860px) {
+  .shopgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .shopcard__body {
+    padding: 12px;
+  }
+  .photos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .btn--icon {
+    width: 40px;
+  }
+  .cancelbox__why {
+    flex-basis: 100%;
   }
 }

@@ -1644,3 +1644,119 @@ select.input {
 .lead > .photo--empty svg {
   display: none;
 }
+
+/* --- Shop ---------------------------------------------------------------- */
+
+/* The photos of an item: swipe sideways, one photo per screen width. */
+.gallery {
+  position: relative;
+  background: var(--line-soft);
+}
+.gallery__track {
+  display: flex;
+  aspect-ratio: 1 / 1;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.gallery__track::-webkit-scrollbar {
+  display: none;
+}
+.gallery__track > * {
+  flex: 0 0 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  border-radius: 0;
+}
+.gallery__count {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  background: rgba(0, 0, 0, 0.5);
+}
+/* An item in the grid: the picture, then two quiet lines. */
+.shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: inherit;
+  transition: transform var(--fast) var(--ease);
+}
+.shelf:active {
+  transform: scale(0.985);
+}
+.shelf__face {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.shelf__face > * {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.shelf__flag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+.shelf--out .shelf__face {
+  opacity: 0.55;
+}
+/* An order: a small picture, what it is, and where it stands. */
+.order {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+.order__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.order__thumb {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.order__thumb > * {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+/* The four steps of an order on one line: the thread fills as far as it got. */
+.track {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.track > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--muted);
+}
+.track > div::before {
+  content: '';
+  height: 3px;
+  background: var(--line);
+}
+.track > div[data-state='done']::before,
+.track > div[data-state='now']::before {
+  background: var(--red);
+}
+.track > div[data-state='now'] {
+  font-weight: 700;
+  color: var(--black);
+}
+.track > div[data-state='done'] {
+  color: var(--black);
+}

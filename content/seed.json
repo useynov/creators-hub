@@ -99,28 +99,45 @@
       "title": "T-shirt",
       "price": 30,
       "category": "merch",
-      "needsSize": true
+      "needsSize": true,
+      "description": "Coca-Cola T-shirt, unisex fit. Choose your size when you order.",
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
     },
     {
       "id": "tote-bag",
       "title": "Tote bag",
       "price": 20,
       "category": "merch",
-      "needsSize": false
+      "needsSize": false,
+      "description": "Coca-Cola tote bag for every day."
     },
     {
       "id": "hoodie",
       "title": "Hoodie",
       "price": 60,
       "category": "merch",
-      "needsSize": true
+      "needsSize": true,
+      "description": "Coca-Cola hoodie, unisex fit. Choose your size when you order.",
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ]
     },
     {
       "id": "cinema-tickets",
       "title": "Cinema tickets for two",
       "price": 45,
       "category": "gift",
-      "needsSize": false
+      "needsSize": false,
+      "description": "Two cinema tickets. We send them to you in Telegram, usually within two working days.",
+      "delivery": "message"
     }
   ],
   "news": [
