@@ -48,6 +48,12 @@ export function Overview() {
         </span>
       </Head>
 
+      {data.sampleCreators > 0 && (
+        <div className="notice" role="note">
+          {t.common.sampleNote(data.sampleCreators)}
+        </div>
+      )}
+
       <section className="section">
         <h2 className="label">{t.overview.waiting}</h2>
         <div className="grid" style={{ ['--min' as string]: '220px' }}>

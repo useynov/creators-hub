@@ -1,6 +1,6 @@
 import { InlineKeyboard, type Api } from 'grammy';
 import { config } from './config.js';
-import type { DB, UserRow } from './db.js';
+import { isSampleId, type DB, type UserRow } from './db.js';
 import { teamChats } from './team.js';
 
 /**
@@ -38,6 +38,8 @@ export async function notifyUser(
   html: string,
   button?: { text: string; path: string },
 ): Promise<void> {
+  // Sample creators are not people: nothing is ever sent to those ids.
+  if (isSampleId(userId)) return;
   if (!api) {
     outbox.push({ chatId: userId, html, button: button?.path });
     return;

@@ -44,6 +44,7 @@ This is **version 2**. What changed, how to see which version is running and how
 | Check in at an event | Scan the creator's QR pass with a phone camera. It opens the bot and confirms |
 | Confirm or reject an account | Buttons under "New account to confirm", or `/confirm @username` and `/reject @username reason`. Also on the creator's card in the admin site |
 | Lift an age refusal after a typo | `/allowage ID`, owners only |
+| Look at the Hub with sample creators | `/sampledata on` loads 20 made-up creators with work and reports, `/sampledata off` removes them. Owners only. Remove before real creators join |
 | Add or edit tasks | The admin site, Tasks. Tasks from `content/seed.json` are a starting set: once edited on the site, the file no longer overwrites them |
 | Add or edit events, shop, news | Edit `content/seed.json` and redeploy |
 

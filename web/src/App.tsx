@@ -10,6 +10,7 @@ import { HubProvider, ToastProvider } from './hub';
 import { Benefits } from './screens/Benefits';
 import { CashOut } from './screens/CashOut';
 import { Details } from './screens/Details';
+import { Event } from './screens/Event';
 import { EventPass } from './screens/EventPass';
 import { Events } from './screens/Events';
 import { Home } from './screens/Home';
@@ -120,6 +121,7 @@ function Shell() {
         <Route path="/shop/:id" element={<Redeem />} />
         <Route path="/cashout" element={<CashOut />} />
         <Route path="/events" element={<Events />} />
+        <Route path="/events/:id" element={<Event />} />
         <Route path="/events/:id/pass" element={<EventPass />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />

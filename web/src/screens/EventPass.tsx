@@ -54,13 +54,13 @@ export function EventPass() {
   const [cancel, cancelling] = useAction(async () => {
     await mutate(api.del<EventsView>(`/api/events/${id}/rsvp`), { revalidate: false });
     toast('Got it. You are off the list for this one.');
-    navigate('/events', { replace: true });
+    navigate(`/events/${id}`, { replace: true });
   });
 
   if (!data) {
     return (
       <Screen tone="red">
-        <TopBar back="/events" backLabel="Back to events" title="Your pass" light />
+        <TopBar back={`/events/${id}`} backLabel="Back to the event" title="Your pass" light />
         {error ? <Problem error={error} onRetry={() => void mutate()} /> : <Loading />}
       </Screen>
     );
@@ -74,7 +74,7 @@ export function EventPass() {
 
   return (
     <Screen tone="red">
-      <TopBar back="/events" backLabel="Back to events" title="Your pass" light />
+      <TopBar back={`/events/${id}`} backLabel="Back to the event" title="Your pass" light />
       <main className="body" style={{ gap: 16 }}>
         <section className="card card--col" style={{ borderRadius: 28, padding: '24px 20px', alignItems: 'center', gap: 18, textAlign: 'center' }}>
           <div className="stack" style={{ gap: 6 }}>
@@ -116,8 +116,8 @@ export function EventPass() {
             Add to calendar
           </button>
           {event.checkedIn ? (
-            <Link to="/events" className="textlink textlink--light">
-              Back to events
+            <Link to={`/events/${id}`} className="textlink textlink--light">
+              Back to the event
             </Link>
           ) : (
             <button type="button" className="textlink textlink--light" onClick={() => cancel()} disabled={cancelling}>

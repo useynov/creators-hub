@@ -133,6 +133,8 @@ export interface Overview {
   };
   tasks: TaskFunnel[];
   alerts: OverviewAlert[];
+  /** How many sample creators are loaded: the numbers on this page include them. */
+  sampleCreators: number;
 }
 
 // --- Creators ------------------------------------------------------------
@@ -155,6 +157,8 @@ export interface CreatorRow {
   tags: string[];
   accountStatus: AccountStatus;
   profileStatus: ProfileStatus | null;
+  /** A made-up creator from the sample data, not a person. */
+  sample: boolean;
 }
 
 export interface CreatorList extends Page<CreatorRow> {
@@ -211,9 +215,31 @@ export interface HistoryRow {
   submittedAt: string | null;
 }
 
+/** One publication the creator made for a Hub task, as shown on their card. */
+export interface HubPost {
+  id: number;
+  entryId: number;
+  taskId: string;
+  taskTitle: string;
+  url: string;
+  kind: PublicationKind;
+  /** Our own copy of the thumbnail. Stories have none here: their copy is private. */
+  thumbUrl: string | null;
+  publishedAt: string | null;
+  /** Measured views (reels, TikTok). */
+  views: number | null;
+  /** Story views as stated by the creator. */
+  statedViews: number | null;
+  likes: number | null;
+  comments: number | null;
+  status: 'tracking' | 'final' | 'removed';
+}
+
 export interface CreatorCard {
   id: number;
   name: string;
+  /** A made-up creator from the sample data, not a person. */
+  sample: boolean;
   username: string | null;
   instagram: string | null;
   tiktok: string | null;
@@ -231,6 +257,8 @@ export interface CreatorCard {
   instagramProfile: ProfileView | null;
   tiktokProfile: ProfileView | null;
   history: HistoryRow[];
+  /** The latest publications made for the Hub's tasks, newest first. */
+  hubPosts: HubPost[];
   hub: { publications: number; views: number; teamScore: number | null; balance: number };
   wallet: Array<{ id: number; title: string; kind: string; amount: number; createdAt: string }>;
   /** Owner and Manager only. The Viewer never opens a creator card. */

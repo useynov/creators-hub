@@ -14,7 +14,7 @@ const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
 /** A small PNG with a soft diagonal gradient: enough to look like a picture, made without any library. */
-function gradientPng(width: number, height: number, from: [number, number, number], to: [number, number, number]): Buffer {
+export function gradientPng(width: number, height: number, from: [number, number, number], to: [number, number, number]): Buffer {
   const raw = Buffer.alloc((width * 3 + 1) * height);
   for (let y = 0; y < height; y++) {
     raw[y * (width * 3 + 1)] = 0;
@@ -46,7 +46,7 @@ function gradientPng(width: number, height: number, from: [number, number, numbe
 }
 
 /** Deterministic numbers, so the preview looks the same every time. */
-function random(seed: number): () => number {
+export function random(seed: number): () => number {
   let a = seed;
   return () => {
     a = (a + 0x6d2b79f5) | 0;

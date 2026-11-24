@@ -315,6 +315,30 @@ ol {
   font-weight: 700;
   text-align: right;
 }
+/* Icon and text rows: when, where, who is coming. */
+.facts {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 6px 16px;
+  display: flex;
+  flex-direction: column;
+}
+.fact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 15px;
+  line-height: 1.35;
+  border-bottom: 1px solid var(--line-soft);
+}
+.fact:last-child {
+  border-bottom: 0;
+}
+.fact > svg {
+  color: var(--red);
+  flex-shrink: 0;
+}
 .rows--roomy .row {
   padding: 12px 0;
 }

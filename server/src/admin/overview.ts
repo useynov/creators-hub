@@ -3,6 +3,7 @@
 import type { Hono } from 'hono';
 import { settings } from '../config.js';
 import type { DB } from '../db.js';
+import { sampleStatus } from '../sample.js';
 import { localDate, monthStart } from '../service.js';
 import { allow, STAFF, type AdminEnv } from './auth.js';
 import { audienceOf, formatsOf } from './common.js';
@@ -145,6 +146,7 @@ export function overview(db: DB): Overview {
     },
     tasks: tasks.map(funnelView),
     alerts: alerts(db),
+    sampleCreators: sampleStatus(db).creators,
   };
 }
 

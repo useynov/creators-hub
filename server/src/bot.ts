@@ -33,6 +33,7 @@ import {
   setViews,
   upsertUser,
 } from './service.js';
+import { loadSampleData, removeSampleData, sampleStatus } from './sample.js';
 import { demoMode, isManagerOnly, isOwner, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
 import type { Level } from './types.js';
 
@@ -55,6 +56,7 @@ const ADMIN_HELP = [
   '/reject @username or ID reason: we could not confirm the account; the creator gets the reason',
   '/offer @username | campaign | fee | what we need | post by | answer by (owners only)',
   '/admin: a one-time link to sign in to the admin site (in a private chat with me)',
+  '/sampledata on|off: load or remove 20 sample creators with work and reports (owners only)',
   '/quiet on|off: stop or resume the team\'s messages coming to you in private',
   '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
   '/allowage ID: let someone refused for age answer the question again, after a typo in the date (owners only)',
@@ -290,6 +292,29 @@ export function createBot(db: DB): Bot {
   // Coins by hand, levels by hand and paid offers are the owners' decisions, as on the admin site.
   const ownersOnly = (ctx: Context, what: string): string | null =>
     isManagerOnly(db, ctx.from!.id) ? `Only the owners can ${what}. Ask one of them.` : null;
+
+  // Sample creators for looking at the Hub before real ones arrive. See sample.ts.
+  admin.command('sampledata', async (ctx) => {
+    if (!isOwner(db, ctx.from!.id)) return ctx.reply('Only the owners can load or remove the sample data.');
+    const arg = ctx.match.trim().toLowerCase();
+    if (arg === 'on') {
+      const made = await loadSampleData(db, ctx.from!.id);
+      return ctx.reply(
+        `Sample data is loaded: ${made.creators} creators, ${made.publications} publications, ${made.tasks} sample tasks.\n` +
+          'They are marked "sample" in the admin site and never get messages. Remove them with /sampledata off before real creators join.',
+      );
+    }
+    if (arg === 'off') {
+      const removed = await removeSampleData(db);
+      return ctx.reply(removed ? `Removed: ${removed} sample creators and everything that belonged to them.` : 'There is no sample data to remove.');
+    }
+    const status = sampleStatus(db);
+    return ctx.reply(
+      status.loaded
+        ? `Sample data is loaded: ${status.creators} creators. /sampledata off removes it, /sampledata on loads it again with fresh dates.`
+        : 'No sample data. /sampledata on loads 20 sample creators with work, measurements, orders and payouts.',
+    );
+  });
 
   admin.command('bonus', (ctx) => {
     const refusal = ownersOnly(ctx, 'add coins by hand');
