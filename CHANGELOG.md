@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.2.0 (24 November 2026)
+
+The admin works on a phone. Nothing changes on a laptop.
+
+Under 860px of width:
+
+- **Menu.** The black column folds into a top bar with the logo and a "Menu" button. The button shows how many things wait for a person; the sections open as a full-screen menu.
+- **Tables are cards.** A row becomes a small card: its first cell is the title, every other cell carries the name of its column, and the actions take the full width. Nothing scrolls sideways any more. Where a table can be sorted, the sortable columns stay as a strip of buttons above the list.
+- **Review in two steps.** First the queue; a tap opens the work with a "Back to the queue" button. The approve button is full width, and "what to fix" sits on its own lines.
+- **Touch sizes.** Buttons and fields are at least 44px high, and fields use 16px text so iOS does not zoom into them.
+- **Tabs** stay on one line and slide sideways. Pages, cards and forms are one column, and long statuses wrap inside their card.
+
+**Going back to 3.1.0:** image `creators-hub:rollback-v3.1.0-20261124` on the server. Same database.
+
 ## 3.1.0 (24 November 2026)
 
 The real brand assets, found on Tarlan's Mac.
