@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto';
 import type { AudienceSubject } from './audience.js';
 import { track, withTimeout } from './background.js';
 import { settings } from './config.js';
-import { now, type AccountStatus, type DB, type Platform, type SocialLookupRow, type SocialProfileRow, type UserRow } from './db.js';
+import { isSampleId, now, type AccountStatus, type DB, type Platform, type SocialLookupRow, type SocialProfileRow, type UserRow } from './db.js';
 import { HubError } from './errors.js';
 import { downloadMedia, saveMedia } from './media.js';
 import { accountKeyboard, creatorLine, esc, notifyAdmins, notifyUser } from './notify.js';
@@ -250,6 +250,8 @@ export async function refreshProfile(db: DB, userId: number, platform: Platform 
   const before = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as UserRow | undefined;
   const handle = platform === 'instagram' ? before?.instagram : before?.tiktok;
   if (!before || !handle) return null;
+  // A sample creator's handle is made up: the stored numbers are all there is.
+  if (isSampleId(userId)) return profileOf(db, userId, platform) ?? null;
   // An Instagram profile row is written first by "Yes, this is me" (it is part of being set up):
   // a refresh never creates one for someone who has not confirmed their account.
   if (platform === 'instagram' && !profileOf(db, userId, 'instagram')) return null;

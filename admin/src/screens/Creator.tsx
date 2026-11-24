@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import useSWR from 'swr';
-import type { CreatorCard, HistoryRow, Level, ProfileView, RefreshResult } from '../../../server/src/admin/types';
+import type { CreatorCard, HistoryRow, HubPost, Level, ProfileView, RefreshResult } from '../../../server/src/admin/types';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import { followersRange } from '../labels';
@@ -121,37 +121,52 @@ function InstagramBlock({ card, profile, onRefreshed }: { card: CreatorCard; pro
               </div>
             ))}
           </div>
-          {profile.bio && (
-            <div className="small ink2">
-              <strong>{t.creator.bio}</strong> {profile.bio}
-            </div>
-          )}
-          {profile.recent.length > 0 && (
-            <div className="stack stack--tight">
-              <div className="label">{t.creator.recent}</div>
-              <div className="grid" style={{ ['--min' as string]: '96px', gap: 8 }}>
-                {profile.recent.slice(0, 6).map((post, index) => (
-                  <div key={index} className="stack" style={{ gap: 4 }}>
-                    {post.url ? (
-                      <Out href={post.url} className="thumb plain" >
-                        <span style={{ height: 128, display: 'flex', alignItems: 'center' }}>{t.kinds[post.kind]}</span>
-                      </Out>
-                    ) : (
-                      <div className="thumb" style={{ height: 128 }}>
-                        {t.kinds[post.kind]}
-                      </div>
-                    )}
-                    <div className="tiny strong">
-                      {post.views !== null ? `${f.num(post.views)} ${t.creator.viewsShort}` : post.likes !== null ? `${f.num(post.likes)} ${t.creator.likesShort}` : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>
       ) : (
         <div className="muted">{t.creator.noProfile}</div>
+      )}
+    </section>
+  );
+}
+
+/** What the creator published for the Hub's tasks: the team checks these, not the whole Instagram feed. */
+function HubPosts({ posts }: { posts: HubPost[] }) {
+  const { t, f } = useI18n();
+  const numbers = (post: HubPost): string => {
+    if (post.statedViews !== null) return `${f.num(post.statedViews)} ${t.creator.viewsShort}, ${t.creator.stated}`;
+    if (post.views !== null) return `${f.num(post.views)} ${t.creator.viewsShort}`;
+    if (post.likes !== null) return `${f.num(post.likes)} ${t.creator.likesShort}`;
+    return t.common.noData;
+  };
+  return (
+    <section className="card pad">
+      <div className="head" style={{ alignItems: 'baseline' }}>
+        <h2 className="h2">{t.creator.hubPosts}</h2>
+        <span className="tiny muted">{t.creator.hubPostsHint}</span>
+      </div>
+      {posts.length ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(132px, 1fr))', gap: 12 }}>
+          {posts.map((post) => (
+            <div key={post.id} className="stack" style={{ gap: 6, minWidth: 0 }}>
+              <Out href={post.url} className="thumb plain">
+                <span style={{ height: 200, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {post.thumbUrl ? <img src={post.thumbUrl} alt="" loading="lazy" /> : t.kinds[post.kind]}
+                </span>
+              </Out>
+              <div className="row-gap" style={{ gap: 6 }}>
+                <Badge tone="dark">{t.kinds[post.kind]}</Badge>
+                {post.status === 'removed' ? <Badge tone="bad">{t.creator.postRemoved}</Badge> : post.status === 'tracking' ? <Badge tone="mute">{t.creator.postMeasuring}</Badge> : null}
+              </div>
+              <div className="small strong">{numbers(post)}</div>
+              <Link to={`/reports/${post.taskId}`} className="tiny ellipsis" title={post.taskTitle}>
+                {post.taskTitle}
+              </Link>
+              <div className="tiny muted">{f.day(post.publishedAt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="muted">{t.creator.noHubPosts}</div>
       )}
     </section>
   );
@@ -245,6 +260,7 @@ export function Creator() {
             </h1>
             <Badge tone="dark">{t.levels[card.level]}</Badge>
             <Badge tone={statusBadge[1]}>{statusBadge[0]}</Badge>
+            {card.sample && <Badge tone="mute">{t.common.sample}</Badge>}
           </div>
           <div className="ink2">
             {card.instagram && (
@@ -259,6 +275,17 @@ export function Creator() {
             {card.city && `, ${t.city(card.city)}`}.{' '}
             {card.joinedAt && t.creator.joined(f.day(card.joinedAt), card.invitedVia === 'link' ? t.creator.viaLink : card.invitedVia === 'list' ? t.creator.viaList : null)}
           </div>
+          {ig?.bio && (
+            <div className="ink2">
+              <strong>{t.creator.bio}</strong> {ig.bio}
+            </div>
+          )}
+          {card.details.birthDate && (
+            <div className="ink2">
+              <strong>{t.creator.born}</strong> {f.dayYear(card.details.birthDate)}
+              {age !== null ? `, ${t.creator.age(age)}` : ''}
+            </div>
+          )}
           {card.accountNote && <div className="small muted">{card.accountNote}</div>}
         </div>
         <AccountActions card={card} onDone={set} />
@@ -267,6 +294,7 @@ export function Creator() {
       <div className="cols">
         <div className="col-main stack">
           <InstagramBlock card={card} profile={ig} onRefreshed={() => void mutate()} />
+          <HubPosts posts={card.hubPosts} />
 
           <Table
             cols="2.2fr 1fr 1fr 1fr 1.1fr"
@@ -384,7 +412,6 @@ export function Creator() {
             <Detail label={t.creator.address} value={card.details.address} />
             <Detail label={t.creator.phone} value={card.details.phone} />
             <Detail label={t.creator.payout} value={card.details.payoutDetails} />
-            <Detail label={t.creator.birth} value={card.details.birthDate ? `${f.dayYear(card.details.birthDate)}${age !== null ? `, ${t.creator.age(age)}` : ''}` : null} />
           </section>
         </div>
       </div>

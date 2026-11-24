@@ -203,8 +203,14 @@ export interface EventView {
   monthHint: string | null;
   place: string | null;
   description: string | null;
+  /** The longer text for the event's own page. */
+  details: string | null;
   taskId: string | null;
+  /** The linked task's title, when this creator can see that task. */
+  taskTitle: string | null;
   taskReward: number | null;
+  /** How many creators said they are coming. */
+  goingCount: number;
   going: boolean;
   code: string | null;
   checkedIn: boolean;

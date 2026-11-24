@@ -415,6 +415,7 @@ export interface EventRow {
   sort: number;
   active: number;
   cover_url: string | null;
+  details: string | null;
 }
 
 export interface ShopItemRow {
@@ -558,6 +559,16 @@ export interface CashoutRow {
 }
 
 /**
+ * Sample creators (see sample.ts) live in a block of ids far above any real Telegram id.
+ * The bot never messages them and the data jobs never read anything about them.
+ */
+export const SAMPLE_ID_FROM = 9_900_000_000_001;
+export const SAMPLE_ID_TO = 9_900_000_000_999;
+export const isSampleId = (id: number): boolean => id >= SAMPLE_ID_FROM && id <= SAMPLE_ID_TO;
+/** For SQL: `${SAMPLE_IDS_SQL('u.id')}` is true for a sample creator's id. */
+export const SAMPLE_IDS_SQL = (column: string): string => `${column} BETWEEN ${SAMPLE_ID_FROM} AND ${SAMPLE_ID_TO}`;
+
+/**
  * Columns added after the first release. CREATE TABLE IF NOT EXISTS does not touch
  * a table that is already there, so each new column is added here, once.
  * Order matters only within one table. Never rename or drop a column here.
@@ -589,6 +600,8 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['tasks', 'market', "TEXT NOT NULL DEFAULT 'kz'"],
   // Photos for events and news.
   ['events', 'cover_url', 'TEXT'],
+  // The longer text of an event's own page: programme, what to bring, how to get there.
+  ['events', 'details', 'TEXT'],
   ['news', 'cover_url', 'TEXT'],
   ['news', 'path', 'TEXT'],
   // Who moved an order or a payout, and when.
@@ -682,6 +695,8 @@ interface SeedFile {
     monthHint?: string | null;
     place?: string | null;
     description?: string | null;
+    /** Plain text for the event's own page. Paragraphs split by a blank line; a short first line is a heading. */
+    details?: string | null;
     coverUrl?: string | null;
     taskId?: string | null;
   }>;
@@ -765,11 +780,11 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
     );
 
     const event = db.prepare(`
-      INSERT INTO events (id, title, date, time, month_hint, place, description, cover_url, task_id, sort, active)
-      VALUES (@id, @title, @date, @time, @monthHint, @place, @description, @coverUrl, @taskId, @sort, 1)
+      INSERT INTO events (id, title, date, time, month_hint, place, description, details, cover_url, task_id, sort, active)
+      VALUES (@id, @title, @date, @time, @monthHint, @place, @description, @details, @coverUrl, @taskId, @sort, 1)
       ON CONFLICT(id) DO UPDATE SET title=excluded.title, date=excluded.date, time=excluded.time, month_hint=excluded.month_hint,
-        place=excluded.place, description=excluded.description, cover_url=excluded.cover_url, task_id=excluded.task_id,
-        sort=excluded.sort, active=1`);
+        place=excluded.place, description=excluded.description, details=excluded.details, cover_url=excluded.cover_url,
+        task_id=excluded.task_id, sort=excluded.sort, active=1`);
     (seed.events ?? []).forEach((e, sort) =>
       event.run({
         id: e.id,
@@ -779,6 +794,7 @@ export function syncContent(db: DB, file = resolve(rootDir, 'content/seed.json')
         monthHint: e.monthHint ?? null,
         place: e.place ?? null,
         description: e.description ?? null,
+        details: e.details ?? null,
         coverUrl: e.coverUrl ?? null,
         taskId: e.taskId ?? null,
         sort,

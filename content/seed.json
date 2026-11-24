@@ -8,7 +8,11 @@
       "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135823_0fc81543-fff1-4f23-a2f9-1434412a7ad6.png",
       "reward": 5,
       "format": "Photo, reel or story",
-      "formats": ["post", "reel", "story"],
+      "formats": [
+        "post",
+        "reel",
+        "story"
+      ],
       "requiredMention": "cocacola_kz",
       "date": "2026-12-25",
       "place": "Dostyk, Almaty",
@@ -30,7 +34,10 @@
       "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135821_c02e1014-4ad2-40f4-8533-dfcff1232934.png",
       "reward": 15,
       "format": "Reel or post",
-      "formats": ["reel", "post"],
+      "formats": [
+        "reel",
+        "post"
+      ],
       "requiredMention": "cocacola_kz",
       "startsAt": "2026-12-01T00:00:00+05:00",
       "deadline": "2026-12-31T23:59:00+05:00",
@@ -50,7 +57,9 @@
       "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135823_75137236-379d-406c-a4db-ab2fd4be3816.png",
       "reward": 15,
       "format": "Reel",
-      "formats": ["reel"],
+      "formats": [
+        "reel"
+      ],
       "requiredMention": "cocacola_kz",
       "startsAt": "2026-12-01T00:00:00+05:00",
       "deadline": "2026-12-28T23:59:00+05:00",
@@ -70,9 +79,10 @@
       "date": "2026-12-25",
       "time": "18:00",
       "place": "Dostyk, Almaty",
-      "description": "Come, meet the team and other creators.",
+      "description": "The New Year caravan stops at Dostyk. Come, meet the team and other creators.",
       "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135820_1c2b5202-9807-4128-84f6-4fb41e7696fa.png",
-      "taskId": "caravan-shoot"
+      "taskId": "caravan-shoot",
+      "details": "Programme\n18:00 Doors open, the creators' corner is by the main truck.\n18:30 The caravan arrives and the lights go on.\n19:00 Photo and video time: the best spots are kept free for the Hub.\n20:00 Hot drinks and a small gift for everyone on the list.\n\nHow to find us\nDostyk, Almaty. Look for the team in red jackets next to the main truck.\nShow your pass at the creators' corner.\n\nGood to know\nIt is outdoors, so dress warmly.\nYou can bring one guest.\nThere is a task for this event: shoot the caravan and send the link the same day."
     },
     {
       "id": "creators-ny-party",
@@ -81,7 +91,8 @@
       "time": "19:00",
       "place": "Creators Loft, Almaty",
       "description": "Our own New Year party for the creators of the Hub. Music, food, gifts and the people you have only seen in the feed.",
-      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135821_5b8a799c-430c-4fb4-8222-f0aecde69c8b.png"
+      "coverUrl": "https://d8j0ntlcm91z4.cloudfront.net/user_34o1N3BGMCPtRV9DR1hukRPqHFj/hf_20261123_135821_5b8a799c-430c-4fb4-8222-f0aecde69c8b.png",
+      "details": "Programme\n19:00 Welcome drinks and a photo zone.\n20:00 The team's toast and a look back at the year.\n20:30 Awards for the top creators of December.\n21:00 Music, food and gifts.\n\nWhere\nCreators Loft, Almaty. The exact address comes from the bot two days before.\nShow your pass at the door.\n\nGood to know\nDress code: something festive, a touch of red is welcome.\nThe invitation is for you personally.\nPhones are welcome: shoot and post as much as you like."
     }
   ],
   "shop": [

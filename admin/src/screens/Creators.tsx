@@ -174,7 +174,9 @@ export function Creators() {
                 <div className="who">
                   <Avatar name={row.name} url={row.avatarUrl} />
                   <div className="cell-main">
-                    <span className="ellipsis">{row.name}</span>
+                    <span className="ellipsis">
+                      {row.name} {row.sample && <Badge tone="mute">{t.common.sample}</Badge>}
+                    </span>
                     <span className="tiny muted ellipsis">{handle(row.instagram)}</span>
                   </div>
                 </div>

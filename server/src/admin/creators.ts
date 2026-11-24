@@ -4,7 +4,7 @@
 import type { Hono } from 'hono';
 import { profileOf, refreshProfile, setAccountStatus, setTags, tagsOf } from '../account.js';
 import { settings } from '../config.js';
-import type { DB, EntryRow, SocialProfileRow, UserRow } from '../db.js';
+import { isSampleId, type DB, type EntryRow, type SocialProfileRow, type UserRow } from '../db.js';
 import { balanceOf, getUser, INVITE_LINK_NOTE, levelOf, ratingOf, setLevelOverride } from '../service.js';
 import type { Level } from '../types.js';
 import { audit, creatorCall, creatorCallAsync } from './audit.js';
@@ -31,6 +31,7 @@ import type {
   CreatorRow,
   CreatorSort,
   HistoryRow,
+  HubPost,
   Options,
   ProfileView,
   PublicationKind,
@@ -79,6 +80,7 @@ function creatorRow(row: CreatorSqlRow, tags: string[]): CreatorRow {
     tags,
     accountStatus: row.account_status,
     profileStatus: row.profile_status,
+    sample: isSampleId(row.id),
   };
 }
 
@@ -251,6 +253,49 @@ function history(db: DB, userId: number): HistoryRow[] {
   });
 }
 
+/** The creator's latest publications for the Hub's tasks (not their whole Instagram feed). */
+function hubPosts(db: DB, userId: number): HubPost[] {
+  const rows = db
+    .prepare(
+      `SELECT p.id, p.entry_id, p.task_id, t.title AS task_title, p.url, p.kind, p.thumb_path, p.published_at, p.created_at,
+              p.views, p.story_views, p.views_source, p.likes, p.comments, p.status
+       FROM publications p JOIN tasks t ON t.id = p.task_id
+       WHERE p.user_id = ? ORDER BY COALESCE(p.published_at, p.created_at) DESC, p.id DESC LIMIT 12`,
+    )
+    .all(userId) as Array<{
+    id: number;
+    entry_id: number;
+    task_id: string;
+    task_title: string;
+    url: string;
+    kind: PublicationKind;
+    thumb_path: string | null;
+    published_at: string | null;
+    created_at: string;
+    views: number | null;
+    story_views: number | null;
+    views_source: string;
+    likes: number | null;
+    comments: number | null;
+    status: string;
+  }>;
+  return rows.map((row) => ({
+    id: row.id,
+    entryId: row.entry_id,
+    taskId: row.task_id,
+    taskTitle: row.task_title,
+    url: row.url,
+    kind: row.kind,
+    thumbUrl: localMedia(row.thumb_path),
+    publishedAt: row.published_at ?? row.created_at,
+    views: row.kind === 'story' ? null : row.views,
+    statedViews: row.kind === 'story' && row.views_source === 'creator' ? row.story_views : null,
+    likes: row.likes,
+    comments: row.comments,
+    status: row.status === 'final' || row.status === 'removed' ? row.status : 'tracking',
+  }));
+}
+
 function getCreator(db: DB, id: number): UserRow {
   const user = getUser(db, id);
   if (!user) throw bad('not_found', 'This creator does not exist.', 404);
@@ -279,6 +324,7 @@ export function creatorCard(db: DB, id: number): CreatorCard {
   return {
     id: user.id,
     name: user.first_name,
+    sample: isSampleId(user.id),
     username: user.username,
     instagram: user.instagram,
     tiktok: user.tiktok,
@@ -296,6 +342,7 @@ export function creatorCard(db: DB, id: number): CreatorCard {
     instagramProfile: profileView(instagram),
     tiktokProfile: profileView(profileOf(db, id, 'tiktok')),
     history: history(db, id),
+    hubPosts: hubPosts(db, id),
     hub: {
       publications: stats.publications,
       views: stats.views,

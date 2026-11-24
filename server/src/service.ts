@@ -929,6 +929,8 @@ interface EventJoined extends EventRow {
   checked_in_at: string | null;
   reminded: number;
   task_reward: number | null;
+  task_title: string | null;
+  going_count: number;
 }
 
 function eventView(row: EventJoined): EventView {
@@ -940,8 +942,11 @@ function eventView(row: EventJoined): EventView {
     monthHint: row.month_hint,
     place: row.place,
     description: row.description,
+    details: row.details,
     taskId: row.task_id,
+    taskTitle: row.task_title,
     taskReward: row.task_reward,
+    goingCount: row.going_count,
     going: Boolean(row.code),
     code: row.code,
     checkedIn: Boolean(row.checked_in_at),
@@ -953,7 +958,8 @@ function eventView(row: EventJoined): EventView {
 export function listEvents(db: DB, userId: number): EventsView {
   const rows = db
     .prepare(
-      `SELECT e.*, r.code, r.checked_in_at, t.reward AS task_reward,
+      `SELECT e.*, r.code, r.checked_in_at, t.reward AS task_reward, t.title AS task_title,
+              (SELECT COUNT(*) FROM rsvps g WHERE g.event_id = e.id) AS going_count,
               EXISTS (SELECT 1 FROM reminders m WHERE m.user_id = @userId AND m.event_id = e.id) AS reminded
        FROM events e
        LEFT JOIN rsvps r ON r.event_id = e.id AND r.user_id = @userId
@@ -971,6 +977,7 @@ export function listEvents(db: DB, userId: number): EventsView {
     if (!task || !viewer || !canSee(task, viewer, getEntry(db, userId, task.id))) {
       row.task_id = null;
       row.task_reward = null;
+      row.task_title = null;
     }
   }
   const today = localDate();

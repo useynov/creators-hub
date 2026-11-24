@@ -8,7 +8,7 @@
 
 import { refreshProfile } from './account.js';
 import { settings } from './config.js';
-import type { DB } from './db.js';
+import { SAMPLE_IDS_SQL, type DB } from './db.js';
 import { localizeSeedPhotos } from './photos.js';
 import { askForStoryViews, resumeStaleSubmissions, runDueSnapshots } from './pipeline.js';
 
@@ -25,6 +25,7 @@ export async function refreshDueProfiles(db: DB, nowIso = new Date().toISOString
     .prepare(
       `SELECT u.id FROM users u JOIN social_profiles p ON p.user_id = u.id AND p.platform = 'instagram'
        WHERE u.onboarded_at IS NOT NULL AND u.birth_date IS NOT NULL AND u.instagram IS NOT NULL AND p.fetched_at < ?
+         AND NOT (${SAMPLE_IDS_SQL('u.id')})
        ORDER BY p.fetched_at LIMIT ?`,
     )
     .all(before, limit) as Array<{ id: number }>;

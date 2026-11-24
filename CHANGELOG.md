@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0 (24 November 2026)
+
+- **Event pages.** The Events tab is a list; tapping an event opens its own page with the photo, date and place, the programme, how many creators are coming, the linked task, and the RSVP. Events in `content/seed.json` have a new `details` text for that page.
+- **Creator card in the admin.** The bio and the date of birth are in the header next to the photo. "Posts for the Hub" replaces the creator's general Instagram posts: it shows what they published for the Hub's tasks, with the numbers and a link to the task's report.
+- **Sample data.** `/sampledata on` in the bot (owners only) loads 20 made-up creators with work, four measurements, stories, orders, payouts and RSVPs, so every screen and the Excel report can be looked at. They are marked "sample", never get a message, and their made-up links are never read from Instagram. `/sampledata off` removes all of it and leaves real creators untouched. Remove it before real creators join: until then the sample creators are on the leaderboard too.
+
 ## 2.0.1 (24 November 2026)
 
 Found by the first live test with a real Apify token.

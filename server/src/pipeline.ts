@@ -20,6 +20,8 @@ import {
   now,
   type DB,
   type EntryRow,
+  isSampleId,
+  SAMPLE_IDS_SQL,
   type PublicationRow,
   type SnapshotKind,
   type SnapshotRow,
@@ -477,6 +479,8 @@ function storeNumbers(db: DB, publicationId: number, post: { views: number | nul
 export async function recheckPublication(db: DB, publicationId: number): Promise<PublicationRow> {
   const publication = db.prepare('SELECT * FROM publications WHERE id = ?').get(publicationId) as PublicationRow | undefined;
   if (!publication) throw new HubError('publication_not_found', 'This publication does not exist.', 404);
+  // A sample creator's link leads nowhere: reading it would only mark it as removed.
+  if (isSampleId(publication.user_id)) return publication;
   const result = await readPost(publication.url);
   const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(publication.task_id) as TaskRow;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(publication.user_id) as UserRow;
@@ -514,7 +518,11 @@ export async function runDueSnapshots(db: DB, nowIso?: string): Promise<number> 
   try {
     const at = nowIso ?? now();
     const due = db
-      .prepare(`SELECT * FROM snapshots WHERE status = 'pending' AND due_at <= ? ORDER BY due_at, id LIMIT 200`)
+      .prepare(
+        // Sample creators' publications are not real links: their measurements are never taken.
+        `SELECT s.* FROM snapshots s JOIN publications p ON p.id = s.publication_id
+         WHERE s.status = 'pending' AND s.due_at <= ? AND NOT (${SAMPLE_IDS_SQL('p.user_id')}) ORDER BY s.due_at, s.id LIMIT 200`,
+      )
       .all(at) as SnapshotRow[];
     let taken = 0;
     for (const snapshot of due) {

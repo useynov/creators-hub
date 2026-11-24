@@ -211,23 +211,32 @@ export function Brief({ text, dark }: { text: string; dark?: boolean }) {
       </button>
       {open && (
         <div id={id} className="brief__body">
-          {briefBlocks(text).map((block, index) => (
-            <div key={index} className="stack" style={{ gap: 4 }}>
-              {block.heading && <h3 className="brief__heading">{block.heading}</h3>}
-              {block.lines.length > 1 && block.heading ? (
-                <ul>
-                  {block.lines.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              ) : (
-                block.lines.map((line) => <p key={line}>{line}</p>)
-              )}
-            </div>
-          ))}
+          <TextBlocks text={text} />
         </div>
       )}
     </section>
+  );
+}
+
+/** Plain text shown as headed blocks and lists (see briefBlocks). Used by the brief and the event page. */
+export function TextBlocks({ text }: { text: string }) {
+  return (
+    <>
+      {briefBlocks(text).map((block, index) => (
+        <div key={index} className="stack" style={{ gap: 4 }}>
+          {block.heading && <h3 className="brief__heading">{block.heading}</h3>}
+          {block.lines.length > 1 && block.heading ? (
+            <ul>
+              {block.lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : (
+            block.lines.map((line) => <p key={line}>{line}</p>)
+          )}
+        </div>
+      ))}
+    </>
   );
 }
 
