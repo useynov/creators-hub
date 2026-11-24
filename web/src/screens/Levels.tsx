@@ -31,64 +31,54 @@ export function Levels() {
   return (
     <Screen>
       <TopBar back="/profile" backLabel="Back to profile" title="Levels" />
-      <main className="body" style={{ gap: 10, paddingTop: 4 }}>
-        <h1 className="display" style={{ fontSize: 28, marginBottom: 2 }}>
-          Your way up
-        </h1>
+      <main className="body" style={{ gap: 24, paddingTop: 4 }}>
+        <h1 className="display t-display">Your way up</h1>
 
-        {ORDER.map((level, index) => {
-          const here = index === mine;
-          const tone = here ? 'panel--red' : level === 'partner' ? 'panel--dark' : '';
-          const onColor = here || level === 'partner';
-          return (
-            <section
-              key={level}
-              className={`panel ${tone}`}
-              style={{ borderRadius: 22, padding: 18, gap: 10, background: tone ? undefined : 'var(--white)' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <h2 className="display" style={{ fontSize: 24 }}>
-                  {levelName(level)}
-                </h2>
-                {here ? (
-                  <span className="chip chip--sm" style={{ background: 'var(--white)', color: 'var(--red-dark)', fontWeight: 800 }}>
-                    You are here
-                  </span>
-                ) : (
-                  <span
-                    className="nums"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: onColor ? undefined : 'var(--ink-2)' }}
-                  >
-                    <Icon name={index < mine ? 'check' : 'lock'} size={16} stroke={2.2} />
-                    <span>{index < mine ? 'Unlocked' : `Rating ${settings.levels[level as 'pro' | 'partner']}`}</span>
-                  </span>
-                )}
-              </div>
-              <p className="lede" style={{ lineHeight: 1.45, fontWeight: here ? 500 : 400 }}>
-                {perks[level]}
-              </p>
-              {index === mine + 1 && (
-                <>
-                  <Progress value={me.progress} />
-                  <div className="nums" style={{ fontSize: 13, color: onColor ? undefined : 'var(--muted)' }}>
-                    You are at {me.rating}. Keep going.
+        <div className="steps">
+          {ORDER.map((level, index) => {
+            const here = index === mine;
+            return (
+              <section key={level} className="step" data-state={here ? 'now' : index < mine ? 'done' : 'todo'} style={{ padding: '20px 0' }}>
+                <span className="step__n" aria-hidden="true">
+                  {index + 1}
+                </span>
+                <div className="stack" style={{ flex: 1, gap: 8, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <h2 className="display" style={{ fontSize: 26 }}>
+                      {levelName(level)}
+                    </h2>
+                    {here ? (
+                      <span className="chip chip--red chip--sm">You are here</span>
+                    ) : (
+                      <span className="nums t-sm muted" style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                        <Icon name={index < mine ? 'check' : 'lock'} size={16} stroke={2.2} />
+                        <span>{index < mine ? 'Unlocked' : `Rating ${settings.levels[level as 'pro' | 'partner']}`}</span>
+                      </span>
+                    )}
                   </div>
-                </>
-              )}
-            </section>
-          );
-        })}
+                  <p style={{ fontSize: 15, lineHeight: 1.5 }}>{perks[level]}</p>
+                  {index === mine + 1 && (
+                    <div className="stack" style={{ gap: 8, paddingTop: 4 }}>
+                      <Progress value={me.progress} />
+                      <div className="nums t-sm muted">You are at {me.rating}. Keep going.</div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
 
-        <div className="card card--col" style={{ borderRadius: 22, padding: '16px 18px', gap: 10 }}>
+        <section className="section">
           <h2 className="eyebrow">What grows your rating</h2>
-          <div className="grid3" style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.25 }}>
+          <div className="grid3" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, color: 'var(--black)' }}>
             {GROWS.map((line) => (
-              <div key={line} className="tile" style={{ padding: '12px 10px' }}>
+              <div key={line} className="tile">
                 {line}
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
         <div className="spacer" />
         <Link to="/tasks" className="btn">

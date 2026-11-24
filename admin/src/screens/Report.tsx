@@ -95,7 +95,7 @@ export function Report() {
         </div>
       </div>
 
-      <div className="grid" style={{ ['--min' as string]: '170px' }}>
+      <div className="card strip">
         <Stat label={t.report.totals.publications} value={f.num(totals.publications)} note={kindsSummary(t, f, totals.byKind) || ' '} />
         <Stat label={t.report.totals.creators} value={f.num(totals.creators)} note={t.report.totals.creatorsNote(totals.joined)} />
         <Stat label={t.report.totals.views} value={f.num(totals.views)} note={totals.statedViews ? t.report.totals.viewsNote(f.num(totals.statedViews)) : t.overview.viewsNote} />
@@ -140,7 +140,7 @@ export function Report() {
       </div>
 
       <Table
-        cols="1.7fr 0.8fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr 0.7fr 0.7fr 1.3fr 1.1fr"
+        cols="2.3fr 0.7fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr 0.7fr 0.7fr 1.3fr 1.1fr"
         min={1080}
         head={[
           t.report.colCreator,

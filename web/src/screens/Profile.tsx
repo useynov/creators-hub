@@ -18,53 +18,52 @@ export function Profile() {
   const handle = me.instagram ? `@${me.instagram}` : me.username ? `@${me.username}` : null;
 
   return (
-    <Screen top="red">
-      <section className="hero" style={{ padding: '24px 20px 56px', display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ display: 'flex', borderRadius: '50%', border: '3px solid rgba(255,255,255,0.9)' }}>
-          <Avatar src={me.avatarUrl} name={me.firstName} size={64} light />
-        </div>
-        <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
-          <h1 className="display" style={{ fontSize: 24 }}>
-            {me.firstName}
-          </h1>
-          <div style={{ fontSize: 14, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {[handle, me.city].filter(Boolean).join(' · ')}
+    <Screen>
+      <main className="body body--tabs" style={{ paddingTop: 28, gap: 28 }}>
+        <header style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Avatar src={me.avatarUrl} name={me.firstName} size={72} />
+          <div className="stack" style={{ flex: 1, gap: 6, minWidth: 0 }}>
+            <h1 className="display" style={{ fontSize: 34, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {me.firstName}
+            </h1>
+            <div className="t-sm muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {[handle, me.city].filter(Boolean).join(' · ')}
+            </div>
           </div>
-        </div>
-        <span className="chip chip--ink">{levelName(me.level)}</span>
-      </section>
+        </header>
 
-      <Link to="/levels" className="card card--col card--float" style={{ margin: '-40px 20px 0', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Rating</div>
-          <div className="nums" style={{ fontSize: 28, fontWeight: 800, lineHeight: 1 }}>
-            {me.rating}
+        <Link to="/levels" className="stack" style={{ gap: 16, color: 'inherit' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+            <div className="stack" style={{ gap: 6 }}>
+              <span className="t-sm muted">Rating</span>
+              <span className="index" style={{ fontSize: 56 }}>
+                {me.rating}
+              </span>
+            </div>
+            <span className="chip chip--ink">{levelName(me.level)}</span>
           </div>
-        </div>
-        <Progress value={me.progress} />
-        <div className="grid3 nums">
-          <div className="tile">
-            <b>{num(me.stats.publications)}</b>
-            <span>Publications</span>
+          <Progress value={me.progress} />
+          <div className="grid3 nums">
+            <div className="tile">
+              <b>{num(me.stats.publications)}</b>
+              <span>Publications</span>
+            </div>
+            <div className="tile">
+              <b>{num(me.stats.views)}</b>
+              <span>Views</span>
+            </div>
+            <div className="tile">
+              <b>{me.stats.teamScore === null ? '–' : `${me.stats.teamScore} of 5`}</b>
+              <span>Team score</span>
+            </div>
           </div>
-          <div className="tile">
-            <b>{num(me.stats.views)}</b>
-            <span>Views</span>
-          </div>
-          <div className="tile">
-            <b>{me.stats.teamScore === null ? '–' : `${me.stats.teamScore} of 5`}</b>
-            <span>Team score</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14, fontWeight: 700, color: 'var(--red-dark)' }}>
-          <span>{me.nextLevel ? `See what ${levelName(me.nextLevel)} unlocks` : 'See your levels'}</span>
-          <Icon name="right" size={18} stroke={2.2} />
-        </div>
-      </Link>
+          <span className="textlink" style={{ minHeight: 0 }}>
+            {me.nextLevel ? `See what ${levelName(me.nextLevel)} unlocks` : 'See your levels'}
+          </span>
+        </Link>
 
-      <main className="body body--tabs" style={{ paddingTop: 16 }}>
         <div className="menu">
-          <Link to="/profile/details" style={{ minHeight: 58 }}>
+          <Link to="/profile/details">
             <Icon name="user" size={22} />
             <span className="menu__label">
               My details
@@ -78,7 +77,7 @@ export function Profile() {
               Instagram account
               <small>{me.instagram ? `@${me.instagram}` : 'Not connected'}</small>
             </span>
-            <span className="menu__value" style={{ color: ACCOUNT[me.accountStatus].color, fontWeight: 700 }}>
+            <span className="menu__value" style={{ color: ACCOUNT[me.accountStatus].color, fontWeight: 600 }}>
               {ACCOUNT[me.accountStatus].label}
             </span>
             {chevron}
@@ -99,9 +98,7 @@ export function Profile() {
           <div>
             <Icon name="globe" size={22} />
             <span className="menu__label">Language</span>
-            <span className="menu__value" style={{ fontWeight: 600 }}>
-              English
-            </span>
+            <span className="menu__value">English</span>
           </div>
           {botLink && (
             <button type="button" onClick={() => openTelegram(botLink)}>

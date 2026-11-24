@@ -43,9 +43,7 @@ export function Overview() {
   return (
     <>
       <Head title={t.overview.title}>
-        <span className="btn btn--ghost" style={{ cursor: 'default', height: 40, borderRadius: 10, padding: '0 14px' }}>
-          {f.month(data.month)}
-        </span>
+        <span className="badge badge--line" style={{ fontSize: 13, padding: '6px 14px' }}>{f.month(data.month)}</span>
       </Head>
 
       {data.sampleCreators > 0 && (
@@ -69,7 +67,7 @@ export function Overview() {
 
       <section className="section">
         <h2 className="label">{t.overview.month}</h2>
-        <div className="grid" style={{ ['--min' as string]: '180px' }}>
+        <div className="card strip">
           <Stat label={t.overview.creators} value={f.num(data.kpi.creators)} note={t.overview.confirmed(data.kpi.confirmed)} />
           <Stat label={t.overview.active} value={f.num(data.kpi.activeThisMonth)} note={t.overview.activeNote} />
           <Stat label={t.overview.publications} value={f.num(data.kpi.publications)} note={kindsSummary(t, f, data.kpi.byKind) || ' '} />

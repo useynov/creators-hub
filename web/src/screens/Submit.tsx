@@ -101,14 +101,14 @@ export function Submit() {
     <Screen>
       <TopBar back={`/tasks/${id}`} backLabel="Back to the task" title={draft ? 'Send your draft' : 'Send your work'} />
       <form className="body" style={{ gap: 18 }} onSubmit={submit} noValidate>
-        <div className="card card--row" style={{ justifyContent: 'space-between', gap: 12, borderRadius: 18, padding: '14px 16px' }}>
+        <div className="card card--row" style={{ justifyContent: 'space-between', gap: 12, padding: '14px 16px' }}>
           <div className="stack" style={{ gap: 2 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{task.title}</div>
             <div className="muted" style={{ fontSize: 14 }}>
               Send the link by {dayTime(task.deadline)}
             </div>
           </div>
-          <span className="chip chip--pink nums" style={{ padding: '6px 10px' }}>
+          <span className="chip chip--pink nums">
             +{task.reward}
           </span>
         </div>
@@ -213,14 +213,14 @@ export function BlockedView({ task, onRetry, back = `/tasks/${task.id}` }: { tas
     <Screen>
       <TopBar back={back} backLabel={back === '/tasks' ? 'Back to tasks' : 'Back to the task'} title="Send your work" />
       <main className="body" style={{ gap: 18 }}>
-        <div className="card card--row" style={{ justifyContent: 'space-between', gap: 12, borderRadius: 18, padding: '14px 16px' }}>
+        <div className="card card--row" style={{ justifyContent: 'space-between', gap: 12, padding: '14px 16px' }}>
           <div className="stack" style={{ gap: 2, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{task.title}</div>
             <div className="muted" style={{ fontSize: 14 }}>
               Send the link by {dayTime(task.deadline)}
             </div>
           </div>
-          <span className="chip chip--pink nums" style={{ padding: '6px 10px' }}>
+          <span className="chip chip--pink nums">
             +{task.reward}
           </span>
         </div>

@@ -22,10 +22,10 @@ export function Wallet() {
 
   return (
     <Screen top="red">
-      <section className="hero hero--round stack" style={{ padding: '28px 20px 24px', gap: 18 }}>
-        <div className="stack" style={{ gap: 4 }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Your balance</div>
-          <h1 className="display nums" style={{ fontSize: 60, lineHeight: 1 }}>
+      <section className="hero stack" style={{ padding: '40px 20px 24px', gap: 28 }}>
+        <div className="stack" style={{ gap: 12 }}>
+          <div className="label">Your balance</div>
+          <h1 className="display nums" style={{ fontSize: 64 }}>
             {coins(data?.balance ?? me.balance)}
           </h1>
         </div>
@@ -40,7 +40,7 @@ export function Wallet() {
         </div>
       </section>
 
-      <main className="body body--tabs" style={{ gap: 10, paddingTop: 20 }}>
+      <main className="body body--tabs" style={{ gap: 12, paddingTop: 28 }}>
         <h2 className="eyebrow">History</h2>
         {!data ? (
           error ? (
@@ -49,23 +49,23 @@ export function Wallet() {
             <Loading />
           )
         ) : data.history.length ? (
-          <ul className="rows" style={{ margin: 0, padding: '4px 16px', listStyle: 'none' }}>
+          <ul className="rows" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
             {data.history.map((row) => (
               <li key={row.id} className="row" style={{ alignItems: 'center', padding: '14px 0' }}>
-                <div className="stack" style={{ gap: 2, color: 'var(--ink)' }}>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>{row.title}</div>
+                <div className="stack" style={{ gap: 2, color: 'var(--black)', flexShrink: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{row.title}</div>
                   <div className="muted" style={{ fontSize: 13 }}>
                     {day(row.createdAt)} · {KIND[row.kind]}
                   </div>
                 </div>
-                <div className="nums" style={{ fontSize: 17, fontWeight: 800, color: row.amount > 0 ? 'var(--green)' : 'var(--ink)' }}>
+                <div className="nums" style={{ fontSize: 17, fontWeight: 700, color: row.amount > 0 ? 'var(--green)' : 'var(--black)' }}>
                   {signed(row.amount)}
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="card empty">No coins yet. Your first approved task lands here.</div>
+          <p className="empty" style={{ padding: '12px 0' }}>No coins yet. Your first approved task lands here.</p>
         )}
         <p className="note" style={{ paddingTop: 4 }}>
           {locked

@@ -50,6 +50,8 @@ export const config = {
   previewPhotosDir: !isProd && env.PREVIEW_PHOTOS ? resolve(rootDir, env.PREVIEW_PHOTOS) : null,
   /** Development preview only: PREVIEW_SEED=off leaves DEV_USER_ID a brand-new user, to look at the setup. */
   previewSeed: !isProd && env.PREVIEW_SEED !== 'off',
+  /** Brand photos cut by scripts/brand-photos.mjs. Not in git. */
+  brandDir: resolve(rootDir, 'content/brand'),
   webDist: resolve(rootDir, 'web/dist'),
   adminDist: resolve(rootDir, 'admin/dist'),
 };

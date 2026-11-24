@@ -68,11 +68,13 @@ async function seed(db: DB, userId: number): Promise<void> {
 
   const avatar = await standIn('avatar.jpg');
   const storyCopy = await standIn('story.jpg', 'private');
+  // No stand-in folder: the preview tasks borrow the brand photos, so the screens are not empty.
+  const brand = (name: string) => ({ url: `/brand/${name}.webp`, path: '' });
   const covers = {
-    coffee: await standIn('task-preview-coffee.jpg'),
-    rink: await standIn('task-preview-ice-rink.jpg'),
-    story: await standIn('task-preview-winter-story.jpg'),
-    gift: await standIn('task-preview-gift-unboxing.jpg'),
+    coffee: (await standIn('task-preview-coffee.jpg')) ?? brand('task-fizz'),
+    rink: (await standIn('task-preview-ice-rink.jpg')) ?? brand('task-friends'),
+    story: (await standIn('task-preview-winter-story.jpg')) ?? brand('task-shoot'),
+    gift: (await standIn('task-preview-gift-unboxing.jpg')) ?? brand('task-friends'),
   };
 
   db.transaction(() => {

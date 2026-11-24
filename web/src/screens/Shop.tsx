@@ -12,34 +12,48 @@ const FILTERS: Array<[Filter, string]> = [
   ['gift', 'Gifts'],
 ];
 
-function ItemCard({ item, balance }: { item: ShopItemView; balance: number }) {
+const TONES = ['red', 'black', 'cream', 'line'] as const;
+
+/**
+ * A piece of merch as a flat colour tile with its name set big. We have no product photos yet,
+ * and a made-up one would be a promise we cannot keep. When a real photo is added it takes the tile.
+ */
+function ItemCard({ item, balance, index }: { item: ShopItemView; balance: number; index: number }) {
   const missing = item.price - balance;
   const inner = (
     <>
-      <Cover src={item.imageUrl} alt={`${item.title} photo`} style={{ height: 116, borderRadius: 14 }} />
-      <div className="stack" style={{ gap: 2, padding: '0 4px 4px' }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>{item.title}</div>
-        <div className="nums" style={{ fontSize: 15, fontWeight: 800, color: missing > 0 ? 'var(--ink)' : 'var(--red-dark)' }}>
+      {item.imageUrl ? (
+        <Cover src={item.imageUrl} alt={`${item.title} photo`} style={{ aspectRatio: '1 / 1', borderRadius: 20 }} />
+      ) : (
+        <div className={`block block--${TONES[index % TONES.length]}`} style={{ aspectRatio: '1 / 1' }}>
+          <span className="t-cap" style={{ fontWeight: 600, opacity: 0.8 }}>
+            {item.category === 'gift' ? 'Gift' : 'Merch'}
+          </span>
+          <span className="block__word">{item.title}</span>
+        </div>
+      )}
+      <div className="stack" style={{ gap: 2 }}>
+        <div className="nums" style={{ fontSize: 16, fontWeight: 700, color: 'var(--black)' }}>
           {coins(item.price)}
         </div>
         {missing > 0 ? (
-          <div className="muted nums" style={{ fontSize: 12, fontWeight: 600 }}>
-            {coins(missing).replace(' ', ' more ')} to go
-          </div>
+          <div className="muted nums t-cap">{coins(missing).replace(' ', ' more ')} to go</div>
         ) : (
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>You can get it</div>
+          <div className="t-cap" style={{ fontWeight: 600, color: 'var(--green)' }}>
+            You can get it
+          </div>
         )}
       </div>
     </>
   );
-  const style = { padding: 10, gap: 8 };
+  const style = { gap: 10, color: 'inherit' };
   // Items out of reach are not links: they only show how many coins are missing.
   return missing > 0 ? (
-    <div className="card card--col" style={style}>
+    <div className="stack" style={style}>
       {inner}
     </div>
   ) : (
-    <Link to={`/shop/${item.id}`} className="card card--col" style={style}>
+    <Link to={`/shop/${item.id}`} className="stack" style={style}>
       {inner}
     </Link>
   );
@@ -60,9 +74,7 @@ export function Shop() {
         heading
         right={
           data && (
-            <span className="chip nums" style={{ padding: '8px 12px', borderRadius: 14, background: 'var(--white)', color: 'var(--red-dark)', fontSize: 15, fontWeight: 800 }}>
-              {coins(data.balance)}
-            </span>
+            <span className="chip chip--line nums">{coins(data.balance)}</span>
           )
         }
       />
@@ -81,13 +93,13 @@ export function Shop() {
             <Loading />
           )
         ) : items.length ? (
-          <div className="grid2">
-            {items.map((item) => (
-              <ItemCard key={item.id} item={item} balance={data.balance} />
+          <div className="grid2" style={{ rowGap: 24 }}>
+            {items.map((item, index) => (
+              <ItemCard key={item.id} item={item} balance={data.balance} index={index} />
             ))}
           </div>
         ) : (
-          <div className="empty">Nothing here yet. New items are on the way.</div>
+          <p className="empty">Nothing here yet. New items are on the way.</p>
         )}
       </main>
       <TabBar active="/wallet" />

@@ -307,8 +307,8 @@ export async function loadSampleData(db: DB, by: number | null = config.adminIds
     });
 
     // --- Two sample tasks, visible only to sample creators ------------------------------
-    const cover = (db.prepare(`SELECT cover_url FROM tasks WHERE cover_url LIKE '/media/%' ORDER BY sort LIMIT 1`).get() as { cover_url: string } | undefined)?.cover_url ?? null;
-    const cover2 = (db.prepare(`SELECT cover_url FROM tasks WHERE cover_url LIKE '/media/%' ORDER BY sort DESC LIMIT 1`).get() as { cover_url: string } | undefined)?.cover_url ?? cover;
+    const cover = (db.prepare(`SELECT cover_url FROM tasks WHERE cover_url LIKE '/media/%' OR cover_url LIKE '/brand/%' ORDER BY sort LIMIT 1`).get() as { cover_url: string } | undefined)?.cover_url ?? null;
+    const cover2 = (db.prepare(`SELECT cover_url FROM tasks WHERE cover_url LIKE '/media/%' OR cover_url LIKE '/brand/%' ORDER BY sort DESC LIMIT 1`).get() as { cover_url: string } | undefined)?.cover_url ?? cover;
     const everySample = JSON.stringify({ mode: 'list', userIds: CREATORS.map((_, i) => idOf(i)) });
     const task = db.prepare(
       `INSERT INTO tasks (id, title, summary, brief, cover_url, reward, format, formats, required_mention, required_hashtag, place,

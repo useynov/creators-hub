@@ -147,6 +147,20 @@ A task:
 
 `reviewMode` is `post_first` (post, then the team checks) or `draft_first` (the draft is approved before posting). Optional fields: `summary`, `brief` (the detailed brief the creator can unfold), `coverUrl`, `formats`, `requiredMention`, `requiredHashtag`, `startsAt`, `viewsBonus`. Photos given as remote addresses are copied to the server on start and made light for phones. Shop items take `imageUrl` and `needsSize`. An event without a `date` shows as "details soon" with a Remind me button; set `monthHint` (for example `"JAN"`) for its badge.
 
+### Brand photos
+
+The welcome screen, the task covers, the paid offer and the news use cuts of the brand photos. They are internal brand material, so they are **not in this repository**: `content/brand/` is git-ignored.
+
+To make them, point the script at the folder with the four source photos (`red-studio.png`, `dusk-friends.png`, `fizz-macro.png`, `portrait-studio.png`):
+
+```bash
+node scripts/brand-photos.mjs "/path/to/assets/photography"
+```
+
+It writes six small `.webp` files into `content/brand/`. Copy that folder to the server, next to the code, before building the image. The app serves them at `/brand/<name>.webp`. If the folder is missing nothing breaks: photo blocks turn flat.
+
+To use a different photo for a task, set its `coverUrl` in `content/seed.json` (a `/brand/...` path or any remote address), or upload a cover on the admin site.
+
 ## How the numbers work
 
 - **Coins** are a ledger: approved tasks add, orders and cash-outs subtract. The balance is the sum.

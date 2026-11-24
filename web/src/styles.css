@@ -1,24 +1,63 @@
-/* Design tokens, taken from the Creators Hub canvas. */
+/*
+ * Creators Hub, creator app. "One red thread": a white and black base, one red, a thin red line
+ * that runs through the screens, film photos, big numerals.
+ *
+ * Tokens follow the Coca-Cola design system we work from (colour, type, radius, motion).
+ * Rules worth remembering before adding a style here:
+ *  - Red is for the brand moment and the one main action of a screen. Never for decoration.
+ *  - Everything you can press is a pill. Cards are 20px. Nothing else has its own radius.
+ *  - Sentence case everywhere. `.label` is the only uppercase, one per screen at most.
+ *  - No gradients except the scrim over a photo. No coloured side borders. No emoji.
+ */
 :root {
-  --red: #dc0a17;
-  --red-dark: #b00812;
-  --red-darker: #8a060e;
-  --ink: #1c1414;
-  --ink-2: #4f4545;
-  --ink-raised: #2e2424;
-  --muted: #675c5c;
-  --bg: #f6f2ef;
-  --bg-chat: #ede6e1;
-  --line: #e8e1dc;
-  --line-soft: #efe9e5;
-  --border: #d9cfc9;
+  /* Brand */
+  --red: #f40009;
+  --red-600: #d1000b;
+  --red-700: #a80007;
+  --red-100: #ffd9d6;
+  --red-050: #fff3f2;
+
+  /* Neutrals */
+  --black: #000000;
+  --ink: #111111;
+  --ink-2: #2e2e2e;
+  --muted: #5c5c5c;
+  --faint: #8a8a8a;
+  --border: #b9b9b9;
+  --line: #dedede;
+  --line-soft: #efefef;
+  --sunken: #f7f6f4;
+  --cream: #f5f0e8;
   --white: #ffffff;
-  --pink: #fdecec;
-  --green: #0b5d32;
-  --amber-bg: #fff0d9;
-  --amber-ink: #5c2d00;
-  --amber: #8a4300;
-  --font: 'Figtree Variable', Figtree, system-ui, sans-serif;
+
+  /* Status */
+  --green: #127a44;
+  --green-bg: #e6f3ec;
+  --amber: #b06a00;
+  --amber-bg: #fff2dd;
+  --amber-ink: #5e3900;
+
+  /* Names kept from the first design, so older inline styles keep working. */
+  --red-dark: var(--red-600);
+  --red-darker: var(--red-700);
+  --ink-raised: #1c1c1c;
+  --bg: var(--white);
+  --bg-chat: var(--line-soft);
+  --pink: var(--red-050);
+
+  /* Shape, depth, motion */
+  --r-card: 20px;
+  --r-sheet: 32px;
+  --r-pill: 999px;
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.08);
+  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --scrim: linear-gradient(to top, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.38) 46%, rgba(0, 0, 0, 0) 100%);
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --fast: 140ms;
+  --base: 220ms;
+
+  --gutter: 20px;
+  --font: 'Onest Variable', Onest, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --vh: var(--tg-viewport-stable-height, 100dvh);
   --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-safe-area-inset-bottom, 0px));
 }
@@ -31,12 +70,14 @@
 html,
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--white);
 }
 
 body {
   font-family: var(--font);
-  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
@@ -46,7 +87,7 @@ body[data-tone='red'] {
   background: var(--red);
 }
 body[data-tone='dark'] {
-  background: var(--ink);
+  background: var(--black);
 }
 
 #root {
@@ -55,7 +96,7 @@ body[data-tone='dark'] {
 }
 
 a {
-  color: var(--red-dark);
+  color: var(--red-600);
   text-decoration: none;
 }
 
@@ -72,14 +113,29 @@ button {
 
 h1,
 h2,
+h3,
 p,
 ol {
   margin: 0;
 }
 
+h1,
+h2,
+h3 {
+  color: var(--black);
+  letter-spacing: -0.015em;
+  line-height: 1.14;
+  text-wrap: balance;
+}
+
+strong,
+b {
+  font-weight: 700;
+}
+
 :focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
 }
 
 .sr-only {
@@ -96,25 +152,51 @@ ol {
   min-height: var(--vh);
   display: flex;
   flex-direction: column;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--white);
+  color: var(--ink-2);
+}
+/* On red and on black, quiet text and hairlines turn light. A white card inside resets them. */
+.screen--red,
+.screen--dark,
+.on-dark {
+  color: var(--white);
+  --muted: rgba(255, 255, 255, 0.74);
+  --faint: rgba(255, 255, 255, 0.56);
+  --line: rgba(255, 255, 255, 0.22);
+  --line-soft: rgba(255, 255, 255, 0.14);
 }
 .screen--red {
   background: var(--red);
 }
 .screen--dark {
-  background: var(--ink);
+  background: var(--black);
+}
+:is(.screen--red, .screen--dark, .on-dark) :is(h1, h2, h3) {
+  color: var(--white);
+}
+:is(.screen--red, .on-red) :focus-visible {
+  outline-color: var(--white);
+}
+.on-light {
+  color: var(--ink-2);
+  --muted: #5c5c5c;
+  --faint: #8a8a8a;
+  --line: #dedede;
+  --line-soft: #efefef;
+}
+.on-light :is(h1, h2, h3) {
+  color: var(--black);
 }
 
 .body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 8px 20px calc(20px + var(--safe-bottom));
+  gap: 16px;
+  padding: 8px var(--gutter) calc(24px + var(--safe-bottom));
 }
 .body--tabs {
-  padding-bottom: 16px;
+  padding-bottom: 24px;
 }
 .spacer {
   flex: 1;
@@ -124,13 +206,41 @@ ol {
   display: flex;
   flex-direction: column;
 }
+/* Lets one block run to the edges of the screen from inside `.body`. */
+.bleed {
+  margin-left: calc(var(--gutter) * -1);
+  margin-right: calc(var(--gutter) * -1);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section + .section {
+  margin-top: 12px;
+}
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.section__head a {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 6px 0;
+}
 
 .topbar {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 10px 20px 6px 8px;
+  padding: 8px var(--gutter) 4px 8px;
   min-height: 60px;
+  color: var(--black);
 }
 .topbar__back {
   width: 44px;
@@ -139,93 +249,206 @@ ol {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
   color: inherit;
 }
 .topbar__title {
   flex: 1;
   min-width: 0;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+h1.topbar__title {
+  font-size: 19px;
+  font-weight: 800;
+}
 .topbar--light {
   color: var(--white);
+}
+.topbar--light h1 {
+  color: var(--white);
+}
+/* The same bar laid over a photo: nothing but round glass buttons. */
+.topbar--over {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 10px 12px;
+  justify-content: space-between;
+}
+.topbar--over .topbar__back,
+.iconbtn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.36);
+  color: var(--white);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 .tabbar {
   position: sticky;
   bottom: 0;
+  z-index: 3;
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  height: calc(72px + var(--safe-bottom));
+  height: calc(64px + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: var(--white);
   border-top: 1px solid var(--line);
 }
 .tabbar a {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: color var(--fast) var(--ease);
 }
 .tabbar a[aria-current='page'] {
   color: var(--red);
   font-weight: 700;
+}
+/* The thread, where you are. */
+.tabbar a[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  width: 28px;
+  height: 2px;
+  margin-left: -14px;
+  background: var(--red);
 }
 
 /* --- Type -------------------------------------------------------------- */
 
 .display {
   margin: 0;
-  font-weight: 800;
-  line-height: 1.1;
+  font-weight: 900;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
+.t-display {
+  font-size: 40px;
+}
+.t-h1 {
+  font-size: 30px;
+  font-weight: 800;
+}
+.t-h2 {
+  font-size: 23px;
+  font-weight: 800;
+}
+.t-h3 {
+  font-size: 19px;
+  font-weight: 700;
+}
+.t-sm {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.t-cap {
+  font-size: 12px;
+  line-height: 1.35;
+}
+/* Section heading. Sentence case: quiet, black, never shouted. */
 .eyebrow {
   margin: 0;
-  font-size: 13px;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--black);
+}
+:is(.screen--red, .screen--dark, .on-dark) .eyebrow {
+  color: var(--white);
+}
+/* The one uppercase line a screen may have. Parts are joined with a middle dot. */
+.label {
+  margin: 0;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
   text-transform: uppercase;
-  color: var(--muted);
 }
 .muted {
   color: var(--muted);
 }
 .lede {
-  font-size: 15px;
-  line-height: 1.4;
+  font-size: 16px;
+  line-height: 1.5;
 }
 .note {
   font-size: 13px;
   line-height: 1.45;
   color: var(--muted);
-  padding: 0 4px;
 }
+/* Onest sets tabular figures wide, which opens gaps beside every 1. Figures stay proportional. */
 .nums {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: lining-nums;
+}
+/* Big numerals: a step, a day of the month, a place in the rating. */
+.index {
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: var(--black);
+}
+/* The red thread: one thin rule. Use it once per screen. */
+.thread {
+  display: block;
+  height: 2px;
+  border: 0;
+  margin: 0;
+  background: var(--red);
+}
+.thread--short {
+  width: 40px;
 }
 
 /* --- Surfaces ---------------------------------------------------------- */
 
 .card {
   background: var(--white);
-  border-radius: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
   padding: 16px;
+  color: var(--ink-2);
+  --muted: #5c5c5c;
+  --faint: #8a8a8a;
+  --line: #dedede;
+  --line-soft: #efefef;
 }
 :where(a, button).card {
   display: flex;
-  border: 0;
   text-align: left;
   width: 100%;
-  color: var(--ink);
+  transition:
+    border-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+:where(a, button).card:active {
+  transform: scale(0.985);
 }
 .card--col {
   display: flex;
@@ -237,14 +460,27 @@ ol {
 }
 .card--float {
   width: auto;
-  box-shadow: 0 6px 20px rgba(28, 20, 20, 0.08);
+  border-color: transparent;
+  box-shadow: var(--shadow-raised);
+}
+.card--flat {
+  border-color: transparent;
+  background: var(--sunken);
 }
 .card--dark {
-  background: var(--ink);
+  background: var(--black);
+  border-color: var(--black);
   color: var(--white);
+  --muted: rgba(255, 255, 255, 0.74);
 }
 .card--raised {
   background: var(--ink-raised);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--white);
+  --muted: rgba(255, 255, 255, 0.74);
+  --line-soft: rgba(255, 255, 255, 0.14);
+}
+:is(.card--dark, .card--raised) :is(h1, h2, h3) {
   color: var(--white);
 }
 
@@ -252,18 +488,21 @@ ol {
   background: var(--red);
   color: var(--white);
 }
+.hero :is(h1, h2, h3) {
+  color: var(--white);
+}
 .hero--round {
-  border-radius: 0 0 32px 32px;
+  border-radius: 0 0 var(--r-sheet) var(--r-sheet);
 }
 .panel {
-  border-radius: 24px;
+  border-radius: var(--r-card);
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 .panel--dark {
-  background: var(--ink);
+  background: var(--black);
   color: var(--white);
 }
 .panel--amber {
@@ -274,82 +513,92 @@ ol {
   background: var(--red);
   color: var(--white);
 }
+:is(.panel--dark, .panel--red) :is(h1, h2, h3) {
+  color: var(--white);
+}
+.panel--amber :is(h1, h2, h3) {
+  color: var(--amber-ink);
+}
 .panel__icon {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--white);
-  color: var(--ink);
+  color: var(--black);
 }
 .panel--amber .panel__icon {
   background: var(--amber);
   color: var(--white);
 }
 
-.rows {
-  background: var(--white);
-  border-radius: 20px;
-  padding: 6px 16px;
+/* Label and value lines. They sit straight on the page between hairlines: no box. */
+.rows,
+.facts,
+.menu {
   display: flex;
   flex-direction: column;
+  border-top: 1px solid var(--line);
 }
 .row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 0;
+  gap: 16px;
+  padding: 13px 0;
   font-size: 15px;
-  border-bottom: 1px solid var(--line-soft);
-}
-.row:last-child {
-  border-bottom: 0;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--line);
 }
 .row > :first-child {
   color: var(--muted);
   flex-shrink: 0;
 }
 .row > :last-child {
-  font-weight: 700;
+  font-weight: 600;
   text-align: right;
 }
-/* Icon and text rows: when, where, who is coming. */
-.facts {
-  background: var(--white);
-  border-radius: 20px;
-  padding: 6px 16px;
-  display: flex;
-  flex-direction: column;
+.rows--roomy .row {
+  padding: 16px 0;
 }
+/* Inside a card the list keeps its lines but loses the outer ones. */
+.card > :is(.rows, .facts, .menu),
+:is(.rows, .facts, .menu).card {
+  border-top: 0;
+}
+:is(.rows, .facts, .menu).card {
+  padding: 4px 16px;
+}
+:is(.rows, .facts, .menu).card > :last-child {
+  border-bottom: 0;
+}
+/* Icon and text rows: when, where, who is coming. */
 .fact {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 14px;
+  padding: 14px 0;
   font-size: 15px;
-  line-height: 1.35;
-  border-bottom: 1px solid var(--line-soft);
-}
-.fact:last-child {
-  border-bottom: 0;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--line);
 }
 .fact > svg {
-  color: var(--red);
+  color: var(--black);
   flex-shrink: 0;
 }
-.rows--roomy .row {
-  padding: 12px 0;
+:is(.screen--red, .screen--dark, .on-dark) .fact > svg {
+  color: var(--white);
 }
 
 .photo {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--line);
+  background: var(--line-soft);
 }
 .photo img {
   width: 100%;
@@ -357,26 +606,147 @@ ol {
   object-fit: cover;
   display: block;
 }
-/* No photo, or it did not load: a quiet warm block, not a placeholder. */
+.photo--fill {
+  position: absolute;
+  inset: 0;
+}
+/* No photo, or it did not load: a flat quiet block. Never a broken image, never a gradient. */
 .photo--empty {
-  background: linear-gradient(135deg, #f2e4de 0%, #ead9d2 100%);
-  color: rgba(138, 6, 14, 0.28);
+  background: var(--line-soft);
+  color: var(--border);
+}
+
+/* A photo with words on it. The scrim is the only gradient in the app. */
+.lead {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--r-card);
+  padding: 0;
+  background: var(--ink);
+  color: var(--white);
+  text-align: left;
+  --muted: rgba(255, 255, 255, 0.8);
+  transition: transform var(--fast) var(--ease);
+}
+:where(a, button).lead:active {
+  transform: scale(0.985);
+}
+.lead > .photo {
+  z-index: -2;
+  background: var(--ink);
+}
+.lead > .photo--empty {
+  color: rgba(255, 255, 255, 0.18);
+}
+.lead::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--scrim);
+}
+.lead--square {
+  border-radius: 0;
+}
+.lead__top {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lead__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+}
+.lead :is(h1, h2, h3) {
+  color: var(--white);
+}
+.lead__title {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.lead__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+/* Glass is only for things that sit on a photo. */
+.glass {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--white);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* A flat colour block with type on it: a day of the month, a piece of merch. No fake photos. */
+.block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  border-radius: var(--r-card);
+  padding: 16px;
+  background: var(--sunken);
+  color: var(--black);
+}
+.block--red {
+  background: var(--red);
+  color: var(--white);
+}
+.block--black {
+  background: var(--black);
+  color: var(--white);
+}
+.block--cream {
+  background: var(--cream);
+}
+.block--line {
+  background: var(--white);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.block :is(.index, h1, h2, h3) {
+  color: inherit;
+}
+.block__word {
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
 }
 
 .brief {
-  background: var(--white);
-  border-radius: 20px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .brief__toggle {
   width: 100%;
-  min-height: 52px;
+  min-height: 56px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 16px;
+  gap: 12px;
+  padding: 0;
   border: 0;
   background: transparent;
-  color: var(--ink);
+  color: var(--black);
   font-size: 16px;
   font-weight: 700;
   text-align: left;
@@ -387,48 +757,44 @@ ol {
 .brief__chevron {
   display: flex;
   color: var(--muted);
-  transition: transform 0.15s ease;
+  transition: transform var(--base) var(--ease);
 }
 .brief__body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 0 16px 18px;
+  gap: 16px;
+  padding: 0 0 20px;
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.55;
   color: var(--ink-2);
+  max-width: 62ch;
 }
 .brief__body ul {
   margin: 0;
   padding-left: 20px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 .brief__heading {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.brief--dark {
-  background: var(--ink-raised);
+  letter-spacing: 0;
+  color: var(--black);
 }
 .brief--dark .brief__toggle,
-.brief--dark .brief__body {
+.brief--dark .brief__heading {
   color: var(--white);
 }
-.brief--dark .brief__heading,
-.brief--dark .brief__chevron {
-  color: rgba(255, 255, 255, 0.7);
+.brief--dark .brief__body {
+  color: rgba(255, 255, 255, 0.86);
 }
 
 .hint {
   background: var(--amber-bg);
   color: var(--amber-ink);
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 14px 16px;
   display: flex;
   gap: 12px;
@@ -440,18 +806,17 @@ ol {
   margin-top: 1px;
 }
 .hint--soft {
-  background: var(--white);
+  background: var(--sunken);
   color: var(--ink-2);
-  font-size: 13px;
-  padding: 12px 14px;
 }
 .hint--red {
-  background: var(--pink);
-  color: var(--red-darker);
+  background: var(--red-050);
+  color: var(--red-700);
 }
 .hint--red a {
-  color: var(--red-darker);
+  color: var(--red-700);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Find my profile, private profile, is this you */
@@ -462,18 +827,18 @@ ol {
 }
 .field-state__icon {
   position: absolute;
-  right: 16px;
+  right: 20px;
   display: flex;
   pointer-events: none;
 }
 .dashed {
   height: 48px;
   border: 1.5px dashed var(--border);
-  border-radius: 14px;
+  border-radius: var(--r-pill);
   background: transparent;
-  color: var(--ink);
+  color: var(--black);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .field-state .input {
   flex: 1;
@@ -485,7 +850,8 @@ ol {
   border-color: var(--amber);
 }
 .input.input--bad {
-  border: 2px solid var(--red-dark);
+  border-color: var(--red-600);
+  box-shadow: inset 0 0 0 1px var(--red-600);
 }
 .checks {
   display: flex;
@@ -499,21 +865,22 @@ ol {
   font-size: 15px;
 }
 .upload {
-  min-height: 96px;
-  border: 1.5px dashed #bdb2ac;
-  border-radius: 16px;
-  background: var(--white);
-  color: var(--ink);
+  position: relative;
+  min-height: 104px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--r-card);
+  background: var(--sunken);
+  color: var(--black);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   text-align: center;
-  padding: 12px;
+  padding: 14px;
 }
 .upload input {
   position: absolute;
@@ -522,8 +889,8 @@ ol {
   opacity: 0;
 }
 .upload:focus-within {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
 }
 
 /* --- Chips and badges -------------------------------------------------- */
@@ -531,78 +898,88 @@ ol {
 .chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   flex-shrink: 0;
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 14px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
   font-weight: 700;
+  line-height: 1.2;
   white-space: nowrap;
 }
 .chip--pink {
-  background: var(--pink);
-  color: var(--red-dark);
-  font-size: 15px;
-  font-weight: 800;
+  background: var(--red-050);
+  color: var(--red-600);
 }
 .chip--red {
   background: var(--red);
   color: var(--white);
-  font-size: 16px;
-  font-weight: 800;
 }
 .chip--white {
   background: var(--white);
-  color: var(--ink);
-  font-weight: 600;
+  color: var(--black);
 }
 .chip--amber {
   background: var(--amber-bg);
   color: var(--amber-ink);
 }
+.chip--green {
+  background: var(--green-bg);
+  color: var(--green);
+}
 .chip--ink {
-  background: var(--ink);
+  background: var(--black);
   color: var(--white);
+}
+.chip--line {
+  background: transparent;
+  color: var(--black);
+  box-shadow: inset 0 0 0 1.5px var(--black);
 }
 .chip--sm {
-  padding: 5px 10px;
-  border-radius: 10px;
-  font-size: 13px;
+  min-height: 24px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+.chip--lg {
+  min-height: 40px;
+  padding: 6px 16px;
+  font-size: 15px;
 }
 
+/* A day of the month as a numeral with the month under it. No box. */
 .datebox {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--ink);
-  color: var(--white);
+  width: 48px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  gap: 4px;
+  color: var(--black);
 }
 .datebox b {
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
 }
 .datebox span {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
 }
 .datebox--lg {
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
+  width: 64px;
 }
 .datebox--lg b {
-  font-size: 22px;
+  font-size: 44px;
 }
-.datebox--white {
-  background: var(--white);
-  color: var(--red-dark);
+.datebox--white,
+.datebox--white span {
+  color: var(--white);
 }
 
 .avatar {
@@ -615,94 +992,115 @@ ol {
   text-transform: uppercase;
 }
 
+/* The thread again: progress is a thin red line, not a fat bar. */
 .progress {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--bg-chat);
+  height: 3px;
+  background: var(--line);
   overflow: hidden;
 }
 .progress > i {
   display: block;
   height: 100%;
-  border-radius: 4px;
   background: var(--red);
-  transition: width 0.4s ease;
+  transition: width 400ms var(--ease);
 }
 .progress--lg,
 .progress--lg > i {
-  height: 10px;
-  border-radius: 5px;
+  height: 4px;
+}
+:is(.hero, .screen--red, .panel--red, .on-red) .progress {
+  background: rgba(255, 255, 255, 0.32);
+}
+:is(.hero, .screen--red, .panel--red, .on-red) .progress > i {
+  background: var(--white);
 }
 
 /* --- Buttons ----------------------------------------------------------- */
 
 .btn {
   width: 100%;
-  height: 56px;
+  height: 58px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 0 20px;
+  padding: 0 28px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--r-pill);
   background: var(--red);
   color: var(--white);
   font-size: 17px;
   font-weight: 700;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
   transition:
-    transform 0.08s ease,
-    opacity 0.15s ease;
+    transform var(--fast) var(--ease),
+    background-color var(--fast) var(--ease),
+    opacity var(--fast) var(--ease);
+}
+@media (hover: hover) {
+  .btn:hover {
+    background: var(--red-600);
+  }
+  .btn--outline:hover,
+  .btn--line:hover {
+    background: var(--line-soft);
+  }
+  .btn--white:hover {
+    background: var(--line-soft);
+  }
+  .btn--dark:hover {
+    background: var(--ink-2);
+  }
+  .btn--ghost:hover {
+    background: rgba(255, 255, 255, 0.14);
+  }
 }
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 .btn:disabled,
 .btn[aria-disabled='true'] {
-  opacity: 0.45;
+  opacity: 0.4;
   pointer-events: none;
 }
 .btn--outline {
   background: transparent;
-  color: var(--ink);
-  border: 2px solid var(--ink);
+  color: var(--black);
+  box-shadow: inset 0 0 0 2px var(--black);
 }
 .btn--white {
   background: var(--white);
-  color: var(--red-dark);
-  font-weight: 800;
+  color: var(--black);
 }
 .btn--ghost {
   background: transparent;
   color: var(--white);
-  border: 2px solid var(--white);
-  font-weight: 800;
+  box-shadow: inset 0 0 0 2px var(--white);
 }
 .btn--dark {
-  background: var(--ink);
+  background: var(--black);
 }
 .btn--md {
-  height: 52px;
+  height: 48px;
   font-size: 16px;
 }
 .btn--sm {
   width: auto;
   height: 44px;
-  border-radius: 14px;
+  padding: 0 20px;
   font-size: 15px;
 }
 .btn--line {
   width: auto;
   height: 44px;
-  padding: 0 14px;
-  border: 1.5px solid var(--ink);
-  border-radius: 14px;
+  padding: 0 18px;
   background: var(--white);
-  color: var(--ink);
+  color: var(--black);
+  box-shadow: inset 0 0 0 1.5px var(--black);
   font-size: 14px;
 }
-
 .btn--wide {
   width: 100%;
 }
@@ -714,13 +1112,14 @@ ol {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--red-dark);
+  color: var(--black);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .textlink--light {
   color: var(--white);
-  text-decoration: underline;
 }
 .actions {
   display: flex;
@@ -731,27 +1130,44 @@ ol {
 .actions--gap {
   gap: 10px;
 }
+/* The main action stays in reach at the bottom of a long screen. */
+.dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: auto calc(var(--gutter) * -1) calc((24px + var(--safe-bottom)) * -1);
+  padding: 12px var(--gutter) calc(12px + var(--safe-bottom));
+  background: var(--white);
+  border-top: 1px solid var(--line);
+}
 
+/* Tabs inside a screen: words on a hairline, the thread under the one you are on. */
 .segmented {
   display: grid;
-  gap: 4px;
-  padding: 4px;
-  background: var(--line);
-  border-radius: 16px;
+  border-bottom: 1px solid var(--line);
 }
 .segmented button {
-  height: 44px;
+  position: relative;
+  height: 48px;
   border: 0;
-  border-radius: 12px;
   background: transparent;
-  color: var(--ink-2);
-  font-size: 14px;
+  color: var(--muted);
+  font-size: 15px;
   font-weight: 600;
+  transition: color var(--fast) var(--ease);
 }
 .segmented button[aria-selected='true'] {
-  background: var(--white);
-  color: var(--ink);
+  color: var(--black);
   font-weight: 700;
+}
+.segmented button[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--red);
 }
 
 .pills {
@@ -762,18 +1178,21 @@ ol {
 .pill {
   height: 44px;
   padding: 0 18px;
-  border: 1.5px solid var(--border);
-  border-radius: 22px;
+  border: 0;
+  border-radius: var(--r-pill);
   background: var(--white);
-  color: var(--ink);
+  color: var(--black);
+  box-shadow: inset 0 0 0 1.5px var(--border);
   font-size: 14px;
   font-weight: 600;
+  transition:
+    background-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
 }
 .pill[aria-pressed='true'] {
-  border-color: var(--ink);
-  background: var(--ink);
+  background: var(--black);
   color: var(--white);
-  font-weight: 700;
+  box-shadow: none;
 }
 .sizes {
   display: grid;
@@ -783,11 +1202,7 @@ ol {
 .sizes .pill {
   height: 48px;
   padding: 0;
-  border-radius: 14px;
   font-size: 16px;
-}
-.sizes .pill[aria-pressed='true'] {
-  font-weight: 800;
 }
 
 /* --- Forms ------------------------------------------------------------- */
@@ -795,13 +1210,13 @@ ol {
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   margin: 0;
 }
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   border: 0;
   margin: 0;
   padding: 0;
@@ -812,13 +1227,14 @@ ol {
   padding: 0;
   font-size: 15px;
   font-weight: 700;
+  color: var(--black);
 }
 .field > legend {
   margin-bottom: 8px;
 }
 .field small {
   font-size: inherit;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--muted);
 }
 .input {
@@ -826,30 +1242,36 @@ ol {
   min-width: 0;
   height: 56px;
   border: 1.5px solid var(--border);
-  border-radius: 16px;
-  padding: 0 16px;
+  border-radius: var(--r-pill);
+  padding: 0 22px;
   background: var(--white);
-  color: var(--ink);
+  color: var(--black);
   font-size: 16px;
   appearance: none;
+  transition:
+    border-color var(--fast) var(--ease),
+    box-shadow var(--fast) var(--ease);
 }
 .input::placeholder {
-  color: var(--muted);
+  color: var(--faint);
 }
 .input:focus {
   outline: none;
-  border-color: var(--ink);
+  border-color: var(--black);
+  box-shadow: inset 0 0 0 1px var(--black);
 }
 textarea.input {
   height: auto;
-  padding: 14px 16px;
+  padding: 16px 20px;
+  border-radius: var(--r-card);
+  line-height: 1.45;
   resize: none;
 }
 select.input {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23675C5C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23111111' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 14px center;
-  padding-right: 44px;
+  background-position: right 20px center;
+  padding-right: 52px;
 }
 .input--lg {
   font-size: 17px;
@@ -861,63 +1283,63 @@ select.input {
 }
 .inputrow .btn {
   width: auto;
-  padding: 0 18px;
+  height: 56px;
+  padding: 0 22px;
   font-size: 15px;
 }
 
 /* --- Lists ------------------------------------------------------------- */
 
-.menu {
-  background: var(--white);
-  border-radius: 20px;
-  padding: 2px 16px;
-  display: flex;
-  flex-direction: column;
-}
 .menu > * {
-  min-height: 52px;
+  min-height: 60px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 0;
+  gap: 14px;
+  padding: 8px 0;
   border: 0;
-  border-bottom: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line);
   background: transparent;
-  color: var(--ink);
-  font-size: 15px;
-  font-weight: 700;
+  color: var(--black);
+  font-size: 16px;
+  font-weight: 600;
   text-align: left;
 }
-.menu > :last-child {
-  border-bottom: 0;
+:is(.screen--red, .screen--dark, .on-dark) .menu > * {
+  color: var(--white);
 }
 .menu__label {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 1px;
 }
 .menu__label small {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--muted);
 }
 .menu__value {
   font-size: 14px;
+  font-weight: 400;
   color: var(--muted);
 }
 
+/* Where a piece of work stands. The line between the dots is the thread: red as far as you got. */
 .timeline {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px 16px;
+  padding: 4px 0;
 }
 .timeline__row {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  min-height: 48px;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--black);
 }
 .timeline__row > span:nth-child(2) {
   flex: 1;
@@ -927,72 +1349,86 @@ select.input {
   font-weight: 400;
   color: var(--muted);
 }
+.timeline__row:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 2px;
+  height: 100%;
+  background: var(--line);
+}
+.timeline__row[data-state='done']:not(:last-child)::before {
+  background: var(--red);
+}
 .dot {
-  width: 28px;
-  height: 28px;
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--border);
+  background: var(--white);
+  box-shadow: inset 0 0 0 2px var(--line);
 }
 .dot--done {
-  border: 0;
-  background: var(--green);
+  background: var(--red);
   color: var(--white);
+  box-shadow: none;
 }
 .dot--now {
-  border: 3px solid var(--red);
   background: var(--white);
+  box-shadow:
+    inset 0 0 0 2px var(--red),
+    inset 0 0 0 6px var(--white),
+    inset 0 0 0 12px var(--red);
 }
 .timeline__row[data-state='now'] {
   font-weight: 800;
-  color: var(--red-dark);
 }
 .timeline__row[data-state='now'] > span:last-child {
-  font-weight: 700;
-  color: var(--red-dark);
+  font-weight: 600;
+  color: var(--black);
 }
 .timeline__row[data-state='todo'] {
-  font-weight: 600;
+  font-weight: 500;
   color: var(--muted);
 }
 
+/* What to do, in order. The numeral carries the step: big, and red only for the one you are on. */
 .steps {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px 16px;
+  border-top: 1px solid var(--line);
 }
 .step {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: flex-start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
 }
 .step__n {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 34px;
   flex-shrink: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--border);
-  color: var(--ink-2);
-  font-size: 15px;
-  font-weight: 700;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: 2px;
+  color: var(--border);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
 }
 .step[data-state='now'] .step__n {
-  border: 0;
-  background: var(--red);
-  color: var(--white);
-  font-weight: 800;
+  color: var(--red);
 }
 .step[data-state='done'] .step__n {
-  border: 0;
-  background: var(--green);
-  color: var(--white);
+  color: var(--black);
 }
 .step__text {
   display: flex;
@@ -1000,14 +1436,23 @@ select.input {
   gap: 2px;
   font-size: 16px;
   font-weight: 600;
+  line-height: 1.35;
+  color: var(--black);
 }
 .step[data-state='now'] .step__text {
-  font-weight: 800;
+  font-weight: 700;
+}
+.step[data-state='done'] .step__text {
+  color: var(--muted);
 }
 .step__text small {
   font-size: 14px;
   font-weight: 400;
+  line-height: 1.45;
   color: var(--muted);
+}
+:is(.screen--red, .screen--dark, .on-dark) :is(.step__text, .timeline__row) {
+  color: var(--white);
 }
 
 .grid2 {
@@ -1020,21 +1465,29 @@ select.input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
+/* A number and what it counts. In a row of them, hairlines do the dividing. */
 .tile {
-  background: var(--bg);
-  border-radius: 14px;
-  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--line);
+}
+.tile:first-child {
+  padding-left: 0;
+  border-left: 0;
 }
 .tile b {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--black);
 }
 .tile span {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.3;
   color: var(--muted);
 }
 
@@ -1043,20 +1496,20 @@ select.input {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(96px + var(--safe-bottom));
+  bottom: calc(88px + var(--safe-bottom));
   transform: translateX(-50%);
   z-index: 10;
   width: max-content;
   max-width: min(calc(100vw - 40px), 440px);
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: var(--ink);
+  padding: 12px 20px;
+  border-radius: 24px;
+  background: var(--black);
   color: var(--white);
   font-size: 14px;
   font-weight: 600;
   line-height: 1.35;
-  box-shadow: 0 8px 24px rgba(28, 20, 20, 0.25);
-  animation: toast-in 0.2s ease;
+  box-shadow: var(--shadow-raised);
+  animation: toast-in var(--base) var(--ease);
 }
 @keyframes toast-in {
   from {
@@ -1071,7 +1524,7 @@ select.input {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
   padding: 32px 24px;
   text-align: center;
 }
@@ -1079,7 +1532,7 @@ select.input {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 3px solid var(--line);
+  border: 2px solid var(--line);
   border-top-color: var(--red);
   animation: spin 0.8s linear infinite;
 }
@@ -1089,11 +1542,22 @@ select.input {
   }
 }
 .empty {
-  padding: 28px 20px;
-  text-align: center;
+  padding: 40px 12px;
   font-size: 15px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--muted);
+  max-width: 34ch;
+}
+
+/* Screens arrive quietly: one short rise, once. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.screen > main {
+  animation: rise var(--base) var(--ease) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1101,4 +1565,26 @@ select.input {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* A brief's steps are all still ahead: the numerals stay black. */
+.steps--plain .step__n {
+  color: var(--black);
+}
+.steps--plain .step__text {
+  font-weight: 500;
+}
+
+/* The same card with no photo: a flat red block, type only. */
+.lead--red {
+  background: var(--red);
+}
+.lead--red::before {
+  display: none;
+}
+.lead .index {
+  color: var(--white);
+}
+.lead > .photo--empty svg {
+  display: none;
 }

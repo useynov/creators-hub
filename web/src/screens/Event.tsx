@@ -3,10 +3,11 @@ import useSWR from 'swr';
 import type { EventsView, EventView } from '../../../server/src/types';
 import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { Cover, DateBox, Loading, Problem, Screen, TextBlocks, TopBar } from '../components/ui';
+import { Loading, Problem, Screen, TextBlocks, TopBar } from '../components/ui';
 import { coins, dayLong } from '../format';
 import { useAction, useHub, useToast } from '../hub';
 import { buzz } from '../telegram';
+import { EventFace } from './Events';
 
 const weekday = (date: string): string => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
 
@@ -55,25 +56,15 @@ export function Event() {
 
   return (
     <Screen>
-      <TopBar back="/events" backLabel="Back to events" title="Event" />
-      <main className="body" style={{ gap: 18 }}>
-        {event.coverUrl && <Cover src={event.coverUrl} alt="" style={{ height: 210, borderRadius: 24 }} eager />}
-
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-          <DateBox date={event.date} monthHint={event.monthHint} large />
-          <div className="stack" style={{ gap: 6, minWidth: 0 }}>
-            <h1 className="display" style={{ fontSize: 28, lineHeight: 1.1 }}>
-              {event.title}
-            </h1>
-            {event.going && !past && (
-              <span className="chip chip--red chip--sm" style={{ alignSelf: 'flex-start' }}>
-                {event.checkedIn ? 'You are checked in' : 'You are on the list'}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="facts">
+      <EventFace event={event} square minHeight={340} top={<TopBar over back="/events" backLabel="Back to events" title="Event" />}>
+        {event.going && !past && (
+          <span className="chip chip--white" style={{ alignSelf: 'flex-start' }}>
+            {event.checkedIn ? 'You are checked in' : 'You are on the list'}
+          </span>
+        )}
+      </EventFace>
+      <main className="body" style={{ gap: 24, paddingTop: 8 }}>
+        <div className="facts" style={{ borderTop: 0 }}>
           <div className="fact">
             <Icon name="calendar" size={20} />
             <div className="stack" style={{ gap: 2 }}>
@@ -104,26 +95,25 @@ export function Event() {
         {event.description && <p className="lede">{event.description}</p>}
 
         {event.details && (
-          <section className="card card--col brief__body" style={{ borderRadius: 24, padding: 18 }}>
+          <section className="brief__body" style={{ padding: 0 }}>
             <TextBlocks text={event.details} />
           </section>
         )}
 
         {event.taskId && !past && (
-          <Link to={`/tasks/${event.taskId}`} className="card card--row" style={{ gap: 12, borderRadius: 24, alignItems: 'center' }}>
+          <Link to={`/tasks/${event.taskId}`} className="card card--row" style={{ gap: 12 }}>
             <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
-              <div className="eyebrow">Task for this event</div>
-              <div style={{ fontSize: 16, fontWeight: 800 }}>{event.taskTitle ?? 'Open the task'}</div>
-              {event.taskReward ? <div className="muted" style={{ fontSize: 14 }}>+{coins(event.taskReward)}</div> : null}
+              <div className="t-sm muted">Task for this event</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--black)' }}>{event.taskTitle ?? 'Open the task'}</div>
             </div>
-            <Icon name="right" size={20} />
+            {event.taskReward ? <span className="chip chip--pink nums">+{coins(event.taskReward)}</span> : null}
+            <Icon name="right" size={20} color="var(--muted)" />
           </Link>
         )}
 
-        <div className="spacer" />
-        <div className="actions">
+        <div className="dock actions">
           {past ? (
-            <p className="muted" style={{ textAlign: 'center', fontSize: 15 }}>
+            <p className="muted t-sm">
               {event.checkedIn ? 'You were there. Thank you for coming.' : 'This event has already happened.'}
             </p>
           ) : !event.date ? (

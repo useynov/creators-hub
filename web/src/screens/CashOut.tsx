@@ -57,9 +57,6 @@ export function CashOut() {
         <TopBar back="/wallet" backLabel="Back to wallet" title="Cash out" />
         <main className="body" style={{ gap: 16 }}>
           <section className="panel panel--dark">
-            <div className="panel__icon">
-              <Icon name="lock" size={26} stroke={2.2} />
-            </div>
             <h1 className="display" style={{ fontSize: 28, lineHeight: 1.15 }}>
               Cash-out opens at Pro level
             </h1>
