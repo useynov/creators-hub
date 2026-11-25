@@ -53,7 +53,7 @@ This is **version 2**. What changed, how to see which version is running and how
 | Give something away for free, once a month | The admin site, Shop: price 0, "Per creator per month" 1, and the options under "Own choice" (for example the drinks of a monthly case). Free items go only to creators whose account is confirmed |
 | Add or edit events | Edit `content/seed.json` and redeploy |
 
-Send `/help` to the bot as an admin for the full command list.
+Type `/` in a chat with the bot to see every command your role may use (creators see `/start` and `/clear`; the team sees theirs in a private chat with the bot and in the team group). Tapping one sends it at once; a command that needs details answers with an example. `/help` shows the same commands with examples. A new command is added to the list in `server/src/menus.ts`; a test fails when one is missing.
 
 ## What you need from Telegram
 

@@ -20,7 +20,7 @@ if (config.botToken) {
   await bot.init();
   botUsername = bot.botInfo.username;
   setApi(bot.api);
-  await configureBot(bot);
+  await configureBot(bot, db);
   // Long polling: no webhook to register, works behind any host.
   void bot.start({ onStart: () => console.log(`[bot] @${botUsername} is listening`) });
   stopBot = () => bot.stop();

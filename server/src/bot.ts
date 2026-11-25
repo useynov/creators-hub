@@ -35,6 +35,7 @@ import {
   upsertUser,
 } from './service.js';
 import { loadSampleData, removeSampleData, sampleStatus } from './sample.js';
+import { setMenuApi, syncAllMenus, syncMenu } from './menus.js';
 import { startOver, startOverPreview } from './startover.js';
 import { demoMode, isManagerOnly, isOwner, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
 import type { Level } from './types.js';
@@ -65,6 +66,8 @@ const ADMIN_HELP = [
   '/startover: remove your own creator account, to walk the creator\'s path again from the first screen (owners only, in private)',
   '/clear: empty your private chat with me (Telegram allows the last 48 hours only)',
   '/id: show this chat ID and your user ID',
+  '',
+  'Type / to see these as a list. Tapping one sends it at once; a command that needs details answers with an example.',
   '',
   'Reply to a creator\'s message to answer them. Scan an event pass with your phone camera to check a creator in.',
 ].join('\n');
@@ -109,6 +112,13 @@ export function createBot(db: DB): Bot {
       if (ctx.callbackQuery) await ctx.answerCallbackQuery({ text: error.message, show_alert: true }).catch(() => undefined);
       else await ctx.reply(error.message).catch(() => undefined);
     }
+  });
+
+  // Someone on the team sees every command of their role when they type "/". The list follows
+  // them when their role changes, and is given the first time they write after joining.
+  bot.use(async (ctx, next) => {
+    if (ctx.chat?.type === 'private' && ctx.from) await syncMenu(db, ctx.from.id);
+    await next();
   });
 
   // --- Creators ----------------------------------------------------------
@@ -406,6 +416,8 @@ export function createBot(db: DB): Bot {
     }
     if (!isAdmin(ctx.from!.id)) return ctx.reply('Only the owners can switch demo mode.');
     setDemoMode(db, action === 'on');
+    // Demo mode changes who has the team's commands, so their "/" lists change with it.
+    void syncAllMenus(db);
     return ctx.reply(
       action === 'on'
         ? 'Demo mode is on. Everyone on the invite list now has the team\'s rights and gets the team\'s messages. Turn it off before real creators join: /demo off'
@@ -682,12 +694,10 @@ export function createBot(db: DB): Bot {
   return bot;
 }
 
-/** One-time bot setup: the command list and the "Open app" menu button. */
-export async function configureBot(bot: Bot): Promise<void> {
-  await bot.api.setMyCommands([
-    { command: 'start', description: 'Open the Hub' },
-    { command: 'clear', description: 'Clear this chat' },
-  ]);
+/** One-time bot setup: the command lists (see menus.ts) and the "Open app" menu button. */
+export async function configureBot(bot: Bot, db: DB): Promise<void> {
+  setMenuApi(bot.api);
+  await syncAllMenus(db);
   if (config.webappUrl.startsWith('https://')) {
     await bot.api.setChatMenuButton({
       menu_button: { type: 'web_app', text: 'Open app', web_app: { url: config.webappUrl } },
