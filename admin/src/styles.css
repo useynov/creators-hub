@@ -9,35 +9,35 @@
  */
 @font-face {
   font-family: 'TCCC Unity Text';
-  src: url('/brand/unity-text-regular.woff2') format('woff2');
+  src: url('/brand/unity-text-regular.woff2?v=2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'TCCC Unity Text';
-  src: url('/brand/unity-text-medium.woff2') format('woff2');
+  src: url('/brand/unity-text-medium.woff2?v=2') format('woff2');
   font-weight: 500 600;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'TCCC Unity Text';
-  src: url('/brand/unity-text-bold.woff2') format('woff2');
+  src: url('/brand/unity-text-bold.woff2?v=2') format('woff2');
   font-weight: 700 900;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'TCCC Unity Headline';
-  src: url('/brand/unity-headline-bold.woff2') format('woff2');
+  src: url('/brand/unity-headline-bold.woff2?v=2') format('woff2');
   font-weight: 400 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'TCCC Unity Headline';
-  src: url('/brand/unity-headline-black.woff2') format('woff2');
+  src: url('/brand/unity-headline-black.woff2?v=2') format('woff2');
   font-weight: 800 900;
   font-style: normal;
   font-display: swap;

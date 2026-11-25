@@ -158,7 +158,7 @@ export function BrandLogo({ tone, height }: { tone: 'red' | 'white'; height: num
       </div>
     );
   }
-  return <img src={`/brand/logo-${tone}.svg`} alt="Coca-Cola" height={height} width={Math.round((height * 2000) / 627)} onError={() => setBroken(true)} />;
+  return <img src={`/brand/logo-${tone}.svg?v=2`} alt="Coca-Cola" height={height} width={Math.round((height * 2000) / 627)} onError={() => setBroken(true)} />;
 }
 
 export function Avatar({ name, url, size = 36 }: { name: string; url: string | null; size?: number }) {
