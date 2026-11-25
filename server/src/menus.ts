@@ -7,7 +7,7 @@
 
 import type { Api } from 'grammy';
 import { config, isAdmin } from './config.js';
-import type { DB } from './db.js';
+import { isSampleId, type DB } from './db.js';
 import { demoMode, isOwner, isTeam } from './team.js';
 
 /** Who sees a command, from everyone up to the owners named in the server settings. */
@@ -104,7 +104,8 @@ export function setMenuApi(next: Api | null): void {
  * again the next time they write.
  */
 export async function syncMenu(db: DB, telegramId: number): Promise<void> {
-  if (!api) return;
+  // Sample creators are not people: Telegram has no chat with them.
+  if (!api || isSampleId(telegramId)) return;
   const tier = tierOf(db, telegramId);
   const scope = { type: 'chat' as const, chat_id: telegramId };
   try {
