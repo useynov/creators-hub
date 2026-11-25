@@ -1,134 +1,119 @@
 import { Link } from 'react-router-dom';
-import useSWR from 'swr';
-import type { HomeView, NewsView } from '../../../server/src/types';
+import useSWR, { useSWRConfig } from 'swr';
+import type { EventsView, EventView, HomeView, HubStoryView } from '../../../server/src/types';
+import { api } from '../api';
 import { Icon } from '../components/Icon';
-import { AccountNote, Avatar, Cover, DateBox, Loading, Logo, Problem, Progress, Screen, TabBar, hubName, keepBrand } from '../components/ui';
-import { coins, day, levelName } from '../format';
-import { useHub } from '../hub';
-import { openExternal, openTelegram } from '../telegram';
+import { TaskCard } from '../components/TaskCard';
+import { AccountNote, HubHeader, Loading, Problem, ProfileRing, Screen, TabBar, keepBrand } from '../components/ui';
+import { dayParts, levelName, weekdayShort } from '../format';
+import { useAction, useHub, useToast } from '../hub';
+import { buzz } from '../telegram';
 
-const NEXT_PERK = { pro: 'Cash-out opens there.', partner: 'Paid offers open there.' };
+const NEXT_PERK = { pro: 'cash-out opens', partner: 'paid offers open' };
 
-/** Landing screen. One photo leads: the next task. Level, event, news and the chat stay quiet. */
+/**
+ * Landing screen. The creator's photo in the ring of their progress, the Hub's stories, the tasks
+ * they can join today, and the next events. Their own work in progress lives in the Tasks tab;
+ * Home only says when the team has sent something back.
+ */
 export function Home() {
   const { me, settings } = useHub();
   const { data, error, mutate } = useSWR<HomeView>('/api/home');
+  const { mutate: refresh } = useSWRConfig();
+  const toast = useToast();
+
+  const [comeTo, answering] = useAction(async (eventId: string) => {
+    const events = await api.post<EventsView>(`/api/events/${eventId}/rsvp`);
+    await refresh('/api/events', events, { revalidate: false });
+    await mutate();
+    buzz('success');
+    toast('You are on the list. Your pass is on the event page.');
+  });
+
+  const toNext = me.nextLevel && me.nextThreshold ? Math.max(0, me.nextThreshold - me.rating) : null;
+  const ringLabel = me.nextThreshold ? `Rating ${me.rating} of ${me.nextThreshold}, progress to ${levelName(me.nextLevel!)}` : `Rating ${me.rating}, top level`;
 
   return (
     <Screen>
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 20px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <Logo height={28} />
-          <span className="hubname" aria-hidden="true" style={{ width: 1, height: 22, background: 'var(--line)' }} />
-          <span className="label hubname" style={{ color: 'var(--black)', maxWidth: '9ch', lineHeight: 1.15 }}>
-            {hubName(settings.brandName)}
-          </span>
-        </div>
-        <Link to="/wallet" className="chip chip--line chip--lg nums" aria-label={`${coins(me.balance)}, open rewards`}>
-          <Icon name="coin" size={18} />
-          <span>{coins(me.balance)}</span>
-        </Link>
-      </header>
+      <HubHeader brandName={settings.brandName} balance={me.balance} />
 
-      <main className="body body--tabs" style={{ paddingTop: 20, gap: 20 }}>
+      <main className="body body--tabs" style={{ paddingTop: 22, gap: 0 }}>
         <Link to="/profile" className="hello" aria-label={`Hi, ${me.firstName}. Open your profile`}>
-          <Avatar src={me.avatarUrl} name={me.firstName} size={64} />
-          <h1 className="display t-display">Hi, {me.firstName}</h1>
-        </Link>
-
-        <Link to="/levels" className="stack" style={{ gap: 10, color: 'inherit' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+          <ProfileRing src={me.avatarUrl} name={me.firstName} progress={me.progress} badge={me.nextThreshold ? `${me.rating} / ${me.nextThreshold}` : String(me.rating)} label={ringLabel} />
+          <span className="hello__text">
+            <h1 className="display">Hi, {me.firstName}</h1>
             <span className="nums" style={{ fontSize: 15 }}>
               <strong style={{ color: 'var(--black)' }}>{levelName(me.level)}</strong>
-              <span className="muted"> · rating {me.rating}</span>
+              {me.rank ? ` · #${me.rank} this month` : ''}
             </span>
-            <span className="t-sm muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-              {me.nextLevel ? `Next: ${levelName(me.nextLevel)}` : 'Top level'}
-              <Icon name="right" size={16} />
+            <span className="t-sm muted nums">
+              {toNext !== null && me.nextLevel
+                ? `${toNext} ${toNext === 1 ? 'point' : 'points'} to ${levelName(me.nextLevel)}, where ${NEXT_PERK[me.nextLevel]}.`
+                : 'Top level: paid offers are open for you.'}
             </span>
-          </div>
-          <Progress value={me.progress} />
-          <div className="t-sm muted">{me.nextLevel ? NEXT_PERK[me.nextLevel] : 'Paid offers are open for you.'}</div>
+          </span>
         </Link>
 
         {!data ? (
-          error ? (
-            <Problem error={error} onRetry={() => void mutate()} />
-          ) : (
-            <Loading />
-          )
+          <div style={{ paddingTop: 24 }}>{error ? <Problem error={error} onRetry={() => void mutate()} /> : <Loading />}</div>
         ) : (
           <>
-            <AccountNote status={me.accountStatus} note={me.accountNote} confirmTime={settings.accountConfirmTime} />
+            {data.stories.length > 0 && <Stories stories={data.stories} />}
 
-            {data.offer && (
-              <Link to="/offer" className="card card--row card--dark" style={{ gap: 12, padding: '16px 20px' }}>
-                <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
-                  <div className="t-sm muted">Paid offer, only for you</div>
-                  <div style={{ fontSize: 17, fontWeight: 700 }}>{keepBrand(data.offer.campaign)}</div>
-                </div>
-                <Icon name="right" size={20} />
-              </Link>
-            )}
+            <div className="stack" style={{ gap: 12, paddingTop: 12 }}>
+              <AccountNote status={me.accountStatus} note={me.accountNote} confirmTime={settings.accountConfirmTime} />
 
-            <section className="section">
-              <div className="section__head">
-                <h2 className="eyebrow">Your next task</h2>
-                <Link to="/tasks">All tasks{data.newCount ? ` (${data.newCount})` : ''}</Link>
-              </div>
-              {data.nextTask ? (
-                <Link to={`/tasks/${data.nextTask.id}`} className="lead" style={{ minHeight: 360 }}>
-                  <Cover src={data.nextTask.coverUrl} alt="" fill eager />
-                  <div className="lead__top">
-                    <span />
-                    <span className="chip chip--white nums">+{coins(data.nextTask.reward)}</span>
+              {data.offer && (
+                <Link to="/offer" className="card card--row card--dark" style={{ gap: 12, padding: '16px 20px' }}>
+                  <div className="stack" style={{ flex: 1, gap: 2, minWidth: 0 }}>
+                    <div className="t-sm muted">Paid offer, only for you</div>
+                    <div style={{ fontSize: 17, fontWeight: 700 }}>{keepBrand(data.offer.campaign)}</div>
                   </div>
-                  <div className="lead__body">
-                    <div className="t-sm muted">
-                      {data.nextTask.date && data.nextTask.place
-                        ? `${day(data.nextTask.date)}, ${data.nextTask.place}`
-                        : [data.nextTask.format, `until ${day(data.nextTask.deadline)}`].filter(Boolean).join(' · ')}
-                    </div>
-                    <div className="lead__title">{keepBrand(data.nextTask.title)}</div>
-                    <div className="lead__foot">
-                      <span className="btn btn--white btn--sm">Open task</span>
-                    </div>
-                  </div>
+                  <Icon name="right" size={20} />
                 </Link>
-              ) : (
-                <p className="muted" style={{ fontSize: 15 }}>
-                  No new tasks right now. The bot will message you when one opens.
+              )}
+
+              {data.needsFix.count > 0 && (
+                <Link to={data.needsFix.count === 1 && data.needsFix.taskId ? `/tasks/${data.needsFix.taskId}` : '/tasks?tab=mine'} className="fixline">
+                  <Icon name="alert" size={20} />
+                  <span>{data.needsFix.count === 1 ? '1 task needs a fix' : `${data.needsFix.count} tasks need a fix`}</span>
+                  <Icon name="right" size={18} />
+                </Link>
+              )}
+            </div>
+
+            <section className="section" style={{ paddingTop: 16 }}>
+              <div className="section__head">
+                <h2 className="eyebrow eyebrow--lg">Open tasks</h2>
+                <Link to="/tasks?tab=open">All tasks{data.openCount > data.openTasks.length ? ` (${data.openCount})` : ''}</Link>
+              </div>
+              {data.openTasks.map((task) => (
+                <TaskCard key={task.id} task={task} />
+              ))}
+              {!data.openTasks.length && (
+                <p className="muted" style={{ fontSize: 15, lineHeight: 1.5 }}>
+                  No open tasks right now.{' '}
+                  {data.soonCount > 0 ? (
+                    <Link to="/tasks?tab=soon" style={{ color: 'var(--black)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                      {data.soonCount === 1 ? '1 opens soon' : `${data.soonCount} open soon`}
+                    </Link>
+                  ) : (
+                    'The bot will message you when one opens.'
+                  )}
                 </p>
               )}
             </section>
 
-            {(data.nextEvent || data.news || settings.communityChatUrl) && (
-              <section className="section">
-                <h2 className="eyebrow">In the Hub</h2>
-                <div className="menu">
-                  {data.nextEvent && (
-                    <Link to={`/events/${data.nextEvent.id}`}>
-                      <DateBox date={data.nextEvent.date} monthHint={data.nextEvent.monthHint} />
-                      <span className="menu__label">
-                        {data.nextEvent.title}
-                        <small>{data.nextEvent.going ? 'You are on the list' : 'Open to all members'}</small>
-                      </span>
-                      <Icon name="right" size={20} color="var(--muted)" />
-                    </Link>
-                  )}
-                  {data.news && <NewsRow news={data.news} />}
-                  {settings.communityChatUrl && (
-                    <button type="button" onClick={() => openTelegram(settings.communityChatUrl!)}>
-                      <span style={{ width: 48, display: 'flex' }}>
-                        <Icon name="chat" />
-                      </span>
-                      <span className="menu__label">
-                        Community chat
-                        <small>Closed Telegram group for members</small>
-                      </span>
-                      <Icon name="right" size={20} color="var(--muted)" />
-                    </button>
-                  )}
+            {data.events.length > 0 && (
+              <section className="section" style={{ paddingTop: 20 }}>
+                <div className="section__head">
+                  <h2 className="eyebrow eyebrow--lg">Coming up</h2>
+                  <Link to="/events">All events</Link>
+                </div>
+                <div className="upnext">
+                  {data.events.map((event) => (
+                    <ComingUp key={event.id} event={event} busy={answering} onCome={() => comeTo(event.id)} />
+                  ))}
                 </div>
               </section>
             )}
@@ -140,28 +125,45 @@ export function Home() {
   );
 }
 
-/** The latest news as one quiet row. It opens a screen of the Hub (path) or an outside page (url). */
-function NewsRow({ news }: { news: NewsView }) {
-  const inner = (
-    <>
-      <span className="menu__label">
-        {news.title}
-        {news.summary && <small>{news.summary}</small>}
-      </span>
-      {news.coverUrl ? (
-        <Cover src={news.coverUrl} alt="" style={{ width: 64, height: 64, borderRadius: 12 }} />
-      ) : (
-        <Icon name="right" size={20} color="var(--muted)" />
-      )}
-    </>
+/** The Hub's stories as a row of circles: a red ring until the creator has opened one. */
+function Stories({ stories }: { stories: HubStoryView[] }) {
+  return (
+    <nav aria-label="Hub stories" className="stories bleed">
+      {stories.map((story) => (
+        <Link key={story.id} to={`/hub/${story.id}`} className={`storydot${story.seen ? ' storydot--seen' : ''}`} aria-label={`${story.label}: ${story.headline}${story.seen ? ', seen' : ', new'}`}>
+          <span className="storydot__ring">
+            <span className={`storydot__face storydot__face--${story.tone}`}>
+              {story.imageUrl ? <img src={story.imageUrl} alt="" loading="eager" decoding="async" /> : <b aria-hidden="true">{story.label.charAt(0)}</b>}
+            </span>
+          </span>
+          <span className="storydot__label">{story.label}</span>
+        </Link>
+      ))}
+    </nav>
   );
-  if (news.path?.startsWith('/')) return <Link to={news.path}>{inner}</Link>;
-  if (news.url) {
-    return (
-      <button type="button" onClick={() => openExternal(news.url!)}>
-        {inner}
-      </button>
-    );
-  }
-  return <div>{inner}</div>;
+}
+
+/** One coming event: the day set big on the left, then what and where, and "I'm in" until the creator is on the list. */
+function ComingUp({ event, busy, onCome }: { event: EventView; busy: boolean; onCome: () => void }) {
+  const [dayNumber] = dayParts(event.date!);
+  const facts = [event.time, event.place, event.going ? (event.checkedIn ? 'you were there' : 'you are on the list') : null].filter(Boolean).join(' · ');
+  return (
+    <div className="upnext__row">
+      <Link to={`/events/${event.id}`} className="upnext__link">
+        <span className="upnext__day nums">
+          <b>{dayNumber}</b>
+          <span>{weekdayShort(event.date!)}</span>
+        </span>
+        <span className="upnext__what">
+          <b>{event.title}</b>
+          {facts && <span>{facts}</span>}
+        </span>
+      </Link>
+      {!event.going && (
+        <button type="button" className="btn btn--line" disabled={busy} onClick={onCome} aria-label={`I'm in for ${event.title}`}>
+          I'm in
+        </button>
+      )}
+    </div>
+  );
 }

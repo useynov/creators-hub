@@ -14,6 +14,7 @@ import { Event } from './screens/Event';
 import { EventPass } from './screens/EventPass';
 import { Events } from './screens/Events';
 import { Home } from './screens/Home';
+import { HubStory } from './screens/HubStory';
 import { Leaderboard } from './screens/Leaderboard';
 import { Levels } from './screens/Levels';
 import { PaidOffer } from './screens/PaidOffer';
@@ -134,6 +135,7 @@ function Shell() {
         <Route path="/profile/details" element={<Details />} />
         <Route path="/profile/instagram" element={<ChangeHandle />} />
         <Route path="/stories/:id" element={<StoryViews />} />
+        <Route path="/hub/:id" element={<HubStory />} />
         <Route path="/levels" element={<Levels />} />
         <Route path="/offer" element={<PaidOffer />} />
         <Route path="*" element={<Navigate to="/" replace />} />

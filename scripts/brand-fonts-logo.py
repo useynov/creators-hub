@@ -48,6 +48,16 @@ for curve in trace:
     parts.append("Z")
 path = "".join(parts)
 for name, colour in (("logo-red", "#F40009"), ("logo-white", "#FFFFFF")):
-    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" aria-label="Coca-Cola"><path fill="{colour}" fill-rule="evenodd" d="{path}"/></svg>\n'
+    # Width and height are stated as well as the viewBox: some phone browsers will not draw an
+    # SVG used as an <img> without them.
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}" role="img" aria-label="Coca-Cola"><path fill="{colour}" fill-rule="evenodd" d="{path}"/></svg>\n'
     (out / f"{name}.svg").write_text(svg)
     print(f"{name}.svg", len(svg) // 1024, "KB", f"{width}x{height}")
+    # The same mark as a picture, for a browser that still refuses the SVG: the app tries it
+    # before it falls back to the name set in type.
+    rgb = tuple(int(colour[i : i + 2], 16) for i in (1, 3, 5))
+    flat = Image.new("RGBA", (width, height), rgb + (0,))
+    flat.putalpha(alpha.crop((left, top, right, bottom)))
+    small = flat.resize((900, round(900 * height / width)), Image.LANCZOS)
+    small.save(out / f"{name}.webp", lossless=True)
+    print(f"{name}.webp", (out / f"{name}.webp").stat().st_size // 1024, "KB", small.size)

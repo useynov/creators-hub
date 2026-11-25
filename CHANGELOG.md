@@ -1,5 +1,41 @@
 # Changelog
 
+## 4.0.0 (25 November 2026)
+
+A new Home, a new Tasks tab and the Hub's own stories, built from the design canvas "For the build".
+
+**Home**
+- **The header says "Creators Hub" first**, with the Coca-Cola script as a small line above it. The balance chip says "85 coins".
+- **The creator's photo in a ring.** The ring fills as the rating nears the next level; a badge shows rating and threshold ("96 / 150"). Under the name: the level, the place this month, and how many points are left to the next level.
+- **Stories** in a row of circles under it (see below).
+- **Open tasks:** only tasks the creator can join today, as compact cards (cover, format, reward, title, one line, time left with a thin bar). Their own work in progress is not on Home any more: it lives in the Tasks tab.
+- **"1 task needs a fix":** one amber line when the team has sent work back. It opens that task.
+- **Coming up:** the next two events with a date. "I'm in" answers from Home.
+- The News block and the "In the Hub" list are gone: stories carry the news. The paid offer card and the account note stay.
+
+**Tasks tab: Mine, Open, Soon, Done**
+- **Mine** is the creator's own work, the one that needs a fix first, with the team's comment on the card and the next step as a button. The tab opens here when there is something in it, otherwise on Open.
+- **Open** is everything that can be joined now.
+- **Soon** is new: a task with a start date ahead. It is announced with its date and reward, cannot be joined yet, and its brief stays closed until it opens. **Remind me** makes the bot message the creator when it opens.
+- **Done** sums up the month and lists approved work with its views and coins.
+- The word stays "Tasks" everywhere.
+
+**Stories: the Hub's news channel**
+- Full screen, like Instagram stories: a photo or a flat colour, a line over the headline, a headline, a short text, one button into the app. Tap right for the next, left for the one before, hold to pause; each stays 8 seconds. With "reduce motion" on the phone, nothing moves by itself.
+- A red ring until the creator has opened a story, grey after. New ones come first. A story stays up until its last day, or until the team takes it down.
+- **Admin site, new Stories section** (Owner and Manager): upload a vertical photo, write the words, choose where the button leads (a main screen, a task, an event, a shop item), set the last day, see it as the creator will, send it to your own Telegram to check it in the real app, put it up or take it down. A story goes up without a bot message. The site shows how many creators opened each one.
+
+**What changes for the team**
+- **A task's Start date now matters to creators.** Before, it was only used to check when a post was published. Now a start date ahead puts the task under Soon and nobody can join until then. A creator who joined earlier is not affected.
+- "Shoot the New Year caravan" in the content file no longer has a start date, so creators can sign up for it ahead of the day.
+- `/startover`, the sample data and the age refusal also clear reminders and opened stories.
+
+**Fixes**
+- **The Coca-Cola script on phones.** On at least one iPhone the logo showed as plain type. The SVG now states its size, and the app tries the same mark as a picture before it falls back to type. Run `scripts/brand-fonts-logo.py` again and copy the four logo files to the server.
+- A story could be skipped when the one before it ran out. Found in testing, fixed before release.
+
+**Data.** Three tables are added on start: `task_reminders`, `hub_stories`, `hub_story_views`. Nothing is removed or changed. Going back: image `creators-hub:rollback-v3.5.0-20261125`; 3.5.0 runs on the same database and simply ignores the new tables, but `/startover` of 3.5.0 will fail for an owner who has set a reminder or opened a story.
+
 ## 3.5.0 (25 November 2026)
 
 **`/startover`: see the creator's path again from the first screen.** An owner who is also signed up as a creator could never see the welcome, the age question or the Instagram step again. Now they can.

@@ -1038,13 +1038,6 @@ h1.topbar__title {
   color: var(--white);
 }
 
-/* The narrowest phones have no room for the Hub's name beside the logo and the coins. */
-@media (max-width: 350px) {
-  .hubname {
-    display: none;
-  }
-}
-
 /* Home greeting: the creator's face, then the name. One tap opens the profile. */
 .hello {
   display: flex;
@@ -1779,4 +1772,650 @@ select.input {
 }
 .track > div[data-state='done'] {
   color: var(--black);
+}
+
+/* ==========================================================================
+   Home and the Tasks tab, as designed in November 2026: the Hub's name first,
+   the creator's photo in the ring of their progress, stories, task cards.
+   ========================================================================== */
+
+.hubhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px var(--gutter) 0;
+}
+.hubhead__name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.hubhead__name .display {
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--black);
+  white-space: nowrap;
+}
+@media (max-width: 350px) {
+  .hubhead__name .display {
+    font-size: 21px;
+  }
+}
+
+/* The greeting: the ring with the creator's photo, then the name, the level and what is next. */
+.hello {
+  gap: 18px;
+}
+.hello__text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-2);
+}
+.hello__text .display {
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--black);
+  overflow-wrap: anywhere;
+}
+.ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  display: flex;
+  margin-bottom: 8px;
+}
+.ring__photo {
+  position: absolute;
+  left: 15px;
+  top: 15px;
+  display: flex;
+}
+.ring__badge {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: var(--white);
+  box-shadow: inset 0 0 0 1.5px var(--black);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--black);
+  white-space: nowrap;
+}
+@media (max-width: 350px) {
+  .hello {
+    gap: 12px;
+  }
+  .hello__text .display {
+    font-size: 24px;
+  }
+}
+
+/* Stories: a row of circles that scrolls sideways. Red ring until opened, grey after. */
+.stories {
+  display: flex;
+  gap: 10px;
+  padding: 22px var(--gutter) 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.stories::-webkit-scrollbar {
+  display: none;
+}
+.storydot {
+  width: 68px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--black);
+}
+.storydot__ring {
+  width: 62px;
+  height: 62px;
+  padding: 2px;
+  border-radius: 50%;
+  border: 2.5px solid var(--red);
+  display: flex;
+}
+.storydot--seen .storydot__ring {
+  border-color: var(--line);
+}
+.storydot__face {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.storydot__face--red {
+  background: var(--red);
+}
+.storydot__face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.storydot__label {
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.storydot--seen .storydot__label {
+  color: var(--muted);
+}
+
+/* The team sent the creator's work back: one amber line on Home. */
+.fixline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--amber-bg);
+  color: var(--amber-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+.fixline > span {
+  flex: 1;
+}
+
+.eyebrow--lg {
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+.section__head a {
+  font-size: 15px;
+}
+
+/* A task as a card: picture or day on the left, then status, reward, title, one line, time left. */
+.tcard {
+  display: flex;
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--r-card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--white);
+  color: var(--ink);
+}
+.tcard__thumb {
+  position: relative;
+  width: 72px;
+  height: 96px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+}
+.tcard__thumb .photo {
+  border-radius: 0;
+}
+.tcard__day {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--red-700);
+  color: var(--white);
+  font-family: var(--font-display);
+  line-height: 1;
+}
+.tcard__day b {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+.tcard__day span {
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+}
+.tcard__day--soon {
+  background: var(--cream);
+  color: var(--black);
+}
+.tcard__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.tcard__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+}
+.tcard__top > b {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--black);
+  white-space: nowrap;
+}
+.tcard__format {
+  font-size: 13px;
+  color: var(--muted);
+}
+.tcard__chip {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.tcard__chip--amber {
+  background: var(--amber-bg);
+  color: var(--amber-ink);
+}
+.tcard__chip--green {
+  background: var(--green-bg);
+  color: var(--green);
+}
+.tcard__chip--grey {
+  background: var(--line-soft);
+  color: var(--ink-2);
+}
+.tcard__title {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--black);
+}
+.tcard__line {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.tcard__fix {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--amber-bg);
+  color: var(--amber-ink);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.tcard__time {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.tcard__time b {
+  font-weight: 600;
+  color: var(--black);
+}
+.tcard__time span {
+  color: var(--muted);
+}
+.tcard__bar {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--line-soft);
+  display: flex;
+  overflow: hidden;
+}
+.tcard__bar i {
+  background: var(--ink);
+  border-radius: var(--r-pill);
+}
+/* The next step on a card. Inside a link it is a label; on a Soon card it is a real button. */
+.tcard__btn {
+  align-self: flex-start;
+  min-height: 36px;
+  margin-top: 4px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--white);
+  box-shadow: inset 0 0 0 1.5px var(--black);
+  color: var(--black);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+button.tcard__btn {
+  min-height: 44px;
+}
+.tcard__btn--red {
+  background: var(--red);
+  box-shadow: none;
+  color: var(--white);
+}
+.tcard__btn--on {
+  background: var(--green-bg);
+  box-shadow: none;
+  color: var(--green);
+}
+.tcard__btn:disabled {
+  opacity: 0.5;
+}
+
+/* The four tabs of the Tasks screen: a grey track, the chosen one a black pill. */
+.pilltabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--line-soft);
+}
+.pilltabs button {
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: lining-nums;
+}
+.pilltabs button[aria-selected='true'] {
+  background: var(--black);
+  color: var(--white);
+  font-weight: 700;
+}
+@media (max-width: 350px) {
+  .pilltabs button {
+    font-size: 12px;
+  }
+}
+
+/* Approved work: a tick, the name, what it brought. */
+.donelist {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.donelist > a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.donelist__check {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green-bg);
+  color: var(--green);
+}
+.donelist__what {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.donelist__what b {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--black);
+}
+.donelist__what > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.donelist__coins {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--green);
+}
+
+/* Coming up: the day set big on the left, a thin line joining the days. */
+.upnext {
+  display: flex;
+  flex-direction: column;
+}
+.upnext__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.upnext__link {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 12px;
+  color: var(--ink);
+}
+.upnext__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.upnext__day b {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--black);
+}
+.upnext__day span {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.upnext__row:not(:last-child) .upnext__day::after {
+  content: '';
+  flex: 1;
+  width: 2px;
+  min-height: 14px;
+  margin-top: 8px;
+  background: var(--line);
+}
+.upnext__what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 22px;
+}
+.upnext__row:last-child .upnext__what {
+  padding-bottom: 4px;
+}
+.upnext__what b {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--black);
+}
+.upnext__what span {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.upnext__row .btn {
+  flex-shrink: 0;
+}
+
+/* --- A story, full screen ---------------------------------------------- */
+
+.story {
+  position: relative;
+  flex: 1;
+  min-height: var(--vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--white);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.story--red {
+  background: var(--red);
+}
+.story__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.story__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 22%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0.5) 38%, rgba(0, 0, 0, 0) 68%);
+}
+/* Left third: the story before. The rest: the next one. */
+.story__tap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  touch-action: manipulation;
+}
+.story__tap--back {
+  left: 0;
+  width: 32%;
+}
+.story__tap--next {
+  right: 0;
+  width: 68%;
+}
+.story__tap:focus-visible {
+  outline-offset: -4px;
+}
+.story__bars {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  padding: 12px 10px 0;
+  pointer-events: none;
+}
+.story__bars span {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.34);
+  overflow: hidden;
+  display: flex;
+}
+.story__bars i {
+  background: var(--white);
+}
+.story__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 0 16px;
+  font-size: 14px;
+  pointer-events: none;
+}
+.story__who {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--red);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 800;
+}
+.story--red .story__who {
+  background: var(--white);
+  color: var(--red);
+}
+.story__when {
+  color: rgba(255, 255, 255, 0.76);
+}
+.story__close {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--white);
+  pointer-events: auto;
+}
+.story__body {
+  position: relative;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 var(--gutter) calc(28px + var(--safe-bottom));
+  pointer-events: none;
+}
+.story__kicker {
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: lining-nums;
+}
+.story__body .display {
+  font-size: 44px;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  color: var(--white);
+}
+.story__body p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 32ch;
+}
+.story__body .btn {
+  margin-top: 6px;
+  pointer-events: auto;
 }

@@ -1099,7 +1099,7 @@ export function sendTaskReminders(db: DB): number {
 }
 
 /** How many open tasks Home shows before "All tasks". */
-const HOME_TASKS = 3;
+const HOME_TASKS = 2;
 /** How many events Home shows under "Coming up". */
 const HOME_EVENTS = 2;
 
