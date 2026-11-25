@@ -85,21 +85,14 @@ export function Home() {
             <section className="section" style={{ paddingTop: 16 }}>
               <div className="section__head">
                 <h2 className="eyebrow eyebrow--lg">Open tasks</h2>
-                <Link to="/tasks?tab=open">All tasks{data.openCount > data.openTasks.length ? ` (${data.openCount})` : ''}</Link>
+                <Link to="/tasks">All tasks{data.openCount > data.openTasks.length ? ` (${data.openCount})` : ''}</Link>
               </div>
               {data.openTasks.map((task) => (
                 <TaskCard key={task.id} task={task} />
               ))}
               {!data.openTasks.length && (
                 <p className="muted" style={{ fontSize: 15, lineHeight: 1.5 }}>
-                  No open tasks right now.{' '}
-                  {data.soonCount > 0 ? (
-                    <Link to="/tasks?tab=soon" style={{ color: 'var(--black)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                      {data.soonCount === 1 ? '1 opens soon' : `${data.soonCount} open soon`}
-                    </Link>
-                  ) : (
-                    'The bot will message you when one opens.'
-                  )}
+                  No open tasks right now. The bot will message you when one opens.
                 </p>
               )}
             </section>

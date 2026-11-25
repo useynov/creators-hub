@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import type { ShopView } from '../../../server/src/types';
 import { Icon } from '../components/Icon';
 import { Cover, Loading, Problem, Progress, Screen, TopBar } from '../components/ui';
-import { coins } from '../format';
+import { coins, price } from '../format';
 import { ItemFace, itemState, STATE_COLOR } from './Shop';
 
 /** One item of the shop: its photos, what it is, how it reaches you, and the way to order it. */
@@ -32,11 +32,12 @@ export function ShopItem() {
     setShown(Math.round(track.scrollLeft / Math.max(1, track.clientWidth)));
   };
   const facts: Array<[string, string]> = [];
-  if (item.sizes.length) facts.push(['Sizes', item.sizes.join(', ')]);
+  if (item.sizes.length) facts.push([item.clothing ? 'Sizes' : item.sizeLabel, item.sizes.join(', ')]);
   facts.push(['Delivery', item.delivery === 'courier' ? 'By courier to your address, free' : 'We send it to you in Telegram']);
   // A short stock is already said next to the price; the row is for the calmer numbers.
   if (item.left !== null && item.left > 5) facts.push(['In stock', `${item.left} left`]);
   if (item.perCreator !== null) facts.push(['Limit', item.perCreator === 1 ? 'One per creator' : `${item.perCreator} per creator`]);
+  if (item.perMonth !== null) facts.push(['How often', item.perMonth === 1 ? 'Once a month' : `${item.perMonth} a month`]);
 
   return (
     <Screen>
@@ -74,7 +75,7 @@ export function ShopItem() {
           </h1>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
             <span className="nums" style={{ fontSize: 22, fontWeight: 800, color: 'var(--black)' }}>
-              {coins(item.price)}
+              {price(item.price)}
             </span>
             <span className="nums t-sm" style={{ fontWeight: 600, color: STATE_COLOR[state.tone] }}>
               {state.text}
@@ -120,7 +121,7 @@ export function ShopItem() {
         <div className="dock actions">
           {item.blocked === null ? (
             <Link to={`/shop/${item.id}/order`} className="btn">
-              Order for {coins(item.price)}
+              {item.price === 0 ? 'Get it free' : `Order for ${coins(item.price)}`}
             </Link>
           ) : item.blocked === 'coins' ? (
             <Link to="/tasks" className="btn btn--outline">

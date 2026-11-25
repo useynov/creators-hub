@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { TaskView } from '../../../server/src/types';
 import { coins, day, dayParts, daysUntil, timeLeft } from '../format';
@@ -45,13 +44,12 @@ function TimeLine({ task }: { task: TaskView }) {
   );
 }
 
-/** The picture on the left: the cover, or the day when the task is tied to one or has not opened yet. */
+/** The picture on the left: the cover, or the day when the task is tied to one. */
 function Thumb({ task }: { task: TaskView }) {
-  const dated = task.opensAt ?? task.date;
-  if (dated) {
-    const [number, month] = dayParts(dated);
+  if (task.date) {
+    const [number, month] = dayParts(task.date);
     return (
-      <span className={`tcard__thumb tcard__day${task.opensAt ? ' tcard__day--soon' : ''}`} aria-hidden="true">
+      <span className="tcard__thumb tcard__day" aria-hidden="true">
         <b>{number}</b>
         <span>{month}</span>
       </span>
@@ -64,27 +62,16 @@ function Thumb({ task }: { task: TaskView }) {
   );
 }
 
-/**
- * One task as a card: picture or day on the left, then format or status, the reward, the title,
- * one line, and the time left. `children` is the Soon card's own button.
- */
-export function TaskCard({ task, children }: { task: TaskView; children?: ReactNode }) {
+/** One task as a card: picture or day on the left, then format or status, the reward, the title, one line, and the time left. */
+export function TaskCard({ task }: { task: TaskView }) {
   const state = standing(task);
-  const soon = Boolean(task.opensAt);
   const comment = state?.tone === 'amber' ? task.entry?.comment : null;
-
-  const body = (
-    <>
+  return (
+    <Link to={`/tasks/${task.id}`} className="tcard">
       <Thumb task={task} />
       <span className="tcard__body">
         <span className="tcard__top">
-          {soon ? (
-            <span className="tcard__chip tcard__chip--grey nums">Opens {day(task.opensAt!)}</span>
-          ) : state ? (
-            <span className={`tcard__chip tcard__chip--${state.tone}`}>{state.chip}</span>
-          ) : (
-            <span className="tcard__format">{task.format ?? 'Any format'}</span>
-          )}
+          {state ? <span className={`tcard__chip tcard__chip--${state.tone}`}>{state.chip}</span> : <span className="tcard__format">{task.format ?? 'Any format'}</span>}
           <b className="nums" aria-label={`${coins(task.reward)} reward`}>
             +{task.reward}
           </b>
@@ -94,24 +81,13 @@ export function TaskCard({ task, children }: { task: TaskView; children?: ReactN
           <span className="tcard__fix">
             <b>From the team:</b> {comment}
           </span>
-        ) : soon ? (
-          <span className="tcard__line">{[task.format, 'details come when it opens'].filter(Boolean).join(' · ')}</span>
         ) : (
           (state?.note ?? task.summary) && <span className="tcard__line">{state?.note ?? task.summary}</span>
         )}
-        {!soon && <TimeLine task={task} />}
-        {!soon && !task.entry && task.full && <span className="tcard__line">All places are taken.</span>}
+        <TimeLine task={task} />
+        {!task.entry && task.full && <span className="tcard__line">All places are taken.</span>}
         {state?.action && !task.closed && <span className={`tcard__btn${state.primary ? ' tcard__btn--red' : ''}`}>{state.action}</span>}
-        {children}
       </span>
-    </>
-  );
-
-  // A task that has not opened has nothing to open yet: only its own button works.
-  if (soon) return <div className="tcard">{body}</div>;
-  return (
-    <Link to={`/tasks/${task.id}`} className="tcard">
-      {body}
     </Link>
   );
 }

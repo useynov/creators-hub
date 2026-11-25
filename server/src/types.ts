@@ -106,13 +106,6 @@ export interface TaskView {
   requiredMention: string | null;
   requiredHashtag: string | null;
   startsAt: string | null;
-  /**
-   * Set while the task has not opened yet: it is listed under Soon, cannot be joined, and its
-   * brief and steps are held back until this moment. null once it is open.
-   */
-  opensAt: string | null;
-  /** The creator asked the bot to tell them when this task opens. */
-  reminded: boolean;
   /** When the task opened to creators (its start, or when it was made). For the time-left bar. */
   openedAt: string | null;
   bonusCoins: number | null;
@@ -272,8 +265,6 @@ export interface HomeView {
   /** Open tasks this creator can join now, the first few. */
   openTasks: TaskView[];
   openCount: number;
-  /** Tasks announced with a start date that has not come yet. */
-  soonCount: number;
   /** The creator's own work that the team sent back. */
   needsFix: { count: number; taskId: string | null };
   /** The next events with a date. */
@@ -303,20 +294,28 @@ export interface ShopItemView {
   /** The cover: the first photo, or null when the item has none. */
   imageUrl: string | null;
   images: string[];
-  /** Sizes on offer; empty for an item without sizes. */
+  /** What the creator chooses when ordering: sizes, or the item's own choices (drinks). Empty for none. */
   sizes: string[];
   needsSize: boolean;
+  /** The word for that choice: "Size", "Drink". */
+  sizeLabel: string;
+  /** The choice is a clothing size, kept in the profile for next time. */
+  clothing: boolean;
   /** 'courier' needs an address and a phone; 'message' is sent by the team in Telegram. */
   delivery: 'courier' | 'message';
   /** How many are left; null when the team does not count. */
   left: number | null;
   perCreator: number | null;
+  /** How many one creator may order in a calendar month; null for no monthly limit. */
+  perMonth: number | null;
+  /** The day the creator can order it again, YYYY-MM-DD, when this month's are used up. */
+  nextOn: string | null;
   /** How many of this the creator has ordered (cancelled orders do not count). */
   mine: number;
   /** Coins the creator still lacks for it. */
   missing: number;
   /** Why this creator cannot order it now. 'hidden' is only ever seen by the team, in preview. */
-  blocked: null | 'hidden' | 'sold_out' | 'limit' | 'coins';
+  blocked: null | 'hidden' | 'sold_out' | 'limit' | 'month' | 'account' | 'coins';
 }
 
 export interface ShopView {

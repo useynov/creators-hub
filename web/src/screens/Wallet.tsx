@@ -73,7 +73,7 @@ export function Wallet() {
             : 'Coins come from approved tasks. Spend them on merch and gifts, or cash them out.'}
         </p>
       </main>
-      <TabBar />
+      <TabBar active="/shop" />
     </Screen>
   );
 }

@@ -59,7 +59,7 @@ export function Shop() {
                   <Link to={`/shop/${item.id}`} className="plain strong" style={{ fontSize: 16 }}>
                     {item.title}
                   </Link>
-                  <div className="strong">{t.shop.coins(item.price)}</div>
+                  <div className="strong">{item.price === 0 ? t.shop.free : t.shop.coins(item.price)}</div>
                   <div className="small muted">
                     {item.stock === null ? t.shop.stockAny : t.shop.stockLeft(item.stock)}
                     {' · '}

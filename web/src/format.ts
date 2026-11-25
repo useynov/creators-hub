@@ -34,6 +34,8 @@ export const monthName = (date = new Date()): string =>
 
 export const num = (value: number): string => value.toLocaleString('en-US');
 export const coins = (value: number): string => `${num(value)} ${Math.abs(value) === 1 ? 'coin' : 'coins'}`;
+/** What an item costs, in words: "30 coins", or "Free". */
+export const price = (value: number): string => (value === 0 ? 'Free' : coins(value));
 export const signed = (value: number): string => (value > 0 ? `+${num(value)}` : num(value).replace('-', '−'));
 
 export const levelName = (level: string): string => level.charAt(0).toUpperCase() + level.slice(1);

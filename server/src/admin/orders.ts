@@ -94,7 +94,7 @@ export function cancelOrderByTeam(db: DB, actorId: number, id: number, note: str
   audit(db, actorId, 'order.cancel', id, note);
   void notifyUser(
     order.user_id,
-    `<b>Your order was cancelled.</b> ${esc(order.title)}: ${esc(note)}\n${order.price} coins are back on your balance.`,
+    `<b>Your order was cancelled.</b> ${esc(order.title)}: ${esc(note)}${order.price > 0 ? `\n${order.price} coins are back on your balance.` : ''}`,
     { text: 'Open the shop', path: '/shop' },
   );
 }

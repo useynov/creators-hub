@@ -490,6 +490,12 @@ export interface ShopItemRow {
   stock: number | null;
   /** How many one creator may order; null for no limit. */
   per_creator: number | null;
+  /** JSON array of things to choose from that are not sizes (drinks, colours); null for none. */
+  choices: string | null;
+  /** The word for that choice: "Drink", "Colour". */
+  choice_label: string | null;
+  /** How many one creator may order in a calendar month; null for no monthly limit. */
+  per_month: number | null;
   delivery: 'courier' | 'message';
   /** 'seed' until someone edits the item on the admin site; then the file never touches it again. */
   source: 'seed' | 'admin';
@@ -687,6 +693,11 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['shop_items', 'delivery', "TEXT NOT NULL DEFAULT 'courier'"],
   ['shop_items', 'source', "TEXT NOT NULL DEFAULT 'seed'"],
   ['shop_items', 'updated_at', 'TEXT'],
+  // A choice that is not a size (the drink in a monthly case) with its own word, and a limit
+  // per creator per calendar month, for things given out regularly.
+  ['shop_items', 'choices', 'TEXT'],
+  ['shop_items', 'choice_label', 'TEXT'],
+  ['shop_items', 'per_month', 'INTEGER'],
   // An order remembers how it is delivered, and who cancelled it and why.
   ['orders', 'delivery', "TEXT NOT NULL DEFAULT 'courier'"],
   ['orders', 'cancelled_by', 'TEXT'],

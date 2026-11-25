@@ -161,3 +161,56 @@ test('the team sets the order of the shelf; an item with orders is hidden, never
   removeItem(db, 900, 'cap-2');
   assert.equal(listItems(db).items.some((item) => item.id === 'cap-2'), false);
 });
+
+test('a free monthly item: no coins move, one per calendar month, a drink is chosen, only for a confirmed account', () => {
+  const drinks = ['Coca-Cola', 'Coca-Cola Zero', 'Sprite', 'Fanta'];
+  const made = createItem(db, 900, input({ title: 'Monthly case', price: 0, images: [], choices: drinks, choiceLabel: 'Drink', perMonth: 1, stock: 3 }));
+  assert.deepEqual([made.price, made.perMonth, made.choices, made.choiceLabel], [0, 1, drinks, 'Drink']);
+
+  const user = creator(60, 0);
+  let seen = shop(db, 60).items.find((item) => item.id === made.id)!;
+  assert.deepEqual([seen.blocked, seen.sizes, seen.sizeLabel, seen.clothing, seen.perMonth, seen.nextOn], [null, drinks, 'Drink', false, 1, null]);
+
+  // The drink must be one of the four.
+  assert.equal(codeOf(() => placeOrder(db, user, made.id, { ...WHERE })), 'size_required');
+  assert.equal(codeOf(() => placeOrder(db, user, made.id, { ...WHERE, size: 'Pepsi' })), 'size_required');
+
+  const first = placeOrder(db, user, made.id, { ...WHERE, size: 'Sprite' });
+  assert.equal(first.balance, 0);
+  assert.equal((db.prepare('SELECT COUNT(*) AS n FROM ledger WHERE user_id = 60').get() as { n: number }).n, 0, 'a free order leaves no line in the wallet');
+  const saved = db.prepare('SELECT size, price FROM orders WHERE id = ?').get(first.orderId) as { size: string; price: number };
+  assert.deepEqual([saved.size, saved.price], ['Sprite', 0]);
+  assert.equal((db.prepare('SELECT size FROM users WHERE id = 60').get() as { size: string | null }).size, null, 'a drink is not a clothing size');
+
+  // The month is used up: the shop says when the next one is, and a second order is refused.
+  seen = shop(db, 60).items.find((item) => item.id === made.id)!;
+  assert.equal(seen.blocked, 'month');
+  assert.match(seen.nextOn!, /^\d{4}-\d{2}-01$/);
+  assert.equal(codeOf(() => placeOrder(db, user, made.id, { ...WHERE, size: 'Fanta' })), 'month_limit');
+
+  // An order from last month does not count against this one.
+  db.prepare('UPDATE orders SET created_at = ? WHERE id = ?').run(new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(), first.orderId);
+  assert.equal(shop(db, 60).items.find((item) => item.id === made.id)!.blocked, null);
+  const second = placeOrder(db, user, made.id, { ...WHERE, size: 'Fanta' });
+
+  // Cancelled: the month is free again, the case is back in stock, and no coins appear from nowhere.
+  cancelOrder(db, user, second.orderId);
+  assert.equal(balanceOf(db, 60), 0);
+  assert.equal(shop(db, 60).items.find((item) => item.id === made.id)!.blocked, null);
+  assert.equal((db.prepare('SELECT stock FROM shop_items WHERE id = ?').get(made.id) as { stock: number }).stock, 2);
+
+  // A creator whose account the team has not confirmed sees it but cannot take it.
+  const pending = creator(61, 0);
+  db.prepare("UPDATE users SET account_status = 'pending' WHERE id = 61").run();
+  assert.equal(shop(db, 61).items.find((item) => item.id === made.id)!.blocked, 'account');
+  assert.equal(codeOf(() => placeOrder(db, { ...pending, account_status: 'pending' }, made.id, { ...WHERE, size: 'Sprite' })), 'account_not_confirmed');
+});
+
+test('choices and sizes do not mix, and a choice needs two options', () => {
+  assert.equal(codeOf(() => input({ sizes: ['M'], choices: ['Red', 'White'] })), 'sizes_or_choices');
+  assert.equal(codeOf(() => input({ choices: ['Red'] })), 'one_choice');
+  assert.equal(input({ choices: ['Red', 'White'] }).choiceLabel, 'Option', 'a choice without a name gets a plain one');
+  assert.equal(input({ choices: [], choiceLabel: 'Colour' }).choiceLabel, null);
+  assert.equal(codeOf(() => input({ price: -1 })), 'out_of_range');
+  assert.equal(input({ price: 0 }).price, 0, 'free is a price');
+});
