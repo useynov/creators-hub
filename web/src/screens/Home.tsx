@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import type { HomeView, NewsView } from '../../../server/src/types';
 import { Icon } from '../components/Icon';
-import { AccountNote, Cover, DateBox, Loading, Logo, Problem, Progress, Screen, TabBar, hubName, keepBrand } from '../components/ui';
+import { AccountNote, Avatar, Cover, DateBox, Loading, Logo, Problem, Progress, Screen, TabBar, hubName, keepBrand } from '../components/ui';
 import { coins, day, levelName } from '../format';
 import { useHub } from '../hub';
 import { openExternal, openTelegram } from '../telegram';
@@ -19,8 +19,8 @@ export function Home() {
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 20px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <Logo height={28} />
-          <span aria-hidden="true" style={{ width: 1, height: 22, background: 'var(--line)' }} />
-          <span className="label" style={{ color: 'var(--black)', maxWidth: '9ch', lineHeight: 1.15 }}>
+          <span className="hubname" aria-hidden="true" style={{ width: 1, height: 22, background: 'var(--line)' }} />
+          <span className="label hubname" style={{ color: 'var(--black)', maxWidth: '9ch', lineHeight: 1.15 }}>
             {hubName(settings.brandName)}
           </span>
         </div>
@@ -31,7 +31,10 @@ export function Home() {
       </header>
 
       <main className="body body--tabs" style={{ paddingTop: 20, gap: 20 }}>
-        <h1 className="display t-display">Hi, {me.firstName}</h1>
+        <Link to="/profile" className="hello" aria-label={`Hi, ${me.firstName}. Open your profile`}>
+          <Avatar src={me.avatarUrl} name={me.firstName} size={64} />
+          <h1 className="display t-display">Hi, {me.firstName}</h1>
+        </Link>
 
         <Link to="/levels" className="stack" style={{ gap: 10, color: 'inherit' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>

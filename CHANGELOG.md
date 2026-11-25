@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.4.0 (25 November 2026)
+
+- **Creator app, Home: the creator's photo next to "Hi, name".** It is the same Instagram avatar the profile shows; a tap opens the profile.
+- **A photo before Instagram is read.** While the Hub has no Instagram avatar for a creator, they see their own Telegram photo instead of a letter, on Home and on the profile. Only the creator sees it: it is not stored, and the admin site is unchanged.
+- **The narrowest phones (320 px):** "Creators Hub" beside the logo is left out there, so it no longer runs under the coin balance.
+
+**Data.** Nothing changes in the database. Going back: image `creators-hub:rollback-v3.3.0-20261125`.
+
 ## 3.3.0 (24 November 2026)
 
 The shop, rebuilt end to end. Before this version an item could only be added by editing a file on the server, it could not have a photo from the admin site, and a creator had no page for an item and no way to follow an order.
