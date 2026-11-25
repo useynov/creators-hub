@@ -44,6 +44,7 @@ This is **version 2**. What changed, how to see which version is running and how
 | Check in at an event | Scan the creator's QR pass with a phone camera. It opens the bot and confirms |
 | Confirm or reject an account | Buttons under "New account to confirm", or `/confirm @username` and `/reject @username reason`. Also on the creator's card in the admin site |
 | Lift an age refusal after a typo | `/allowage ID`, owners only |
+| Empty the chat with the bot | `/clear` in a private chat with the bot, for anyone. Telegram lets a bot delete only messages from the last 48 hours; older ones stay |
 | Walk the creator's path again from the first screen | `/startover` in a private chat with the bot, owners only. It removes your own creator account (tasks joined, publications, coins, orders, RSVPs, Instagram, details) after you confirm with `/startover yes`; your team role and everything else stay. Then press `/start` |
 | Look at the Hub with sample creators | `/sampledata on` loads 20 made-up creators with work and reports, `/sampledata off` removes them. Owners only. Remove before real creators join |
 | Add or edit tasks | The admin site, Tasks. Tasks from `content/seed.json` are a starting set: once edited on the site, the file no longer overwrites them |
