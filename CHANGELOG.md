@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.3.1 (25 November 2026)
+
+- With demo mode on, the bot asked Telegram for a command list for each of the 20 sample creators on every start and got 20 refusals in the log. Sample creators are skipped now. Nothing a person sees changes.
+
 ## 4.3.0 (25 November 2026)
 
 **Type "/" in the bot and see every command you may use.**

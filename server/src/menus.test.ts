@@ -11,7 +11,8 @@ delete process.env.ADMIN_CHAT_ID;
 
 const { configureBot, createBot } = await import('./bot.js');
 const { registerAdminBot } = await import('./admin/bot.js');
-const { openDb, syncContent, now } = await import('./db.js');
+const { openDb, syncContent, now, isSampleId } = await import('./db.js');
+const SAMPLE = 9900000000018;
 const { COMMANDS, groupMenu, privateMenu, tierOf } = await import('./menus.js');
 const { addMember, changeRole, removeMember } = await import('./admin/team.js');
 const { upsertUser } = await import('./service.js');
@@ -177,9 +178,14 @@ test('someone Telegram does not know yet gets the list when they first write', a
 test('demo mode gives the invited the team list and takes it back', async () => {
   person(401, 'tester');
   db.prepare(`INSERT INTO invites (telegram_id, username, created_at) VALUES (401, 'tester', ?)`).run(now());
+  db.prepare(`INSERT INTO invites (telegram_id, username, created_at) VALUES (?, 'made.up.sample', ?)`).run(SAMPLE, now());
+  assert.ok(isSampleId(SAMPLE));
   calls.length = 0;
   await say(900, '/demo on');
   assert.deepEqual(names(menuCalls(401)[0]!.payload.commands), names(privateMenu('team')));
+
+  // Sample creators sit on the invite list too. Nothing is asked of Telegram for them.
+  assert.equal(menuCalls(SAMPLE).length, 0);
 
   calls.length = 0;
   await say(900, '/demo off');
