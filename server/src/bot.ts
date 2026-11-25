@@ -1,5 +1,6 @@
 import { Bot, GrammyError, type Context } from 'grammy';
 import { allowAgeAgain, isAgeRefused, isSetUp, setAccountStatus } from './account.js';
+import { audit } from './admin/audit.js';
 import { registerAdminBot } from './admin/bot.js';
 import { config, isAdmin, settings } from './config.js';
 import { now, type DB, type EntryRow, type TaskRow, type UserRow } from './db.js';
@@ -34,6 +35,7 @@ import {
   upsertUser,
 } from './service.js';
 import { loadSampleData, removeSampleData, sampleStatus } from './sample.js';
+import { startOver, startOverPreview } from './startover.js';
 import { demoMode, isManagerOnly, isOwner, isQuiet, isTeam, setDemoMode, setQuiet, teamChats } from './team.js';
 import type { Level } from './types.js';
 
@@ -60,6 +62,7 @@ const ADMIN_HELP = [
   '/quiet on|off: stop or resume the team\'s messages coming to you in private',
   '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
   '/allowage ID: let someone refused for age answer the question again, after a typo in the date (owners only)',
+  '/startover: remove your own creator account, to walk the creator\'s path again from the first screen (owners only, in private)',
   '/id: show this chat ID and your user ID',
   '',
   'Reply to a creator\'s message to answer them. Scan an event pass with your phone camera to check a creator in.',
@@ -387,6 +390,49 @@ export function createBot(db: DB): Bot {
       allowAgeAgain(db, id)
         ? `Done. ${id} can open the Hub and answer the age question again.`
         : `${id} was not refused for age, so there was nothing to lift.`,
+    );
+  });
+
+  // An owner's own creator account, wiped, to see the creator's path again from the first screen.
+  // Only ever the sender's own account, and only after a second message that says yes.
+  admin.command('startover', async (ctx) => {
+    const id = ctx.from!.id;
+    if (ctx.chat.type !== 'private') return ctx.reply('Send /startover to me in a private chat.');
+    if (!isOwner(db, id)) return ctx.reply('Only the owners can start over.');
+    const found = startOverPreview(db, id);
+    if (!found) return ctx.reply('You have no creator account here. Press /start to come in as a new creator.');
+
+    const things = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
+    if (ctx.match.trim().toLowerCase() !== 'yes') {
+      return ctx.reply(
+        [
+          '<b>Start over as a new creator?</b>',
+          '',
+          'This removes your own creator account for good:',
+          `• ${things(found.tasks, 'task', 'tasks')} you joined, with ${things(found.publications, 'publication', 'publications')} and their numbers`,
+          `• ${things(found.coins, 'coin', 'coins')} and their history`,
+          `• ${things(found.orders, 'order', 'orders')}, ${things(found.cashouts, 'payout request', 'payout requests')}, ${things(found.rsvps, 'event RSVP', 'event RSVPs')}`,
+          '• your Instagram account, level and personal details',
+          '',
+          'Your team role, the tasks and shop items you made, and everything about other creators stay as they are.',
+          '',
+          'It cannot be undone. To go ahead, send: <code>/startover yes</code>',
+        ].join('\n'),
+        HTML,
+      );
+    }
+
+    await startOver(db, id);
+    audit(db, id, 'creator.startover', id);
+    return ctx.reply(
+      [
+        '<b>Done. Your creator account is removed.</b>',
+        '',
+        'You are still an owner, and the admin site works as before.',
+        '',
+        'Press /start to come in as a new creator: the welcome, your age, your Instagram account. Your account will then wait for the team: confirm it yourself with /confirm and your Telegram ID, or on the admin site.',
+      ].join('\n'),
+      HTML,
     );
   });
 

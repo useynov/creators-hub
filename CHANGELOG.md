@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.5.0 (25 November 2026)
+
+**`/startover`: see the creator's path again from the first screen.** An owner who is also signed up as a creator could never see the welcome, the age question or the Instagram step again. Now they can.
+
+- Send `/startover` to the bot in a private chat. It lists what would go: the tasks you joined, your publications and their numbers, coins, orders, payout requests, event RSVPs, your Instagram account, level and details.
+- Nothing is removed until you send `/startover yes`. It cannot be undone.
+- Only your own account, and only for owners. A Manager, a creator, or anyone in a group chat gets a refusal.
+- What stays: your team role and admin sign-in, the tasks and shop items you made, and everything about other creators. An order that was not delivered gives its item back to the stock. Your avatar and story copies are deleted from the disk.
+- After that, `/start` brings you in as a new creator. Your new account waits for the team like anyone's: confirm it with `/confirm` and your Telegram ID, or on the admin site.
+
+**Data.** Nothing changes in the database layout. Going back: image `creators-hub:rollback-v3.4.0-20261125`.
+
 ## 3.4.0 (25 November 2026)
 
 - **Creator app, Home: the creator's photo next to "Hi, name".** It is the same Instagram avatar the profile shows; a tap opens the profile.
