@@ -50,7 +50,7 @@ This is **version 2**. What changed, how to see which version is running and how
 | Add or edit tasks | The admin site, Tasks. Tasks from `content/seed.json` are a starting set: once edited on the site, the file no longer overwrites them |
 | Add or edit shop items and their photos | The admin site, Shop. Items from `content/seed.json` only fill an empty shop: once edited on the site, the file no longer overwrites them |
 | Post a story (the news at the top of the creators' Home) | The admin site, Stories: a photo or a flat colour, a headline, a short text, one button into the app, a last day. No bot message is sent |
-| Announce a task before it opens | Give it a Start date on the admin site. Until then creators see it under Soon, cannot join, and can ask the bot to remind them when it opens |
+| Give something away for free, once a month | The admin site, Shop: price 0, "Per creator per month" 1, and the options under "Own choice" (for example the drinks of a monthly case). Free items go only to creators whose account is confirmed |
 | Add or edit events | Edit `content/seed.json` and redeploy |
 
 Send `/help` to the bot as an admin for the full command list.

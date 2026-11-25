@@ -39,7 +39,7 @@ function Order({ order, onChange }: { order: MyOrderView; onChange: () => Promis
     await api.post(`/api/shop/orders/${order.id}/cancel`);
     await Promise.all([onChange(), refresh(), mutate('/api/shop'), mutate('/api/wallet')]);
     buzz('success');
-    toast(`Order cancelled. ${coins(order.price)} are back on your balance.`);
+    toast(order.price > 0 ? `Order cancelled. ${coins(order.price)} are back on your balance.` : 'Order cancelled.');
   });
 
   const cancelled = order.status === 'cancelled';
@@ -58,7 +58,7 @@ function Order({ order, onChange }: { order: MyOrderView; onChange: () => Promis
             {order.size ? `, ${order.size}` : ''}
           </div>
           <div className="t-sm muted nums">
-            Order {order.id} · {day(order.createdAt)} · {coins(order.price)}
+            Order {order.id} · {day(order.createdAt)} · {order.price > 0 ? coins(order.price) : 'free'}
           </div>
         </div>
       </div>
@@ -66,7 +66,8 @@ function Order({ order, onChange }: { order: MyOrderView; onChange: () => Promis
       {cancelled ? (
         <div className="hint hint--soft">
           <span>
-            <strong>Cancelled{order.cancelledBy === 'team' ? ' by the team' : ''}.</strong> {coins(order.price)} went back to your balance.
+            <strong>Cancelled{order.cancelledBy === 'team' ? ' by the team' : ''}.</strong>
+            {order.price > 0 ? ` ${coins(order.price)} went back to your balance.` : ''}
             {order.cancelNote ? ` ${order.cancelNote}` : ''}
           </span>
         </div>
@@ -87,7 +88,7 @@ function Order({ order, onChange }: { order: MyOrderView; onChange: () => Promis
             (asking ? (
               <div className="stack" style={{ gap: 8 }}>
                 <button type="button" className="btn btn--md btn--outline" disabled={cancelling} onClick={() => cancel()}>
-                  Yes, cancel and get {coins(order.price)} back
+                  {order.price > 0 ? `Yes, cancel and get ${coins(order.price)} back` : 'Yes, cancel it'}
                 </button>
                 <button type="button" className="textlink" style={{ alignSelf: 'center' }} onClick={() => setAsking(false)}>
                   Keep the order

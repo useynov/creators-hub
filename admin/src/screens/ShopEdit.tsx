@@ -15,13 +15,19 @@ interface Form {
   category: 'merch' | 'gift';
   images: string[];
   sizes: string[];
+  /** The item's own choice, one option per line (drinks, colours), and the word for it. */
+  choices: string;
+  choiceLabel: string;
   delivery: 'courier' | 'message';
   stock: string;
   perCreator: string;
+  perMonth: string;
   visible: boolean;
 }
 
-const EMPTY: Form = { title: '', description: '', price: '', category: 'merch', images: [], sizes: [], delivery: 'courier', stock: '', perCreator: '', visible: false };
+const EMPTY: Form = { title: '', description: '', price: '', category: 'merch', images: [], sizes: [], choices: '', choiceLabel: '', delivery: 'courier', stock: '', perCreator: '', perMonth: '', visible: false };
+
+const lines = (value: string): string[] => [...new Set(value.split('\n').map((line) => line.trim()).filter(Boolean))];
 
 const fromItem = (item: ShopItemAdmin): Form => ({
   title: item.title,
@@ -29,10 +35,13 @@ const fromItem = (item: ShopItemAdmin): Form => ({
   price: String(item.price),
   category: item.category,
   images: item.images,
-  sizes: item.sizes,
+  sizes: item.choices.length ? [] : item.sizes,
+  choices: item.choices.join('\n'),
+  choiceLabel: item.choiceLabel ?? '',
   delivery: item.delivery,
   stock: item.stock === null ? '' : String(item.stock),
   perCreator: item.perCreator === null ? '' : String(item.perCreator),
+  perMonth: item.perMonth === null ? '' : String(item.perMonth),
   visible: item.visible,
 });
 
@@ -45,9 +54,12 @@ const toInput = (form: Form): ShopItemInput => ({
   category: form.category,
   images: form.images,
   sizes: form.sizes,
+  choices: lines(form.choices),
+  choiceLabel: form.choiceLabel.trim() || null,
   delivery: form.delivery,
   stock: count(form.stock),
   perCreator: count(form.perCreator),
+  perMonth: count(form.perMonth),
   visible: form.visible,
 });
 
@@ -144,7 +156,9 @@ export function ShopEdit() {
   const price = Number(form.price) || 0;
   const stock = count(form.stock);
   const soldOut = stock !== null && stock <= 0;
-  const valid = form.title.trim().length >= 2 && price >= 1 && !progress;
+  const free = form.price.trim() !== '' && price === 0;
+  const options = lines(form.choices);
+  const valid = form.title.trim().length >= 2 && form.price.trim() !== '' && options.length !== 1 && !(options.length && form.sizes.length) && !progress;
 
   return (
     <>
@@ -229,6 +243,7 @@ export function ShopEdit() {
               <div className="field">
                 <label htmlFor="price">{t.shop.price}</label>
                 <input id="price" className="input" inputMode="numeric" value={form.price} onChange={(e) => set('price', e.target.value.replace(/\D/g, '').slice(0, 6))} />
+                <span className="field__hint">{t.shop.priceHint}</span>
               </div>
               <div className="field">
                 <label htmlFor="stock">
@@ -241,6 +256,12 @@ export function ShopEdit() {
                   {t.shop.perCreator} <span className="opt">{t.common.optional}</span>
                 </label>
                 <input id="per" className="input" inputMode="numeric" placeholder={t.shop.perCreatorPlaceholder} value={form.perCreator} onChange={(e) => set('perCreator', e.target.value.replace(/\D/g, '').slice(0, 3))} />
+              </div>
+              <div className="field">
+                <label htmlFor="month">
+                  {t.shop.perMonth} <span className="opt">{t.common.optional}</span>
+                </label>
+                <input id="month" className="input" inputMode="numeric" placeholder={t.shop.perCreatorPlaceholder} value={form.perMonth} onChange={(e) => set('perMonth', e.target.value.replace(/\D/g, '').slice(0, 2))} />
               </div>
             </div>
             <span className="field__hint">{t.shop.stockHint}</span>
@@ -265,6 +286,21 @@ export function ShopEdit() {
               })}
             </div>
             <span className="field__hint">{t.shop.sizesHint}</span>
+            <div className="fields" style={{ paddingTop: 6 }}>
+              <div className="field">
+                <label htmlFor="choices">
+                  {t.shop.choices} <span className="opt">{t.common.optional}</span>
+                </label>
+                <textarea id="choices" className="textarea" rows={4} placeholder={t.shop.choicesPlaceholder} value={form.choices} onChange={(e) => set('choices', e.target.value)} />
+              </div>
+              {options.length > 0 && (
+                <div className="field">
+                  <label htmlFor="choiceLabel">{t.shop.choiceLabel}</label>
+                  <input id="choiceLabel" className="input" maxLength={20} placeholder={t.shop.choiceLabelPlaceholder} value={form.choiceLabel} onChange={(e) => set('choiceLabel', e.target.value)} />
+                </div>
+              )}
+            </div>
+            <span className="field__hint">{options.length && form.sizes.length ? t.shop.choicesOrSizes : t.shop.choicesHint}</span>
           </section>
 
           <section className="card pad stack" style={{ gap: 14 }}>
@@ -316,7 +352,7 @@ export function ShopEdit() {
             <div className="pv-card">
               <div className="pv-face pv-face--tall">{form.images[0] ? <img src={form.images[0]} alt="" /> : <span>{form.title || t.shop.previewEmpty}</span>}</div>
               <div className="pv-title">{form.title || t.shop.previewEmpty}</div>
-              <div className="pv-price">{t.shop.coins(price)}</div>
+              <div className="pv-price">{free ? t.shop.free : t.shop.coins(price)}</div>
               {soldOut && <div className="small muted">{t.shop.previewSoldOut}</div>}
             </div>
             <div className="small muted">{t.shop.previewPage}</div>
@@ -330,13 +366,19 @@ export function ShopEdit() {
                 </div>
               )}
               <div className="pv-h">{form.title || t.shop.previewEmpty}</div>
-              <div className="pv-price">{t.shop.coins(price)}</div>
+              <div className="pv-price">{free ? t.shop.free : t.shop.coins(price)}</div>
               {form.description && <p className="pv-text">{form.description}</p>}
               <dl className="pv-rows">
                 {form.sizes.length > 0 && (
                   <div>
                     <dt>{t.shop.secSizes}</dt>
                     <dd>{form.sizes.join(', ')}</dd>
+                  </div>
+                )}
+                {options.length > 1 && (
+                  <div>
+                    <dt>{form.choiceLabel.trim() || t.shop.choiceLabelPlaceholder}</dt>
+                    <dd>{options.join(', ')}</dd>
                   </div>
                 )}
                 <div>
@@ -350,7 +392,7 @@ export function ShopEdit() {
                   </div>
                 )}
               </dl>
-              <div className={`pv-btn${soldOut ? ' pv-btn--off' : ''}`}>{soldOut ? t.shop.previewSoldOut : t.shop.previewOrder(price)}</div>
+              <div className={`pv-btn${soldOut ? ' pv-btn--off' : ''}`}>{soldOut ? t.shop.previewSoldOut : free ? t.shop.previewFree : t.shop.previewOrder(price)}</div>
             </div>
           </div>
         </aside>

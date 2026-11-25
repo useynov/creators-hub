@@ -1,5 +1,4 @@
-// The new Home and Tasks tab: tasks that are not open yet ("Soon") and "Remind me", what Home
-// lists, and the Hub's stories from posting to the grey ring.
+// The new Home: what it lists, and the Hub's stories from posting to the grey ring.
 
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
@@ -19,7 +18,6 @@ const service = await import('./service.js');
 const { liveStories, markStorySeen, previewStory } = await import('./hubstories.js');
 const { createStory, updateStory, setStoryLive, removeStory, listStories, parseStory, storyTargets } = await import('./admin/hubstories.js');
 const { startOver } = await import('./startover.js');
-const { outbox } = await import('./notify.js');
 const { HubError } = await import('./errors.js');
 type UserRow = import('./db.js').UserRow;
 
@@ -64,63 +62,26 @@ task('soon-a', 5);
 const story = (over: Record<string, unknown> = {}) =>
   parseStory({ label: 'Party', kicker: 'Event · 26 Dec', headline: 'Creators New Year Party', body: 'You are invited.', imageUrl: null, tone: 'dark', buttonLabel: "I'm in", buttonPath: '/events', endsOn: null, ...over });
 
-test('a task with a start date in the future is listed as Soon, holds its brief back and cannot be joined', () => {
+test('a start date ahead does not hold a task back: it is open, shows its brief and can be joined', () => {
   const user = creator(1);
-  const list = service.listTasks(db, 1);
-  const soon = list.find((item) => item.id === 'soon-a')!;
-  assert.ok(soon.opensAt, 'it says when it opens');
-  assert.equal(soon.brief, null);
-  assert.deepEqual(soon.steps, []);
-  assert.equal(soon.summary, 'One line about it.', 'the one line is shown already');
-  assert.equal(list.find((item) => item.id === 'open-a')!.opensAt, null);
-  assert.equal(list.find((item) => item.id === 'open-b')!.opensAt, null, 'a start in the past is simply open');
-
-  assert.equal(codeOf(() => service.joinTask(db, user, 'soon-a')), 'task_not_open');
-  assert.equal((db.prepare('SELECT COUNT(*) AS n FROM entries WHERE user_id = 1').get() as { n: number }).n, 0);
-  assert.ok(service.joinTask(db, user, 'open-a').entry, 'an open task is joined as before');
-});
-
-test('Remind me: asked once, sent once when the task opens, with the brief then visible', async () => {
-  const user = creator(2);
-  assert.equal(service.remindTask(db, user, 'soon-a', true).reminded, true);
-  service.remindTask(db, user, 'soon-a', true);
-  assert.equal(codeOf(() => service.remindTask(db, user, 'open-a', true)), 'task_open', 'an open task needs no reminder');
-
-  // Undo, then ask again.
-  assert.equal(service.remindTask(db, user, 'soon-a', false).reminded, false);
-  service.remindTask(db, user, 'soon-a', true);
-
-  outbox.length = 0;
-  assert.equal(service.sendTaskReminders(db), 0, 'nothing is sent before the start');
-
-  db.prepare(`UPDATE tasks SET starts_at = ? WHERE id = 'soon-a'`).run(at(-0.001));
-  assert.equal(service.sendTaskReminders(db), 1);
-  await new Promise((resolve) => setTimeout(resolve, 10));
-  const sent = outbox.filter((message) => message.chatId === 2);
-  assert.equal(sent.length, 1);
-  assert.match(sent[0]!.html, /Open now:<\/b> Task soon-a/);
-  assert.equal(sent[0]!.button, '/tasks/soon-a');
-  assert.equal(service.sendTaskReminders(db), 0, 'never twice');
-
-  const opened = service.oneTask(db, 2, 'soon-a');
-  assert.equal(opened.opensAt, null);
-  assert.equal(opened.brief, 'The full brief.');
+  const ahead = service.listTasks(db, 1).find((item) => item.id === 'soon-a')!;
+  assert.equal(ahead.brief, 'The full brief.');
+  assert.deepEqual(ahead.steps, ['Shoot it.', 'Send the link.']);
   assert.ok(service.joinTask(db, user, 'soon-a').entry);
-  db.prepare(`UPDATE tasks SET starts_at = ? WHERE id = 'soon-a'`).run(at(5));
+  db.prepare("DELETE FROM entries WHERE user_id = 1 AND task_id = 'soon-a'").run();
 });
 
-test('Home: only tasks that can be joined now, a count of what is coming, and the creator\'s own work that needs a fix', () => {
+test('Home: the first two tasks that can be joined, the count of all of them, and the creator\'s own work that needs a fix', () => {
   const user = creator(3);
   let home = service.home(db, 3);
-  assert.deepEqual(home.openTasks.map((item) => item.id).sort(), ['open-a', 'open-b']);
-  assert.equal(home.openCount, 2);
-  assert.equal(home.soonCount, 1);
+  assert.equal(home.openTasks.length, 2, 'Home shows two, the Tasks tab has the rest');
+  assert.equal(home.openCount, 3);
   assert.deepEqual(home.needsFix, { count: 0, taskId: null });
 
   // Joining takes a task off Home: it now lives under Mine in the Tasks tab.
   service.joinTask(db, user, 'open-a');
   home = service.home(db, 3);
-  assert.deepEqual(home.openTasks.map((item) => item.id), ['open-b']);
+  assert.deepEqual(home.openTasks.map((item) => item.id).sort(), ['open-b', 'soon-a']);
 
   // The team sends the work back: Home says so.
   db.prepare(`UPDATE entries SET status = 'needs_changes', comment = 'Tag the account.' WHERE user_id = 3 AND task_id = 'open-a'`).run();
@@ -130,7 +91,7 @@ test('Home: only tasks that can be joined now, a count of what is coming, and th
   // A full task is not offered on Home.
   db.prepare(`UPDATE tasks SET max_participants = 1 WHERE id = 'open-b'`).run();
   service.joinTask(db, creator(4), 'open-b');
-  assert.equal(service.home(db, 3).openCount, 0);
+  assert.deepEqual(service.home(db, 3).openTasks.map((item) => item.id), ['soon-a']);
   db.prepare(`UPDATE tasks SET max_participants = NULL WHERE id = 'open-b'`).run();
 
   // Events: only the ones with a date, the nearest two.
@@ -207,8 +168,9 @@ test('stories: what the team can type is checked', () => {
 });
 
 test('starting over also clears reminders and seen stories, so the account can be removed', async () => {
-  const user = creator(900);
-  service.remindTask(db, user, 'soon-a', true);
+  creator(900);
+  // A reminder left over from the time tasks could be announced ahead.
+  db.prepare("INSERT INTO task_reminders (user_id, task_id, created_at) VALUES (900, 'soon-a', ?)").run(now());
   const live = liveStories(db, 900)[0]!;
   markStorySeen(db, 900, live.id);
   assert.ok(await startOver(db, 900));

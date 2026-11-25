@@ -579,10 +579,15 @@ export interface ShopItemAdmin {
   /** Photos, the cover first. Only photos uploaded here can be saved. */
   images: string[];
   sizes: string[];
+  /** A choice that is not a size (drinks, colours), and the word for it. */
+  choices: string[];
+  choiceLabel: string | null;
   delivery: 'courier' | 'message';
   /** How many are left; null when the team does not count. */
   stock: number | null;
   perCreator: number | null;
+  /** How many one creator may order in a calendar month. */
+  perMonth: number | null;
   visible: boolean;
   /** Orders that were not cancelled, and those of them still waiting to be packed. */
   ordered: number;
@@ -602,9 +607,12 @@ export interface ShopItemInput {
   category: 'merch' | 'gift';
   images: string[];
   sizes: string[];
+  choices: string[];
+  choiceLabel: string | null;
   delivery: 'courier' | 'message';
   stock: number | null;
   perCreator: number | null;
+  perMonth: number | null;
   visible: boolean;
 }
 

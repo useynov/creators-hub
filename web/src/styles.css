@@ -2001,10 +2001,6 @@ select.input {
   font-size: 11px;
   font-weight: 700;
 }
-.tcard__day--soon {
-  background: var(--cream);
-  color: var(--black);
-}
 .tcard__body {
   flex: 1;
   min-width: 0;
@@ -2093,7 +2089,7 @@ select.input {
   background: var(--ink);
   border-radius: var(--r-pill);
 }
-/* The next step on a card. Inside a link it is a label; on a Soon card it is a real button. */
+/* The next step on a card: a label inside the link, not a button of its own. */
 .tcard__btn {
   align-self: flex-start;
   min-height: 36px;
@@ -2111,27 +2107,16 @@ select.input {
   font-weight: 700;
   white-space: nowrap;
 }
-button.tcard__btn {
-  min-height: 44px;
-}
 .tcard__btn--red {
   background: var(--red);
   box-shadow: none;
   color: var(--white);
 }
-.tcard__btn--on {
-  background: var(--green-bg);
-  box-shadow: none;
-  color: var(--green);
-}
-.tcard__btn:disabled {
-  opacity: 0.5;
-}
 
-/* The four tabs of the Tasks screen: a grey track, the chosen one a black pill. */
+/* The tabs of the Tasks screen: a grey track, the chosen one a black pill. */
 .pilltabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px;
   padding: 4px;
   border-radius: var(--r-pill);
@@ -2421,4 +2406,51 @@ button.tcard__btn {
 .story__body .btn {
   margin-top: 6px;
   pointer-events: auto;
+}
+
+/* Something the Hub gives for free, once a month: a wide card at the top of the shop. */
+.freecard {
+  display: flex;
+  gap: 14px;
+  padding: 12px;
+  border-radius: var(--r-card);
+  background: var(--cream);
+  color: var(--ink);
+}
+.freecard--off {
+  background: var(--sunken);
+}
+.freecard__face {
+  position: relative;
+  width: 112px;
+  min-height: 132px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+}
+.freecard__face .photo,
+.freecard__face .block {
+  border-radius: 0;
+  width: 100%;
+}
+.freecard__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+}
+.freecard__body .label {
+  color: var(--red);
+}
+.freecard__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--black);
 }

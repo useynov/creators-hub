@@ -27,7 +27,6 @@ import {
   parseViews,
   publicSettings,
   remindMe,
-  remindTask,
   requestCashout,
   requestDraftUpload,
   rsvp,
@@ -179,9 +178,6 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   app.get('/api/tasks', (c) => c.json(listTasks(db, c.var.user.id)));
   app.get('/api/tasks/:id', (c) => c.json(oneTask(db, c.var.user.id, c.req.param('id'))));
   app.post('/api/tasks/:id/join', (c) => c.json(joinTask(db, c.var.user, c.req.param('id'))));
-  // "Remind me" on a task that is not open yet, and its undo.
-  app.post('/api/tasks/:id/remind', (c) => c.json(remindTask(db, c.var.user, c.req.param('id'), true)));
-  app.delete('/api/tasks/:id/remind', (c) => c.json(remindTask(db, c.var.user, c.req.param('id'), false)));
   app.post('/api/tasks/:id/submit', async (c) => c.json(await submitLinks(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft', async (c) => c.json(submitDraftLink(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft-upload', (c) => {

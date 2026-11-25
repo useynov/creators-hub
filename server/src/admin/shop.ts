@@ -7,7 +7,7 @@
 import type { Hono } from 'hono';
 import { now, type DB, type ShopItemRow } from '../db.js';
 import { esc, notifyUser } from '../notify.js';
-import { DEFAULT_SIZES, imagesOf, MAX_PHOTOS, sizesOf } from '../shop.js';
+import { choicesOf, DEFAULT_SIZES, imagesOf, MAX_PHOTOS, sizesOf } from '../shop.js';
 import { audit } from './audit.js';
 import { allow, EVERYONE, STAFF, type AdminEnv } from './auth.js';
 import { bad, int, oneOf, readJson, requiredInt, requiredText, stringList, text } from './input.js';
@@ -17,6 +17,7 @@ import type { ShopItemAdmin, ShopItemInput, ShopItemsList } from './types.js';
 const OUR_PHOTO = /^\/media\/(covers|seed)\/[0-9a-f]{24}\.(jpg|png|webp)$|^\/brand\/[a-z0-9-]+\.webp$/;
 const ITEM_ID = /^[a-z0-9][a-z0-9-]{0,47}$/;
 export const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One size'];
+const MAX_CHOICES = 12;
 
 type Counted = ShopItemRow & { ordered: number; waiting: number };
 
@@ -34,9 +35,12 @@ const view = (row: Counted): ShopItemAdmin => ({
   category: row.category,
   images: imagesOf(row),
   sizes: sizesOf(row),
+  choices: choicesOf(row),
+  choiceLabel: row.choice_label,
   delivery: row.delivery,
   stock: row.stock,
   perCreator: row.per_creator,
+  perMonth: row.per_month,
   visible: Boolean(row.active),
   ordered: row.ordered,
   waiting: row.waiting,
@@ -60,17 +64,26 @@ export function parseItem(raw: Record<string, unknown>): ShopItemInput {
   for (const image of images) if (!OUR_PHOTO.test(image)) throw bad('bad_photo', 'Upload the photo here first.');
   const sizes = stringList(raw.sizes ?? [], 'sizes', { maxItems: ALL_SIZES.length, maxLength: 12 });
   for (const size of sizes) if (!ALL_SIZES.includes(size)) throw bad('bad_size', `Unknown size: ${size}.`);
+  // The item's own choice (the drink in a case). One thing is chosen per order, so it is this or sizes.
+  const choices = [...new Set(stringList(raw.choices ?? [], 'choices', { maxItems: MAX_CHOICES, maxLength: 40 }))];
+  if (choices.length === 1) throw bad('one_choice', 'A choice needs at least two options.');
+  if (choices.length && sizes.length) throw bad('sizes_or_choices', 'An item has sizes or its own choice, not both.');
+  const choiceLabel = choices.length ? (text(raw.choiceLabel, 'choiceLabel', { max: 20 }) ?? 'Option') : null;
   return {
     title: requiredText(raw.title, 'title', { max: 60, min: 2 }),
     description: text(raw.description, 'description', { max: 1200, multiline: true }),
-    price: requiredInt(raw.price, 'price', { min: 1, max: 100_000 }),
+    // 0 is a gift: no coins move, and only creators with a confirmed account can take it.
+    price: requiredInt(raw.price, 'price', { min: 0, max: 100_000 }),
     category: oneOf(raw.category, 'category', ['merch', 'gift'] as const),
     images: [...new Set(images)],
     // Kept in the order of the size chart, whatever order they were ticked in.
     sizes: ALL_SIZES.filter((size) => sizes.includes(size)),
+    choices,
+    choiceLabel,
     delivery: oneOf(raw.delivery, 'delivery', ['courier', 'message'] as const),
     stock: int(raw.stock, 'stock', { min: 0, max: 100_000 }),
     perCreator: int(raw.perCreator, 'perCreator', { min: 1, max: 100 }),
+    perMonth: int(raw.perMonth, 'perMonth', { min: 1, max: 31 }),
     visible: raw.visible === true,
   };
 }
@@ -100,9 +113,12 @@ const columns = (item: ShopItemInput) => ({
   images: JSON.stringify(item.images),
   needs_size: item.sizes.length ? 1 : 0,
   sizes: item.sizes.length ? JSON.stringify(item.sizes) : null,
+  choices: item.choices.length ? JSON.stringify(item.choices) : null,
+  choice_label: item.choiceLabel,
   delivery: item.delivery,
   stock: item.stock,
   per_creator: item.perCreator,
+  per_month: item.perMonth,
   active: item.visible ? 1 : 0,
   updated_at: now(),
 });
@@ -112,8 +128,8 @@ export function createItem(db: DB, actorId: number, item: ShopItemInput): ShopIt
     const fresh = freshId(db, item.title);
     const last = db.prepare('SELECT COALESCE(MAX(sort), -1) AS n FROM shop_items').get() as { n: number };
     db.prepare(
-      `INSERT INTO shop_items (id, title, description, price, category, image_url, images, needs_size, sizes, delivery, stock, per_creator, active, sort, source, updated_at)
-       VALUES (@id, @title, @description, @price, @category, @image_url, @images, @needs_size, @sizes, @delivery, @stock, @per_creator, @active, @sort, 'admin', @updated_at)`,
+      `INSERT INTO shop_items (id, title, description, price, category, image_url, images, needs_size, sizes, choices, choice_label, delivery, stock, per_creator, per_month, active, sort, source, updated_at)
+       VALUES (@id, @title, @description, @price, @category, @image_url, @images, @needs_size, @sizes, @choices, @choice_label, @delivery, @stock, @per_creator, @per_month, @active, @sort, 'admin', @updated_at)`,
     ).run({ id: fresh, sort: last.n + 1, ...columns(item) });
     audit(db, actorId, 'shop.create', fresh, item.title);
     return fresh;
@@ -125,8 +141,8 @@ export function updateItem(db: DB, actorId: number, id: string, item: ShopItemIn
   const changes = db
     .prepare(
       `UPDATE shop_items SET title = @title, description = @description, price = @price, category = @category, image_url = @image_url,
-         images = @images, needs_size = @needs_size, sizes = @sizes, delivery = @delivery, stock = @stock, per_creator = @per_creator,
-         active = @active, source = 'admin', updated_at = @updated_at WHERE id = @id`,
+         images = @images, needs_size = @needs_size, sizes = @sizes, choices = @choices, choice_label = @choice_label, delivery = @delivery,
+         stock = @stock, per_creator = @per_creator, per_month = @per_month, active = @active, source = 'admin', updated_at = @updated_at WHERE id = @id`,
     )
     .run({ id, ...columns(item) }).changes;
   if (!changes) throw bad('not_found', 'This item does not exist.', 404);
@@ -195,7 +211,7 @@ export function shopRoutes(api: Hono<AdminEnv>, db: DB): void {
     const item = getItem(db, itemId(c.req.param('id')));
     await notifyUser(
       c.get('actor').id,
-      `<b>${esc(item.title)}</b>, ${item.price} coins.\n${item.visible ? 'This is how creators see it in the shop.' : 'Hidden from creators for now: only the team can open it.'}`,
+      `<b>${esc(item.title)}</b>, ${item.price === 0 ? 'free' : `${item.price} coins`}.\n${item.visible ? 'This is how creators see it in the shop.' : 'Hidden from creators for now: only the team can open it.'}`,
       { text: 'Open in the app', path: `/shop/${item.id}?preview=1` },
     );
     return c.json({ ok: true });

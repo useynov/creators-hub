@@ -62,7 +62,7 @@ export function TopBar({ back, backLabel, title, light, right, heading, over }: 
 const TABS: Array<{ to: string; label: string; icon: IconName }> = [
   { to: '/', label: 'Home', icon: 'home' },
   { to: '/tasks', label: 'Tasks', icon: 'tasks' },
-  { to: '/wallet', label: 'Rewards', icon: 'gift' },
+  { to: '/shop', label: 'Shop', icon: 'gift' },
   { to: '/events', label: 'Events', icon: 'calendar' },
   { to: '/profile', label: 'Profile', icon: 'user' },
 ];
@@ -200,7 +200,7 @@ export const hubName = (brandName: string): string => brandName.replace(/^coca[-
 
 /**
  * The top of Home and of the Tasks tab: the Hub's name large, the brand as a small line above it,
- * and the coin balance, which opens Rewards.
+ * and the coin balance, which opens the wallet (coins, history, cash-out).
  */
 export function HubHeader({ brandName, balance }: { brandName: string; balance: number }) {
   const coins = `${balance.toLocaleString('en-US')} ${Math.abs(balance) === 1 ? 'coin' : 'coins'}`;
@@ -210,7 +210,7 @@ export function HubHeader({ brandName, balance }: { brandName: string; balance: 
         <Logo height={15} />
         <span className="display">{hubName(brandName)}</span>
       </div>
-      <Link to="/wallet" className="chip chip--line chip--lg nums" aria-label={`${coins}, open rewards`}>
+      <Link to="/wallet" className="chip chip--line chip--lg nums" aria-label={`${coins}, open your wallet`}>
         <Icon name="coin" size={18} />
         <span>{coins}</span>
       </Link>

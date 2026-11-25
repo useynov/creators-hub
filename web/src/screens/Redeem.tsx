@@ -4,7 +4,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import type { ShopView } from '../../../server/src/types';
 import { api } from '../api';
 import { Loading, Problem, Screen, TopBar } from '../components/ui';
-import { coins } from '../format';
+import { coins, dayLong, price } from '../format';
 import { useAction, useHub, useToast } from '../hub';
 import { buzz } from '../telegram';
 import { ItemFace } from './Shop';
@@ -51,8 +51,10 @@ export function Redeem() {
     );
   }
 
-  // With one size on offer there is nothing to choose.
-  const size = item.sizes.length === 1 ? item.sizes[0]! : picked;
+  // With one size on offer there is nothing to choose. The size kept in the profile is only
+  // a start for clothes: a drink is picked anew each time.
+  const size = item.sizes.length === 1 ? item.sizes[0]! : item.sizes.includes(picked) ? picked : '';
+  const free = item.price === 0;
   const courier = item.delivery === 'courier';
   const sizeOk = !item.sizes.length || item.sizes.includes(size);
   const whereOk = !courier || (address.trim().length > 0 && phone.replace(/\D/g, '').length >= 7);
@@ -64,10 +66,16 @@ export function Redeem() {
       ? 'This one is sold out.'
       : item.blocked === 'limit'
         ? 'You already ordered this one.'
-        : item.blocked === 'coins'
+        : item.blocked === 'month'
+          ? `You already had this month's.${item.nextOn ? ` The next one is yours from ${dayLong(item.nextOn)}.` : ''}`
+          : item.blocked === 'account'
+            ? 'This one opens once the team has confirmed your account.'
+            : item.blocked === 'coins'
           ? `You need ${coins(item.missing)} more.`
           : !sizeOk
-            ? 'Choose a size.'
+            ? item.clothing
+              ? 'Choose a size.'
+              : `Choose your ${item.sizeLabel.toLowerCase()}.`
             : !whereOk
               ? 'Add the address and a phone for the courier.'
               : null;
@@ -85,7 +93,7 @@ export function Redeem() {
               {item.title}
             </h1>
             <div className="nums" style={{ fontSize: 16, fontWeight: 600, color: 'var(--black)' }}>
-              {coins(item.price)}
+              {price(item.price)}
             </div>
           </div>
         </div>
@@ -93,8 +101,8 @@ export function Redeem() {
         <div className="form">
           {item.sizes.length > 0 && (
             <fieldset className="field">
-              <legend>Size</legend>
-              <div className="sizes" style={{ gridTemplateColumns: `repeat(${Math.min(4, item.sizes.length)}, minmax(0, 1fr))` }}>
+              <legend>{item.sizeLabel}</legend>
+              <div className="sizes" style={{ gridTemplateColumns: `repeat(${item.clothing ? Math.min(4, item.sizes.length) : 2}, minmax(0, 1fr))` }}>
                 {item.sizes.map((option) => (
                   <button key={option} type="button" className="pill" aria-pressed={size === option} onClick={() => setSize(option)}>
                     {option}
@@ -130,6 +138,7 @@ export function Redeem() {
         </div>
 
         <div className="dock stack" style={{ gap: 12 }}>
+          {!free && (
           <dl className="rows" style={{ margin: 0, borderTop: 0 }}>
             <div className="row" style={{ paddingTop: 0 }}>
               <dt>Your balance</dt>
@@ -144,8 +153,9 @@ export function Redeem() {
               </dd>
             </div>
           </dl>
+          )}
           <button type="submit" className="btn" disabled={ordering || !ready}>
-            Confirm for {coins(item.price)}
+            {free ? 'Confirm, it is free' : `Confirm for ${coins(item.price)}`}
           </button>
           {missing && (
             <p className="note" style={{ textAlign: 'center' }} role="status">

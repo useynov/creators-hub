@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.2.0 (25 November 2026)
+
+**Tasks tab: Open, Mine, Done.** It always opens on Open.
+
+- **Soon is gone.** No Soon tab, no "Remind me", no bot reminder. A task shows the moment it is published.
+- **A task's Start date is again only a check:** a post published before that date is not accepted. It no longer holds the task back. A task that should not be visible yet stays a draft until the day.
+
+**Rewards is now Shop.** The middle tab is called Shop and opens the shop itself.
+
+- Coins and their history are one tap away: the coin chip at the top of every main screen, and "Your coins" at the bottom of the shop.
+- "Your orders" is at the bottom of the shop too; an order on its way stays as a line at the top.
+
+**Free items, and one a month.**
+
+- **Price 0 means free.** The app says "Free" instead of coins, the button says "Get it free", nothing is written to the wallet.
+- **Per creator per month:** a new limit next to "At most per creator". The count starts again on the 1st; a cancelled order gives the month back. The creator sees "You have November's. Next one from 1 December."
+- **Own choice instead of a size:** for things chosen by drink or colour. The team writes the options one per line and names the choice ("Drink"). An item has either sizes or its own choice, not both.
+- **Free items go only to creators whose account is confirmed,** so a new sign-up cannot order a case before the team has looked at the account.
+- A free item with a monthly limit sits at the top of the shop as its own card.
+
+**Data.** Three new columns on shop items (`choices`, `choice_label`, `per_month`), added on start; nothing existing changes. The `task_reminders` table stays, unused. Going back: image `creators-hub:rollback-v4.1.0-20261125`; the older code ignores the new columns, and reads a free item as costing 0 coins.
+
 ## 4.1.0 (25 November 2026)
 
 **`/clear`: empty the chat with the bot.** Anyone can send it in their private chat with the bot; it is also in the bot's command menu.
