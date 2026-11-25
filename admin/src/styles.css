@@ -2053,3 +2053,174 @@ a:not(.btn, .trow, .todo, .plain, .nav a) {
     flex-basis: 100%;
   }
 }
+
+/* --- Stories: the Hub's news channel ------------------------------------------------- */
+
+.storycard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.storycard--off .storycard__face {
+  opacity: 0.55;
+}
+.storycard__face {
+  position: relative;
+  display: flex;
+  aspect-ratio: 4 / 5;
+  background: #000;
+  color: #fff;
+  text-decoration: none;
+  overflow: hidden;
+}
+.storycard__face--red {
+  background: var(--red);
+}
+.storycard__face img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.storycard__words {
+  position: relative;
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 40px 14px 14px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0));
+}
+.storycard__face--red:not(:has(img)) .storycard__words {
+  background: none;
+}
+.storycard__words small {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.86;
+}
+.storycard__words b {
+  font-family: var(--font-display, inherit);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.storyphoto {
+  width: 108px;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--chip);
+}
+
+/* The preview in the editor: the circle on Home, then the story itself at 9:16. */
+.pv-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 72px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+.pv-dot__face {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 2.5px solid var(--red);
+  padding: 2px;
+  display: flex;
+  background-clip: content-box;
+  background-color: #000;
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+.pv-dot__face--red {
+  background-color: var(--red);
+}
+.pv-dot__face img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.pv-story {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 9 / 16;
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  background: #000;
+  color: #fff;
+}
+.pv-story--red {
+  background: var(--red);
+}
+.pv-story img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pv-story__words {
+  position: relative;
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 60px 14px 16px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0.45) 55%, rgba(0, 0, 0, 0));
+}
+.pv-story--red:not(:has(img)) .pv-story__words {
+  background: none;
+}
+.pv-story__kicker {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 10px;
+  font-weight: 600;
+}
+.pv-story__words b {
+  font-family: var(--font-display, inherit);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.pv-story__words p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+.pv-story__btn {
+  align-self: stretch;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.pv-story--red .pv-story__btn {
+  background: #fff;
+  color: #000;
+}

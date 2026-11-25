@@ -27,6 +27,8 @@ type TaskView = import('./types.js').TaskView;
 
 const db = openDb(':memory:');
 syncContent(db);
+// These tests are about joining and review, not about opening dates: every seed task is open.
+db.prepare('UPDATE tasks SET starts_at = ? WHERE starts_at IS NOT NULL').run(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 const app = createApp(db, () => 'test_bot');
 
 interface Person {
@@ -328,5 +330,25 @@ test('brand assets: only photo, font and logo names are served, and a missing fi
   for (const path of ['/brand/..%2Fseed.json', '/brand/settings.json', '/brand/notes.txt']) {
     const other = await app.request(path);
     assert.ok(!/^(image|font)\//.test(other.headers.get('content-type') ?? ''), path);
+  }
+});
+
+test('brand assets: an empty file is a broken copy and answers 404, so the app falls back', async () => {
+  const { mkdirSync, rmSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { config } = await import('./config.js');
+  mkdirSync(config.brandDir, { recursive: true });
+  const empty = join(config.brandDir, 'empty-copy-test.svg');
+  const full = join(config.brandDir, 'full-copy-test.svg');
+  writeFileSync(empty, '');
+  writeFileSync(full, '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  try {
+    assert.equal((await app.request('/brand/empty-copy-test.svg')).status, 404);
+    const served = await app.request('/brand/full-copy-test.svg');
+    assert.equal(served.status, 200);
+    assert.equal(served.headers.get('content-type'), 'image/svg+xml');
+  } finally {
+    rmSync(empty, { force: true });
+    rmSync(full, { force: true });
   }
 });

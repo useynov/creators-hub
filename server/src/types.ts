@@ -106,6 +106,15 @@ export interface TaskView {
   requiredMention: string | null;
   requiredHashtag: string | null;
   startsAt: string | null;
+  /**
+   * Set while the task has not opened yet: it is listed under Soon, cannot be joined, and its
+   * brief and steps are held back until this moment. null once it is open.
+   */
+  opensAt: string | null;
+  /** The creator asked the bot to tell them when this task opens. */
+  reminded: boolean;
+  /** When the task opened to creators (its start, or when it was made). For the time-left bar. */
+  openedAt: string | null;
   bonusCoins: number | null;
   /** How many links one creator may send. */
   maxPublications: number;
@@ -241,11 +250,34 @@ export interface OfferView {
   brief: string | null;
 }
 
+/** A story of the Hub's news channel, as a creator sees it. */
+export interface HubStoryView {
+  id: number;
+  /** The word under the circle. */
+  label: string;
+  kicker: string | null;
+  headline: string;
+  body: string | null;
+  imageUrl: string | null;
+  tone: 'dark' | 'red';
+  /** One button into the app. */
+  button: { label: string; path: string } | null;
+  publishedAt: string;
+  seen: boolean;
+}
+
 export interface HomeView {
-  nextTask: TaskView | null;
-  newCount: number;
-  nextEvent: EventView | null;
-  news: NewsView | null;
+  /** The Hub's stories that are live now: the ones not seen yet first. */
+  stories: HubStoryView[];
+  /** Open tasks this creator can join now, the first few. */
+  openTasks: TaskView[];
+  openCount: number;
+  /** Tasks announced with a start date that has not come yet. */
+  soonCount: number;
+  /** The creator's own work that the team sent back. */
+  needsFix: { count: number; taskId: string | null };
+  /** The next events with a date. */
+  events: EventView[];
   offer: OfferView | null;
 }
 

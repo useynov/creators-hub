@@ -31,6 +31,9 @@ export function Task() {
   if (task.submission?.status === 'checking') return <Checking task={task} onDone={() => void mutate()} />;
   if (task.submission?.status === 'blocked') return <BlockedView task={task} back="/tasks" />;
 
+  // Announced, not open yet: the page says when it opens and offers a reminder.
+  if (task.opensAt && !task.entry) return <NotOpenYet task={task} onChange={(next) => void mutate(next, { revalidate: false })} />;
+
   switch (task.entry?.status) {
     case 'approved':
       return <Approved task={task} />;
@@ -61,6 +64,58 @@ function TaskHero({ task, mode }: { task: TaskView; mode: string }) {
         </h1>
       </div>
     </div>
+  );
+}
+
+// --- A task that has not opened ----------------------------------------------
+
+function NotOpenYet({ task, onChange }: { task: TaskView; onChange: (next: TaskView) => void }) {
+  const { mutate } = useSWRConfig();
+  const toast = useToast();
+  const [toggle, busy] = useAction(async () => {
+    const next = task.reminded ? await api.del<TaskView>(`/api/tasks/${task.id}/remind`) : await api.post<TaskView>(`/api/tasks/${task.id}/remind`);
+    onChange(next);
+    void mutate('/api/tasks');
+    buzz('success');
+    toast(next.reminded ? 'Done. The bot will message you when it opens.' : 'The reminder is off.');
+  });
+  return (
+    <Screen>
+      <TaskHero task={task} mode={`Opens ${day(task.opensAt!)}`} />
+      <main className="body" style={{ paddingTop: 20, gap: 24 }}>
+        {task.summary && <p style={{ fontSize: 16, lineHeight: 1.5 }}>{task.summary}</p>}
+        <dl className="rows" style={{ margin: 0 }}>
+          <div className="row">
+            <dt>Opens</dt>
+            <dd style={{ margin: 0 }}>{dayTime(task.opensAt!)}</dd>
+          </div>
+          {task.format && (
+            <div className="row">
+              <dt>Format</dt>
+              <dd style={{ margin: 0 }}>{task.format}</dd>
+            </div>
+          )}
+          <div className="row">
+            <dt>Send the link by</dt>
+            <dd style={{ margin: 0 }}>{dayTime(task.deadline)}</dd>
+          </div>
+        </dl>
+        <p className="muted t-sm">The full brief comes on {dayLong(task.opensAt!)}, when the task opens.</p>
+        <div className="dock">
+          <div className="actions">
+            <button type="button" className={`btn${task.reminded ? ' btn--outline' : ''}`} onClick={() => toggle()} disabled={busy}>
+              {task.reminded ? 'Cancel the reminder' : 'Remind me when it opens'}
+            </button>
+            {task.reminded && (
+              <div className="t-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 36, fontWeight: 600, color: 'var(--green)' }}>
+                <Icon name="check" size={18} stroke={2.4} />
+                <span>The bot will message you when it opens</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </Screen>
   );
 }
 

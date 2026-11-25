@@ -489,6 +489,7 @@ function Editor({ task }: { task: TaskDetail | null }) {
                   {t.editor.startsAt} <span className="opt">{t.common.optional}</span>
                 </label>
                 <input id="startsAt" type="datetime-local" className="input" value={form.startsAt} onChange={(e) => set('startsAt', e.target.value)} />
+                <span className="field__hint">{t.editor.startsHint}</span>
               </div>
               <div className="field">
                 <label htmlFor="deadline">{t.editor.deadline}</label>

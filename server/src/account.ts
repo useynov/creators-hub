@@ -141,7 +141,7 @@ export function isAgeRefused(db: DB, telegramId: number): boolean {
 export function refuseForAge(db: DB, userId: number): void {
   db.transaction(() => {
     db.prepare('INSERT OR IGNORE INTO age_refusals (telegram_id, created_at) VALUES (?, ?)').run(userId, now());
-    for (const table of ['social_lookups', 'social_profiles', 'user_tags', 'reminders', 'rsvps']) {
+    for (const table of ['social_lookups', 'social_profiles', 'user_tags', 'reminders', 'rsvps', 'task_reminders', 'hub_story_views']) {
       db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(userId);
     }
     try {

@@ -155,12 +155,13 @@ export function Cover({ src, alt, style, eager, fill }: CoverProps) {
 }
 
 /**
- * The Coca-Cola script. The file is served from /brand on the server and is not in git;
- * when it is missing the name is set in type instead.
+ * The Coca-Cola script. The files are served from /brand on the server and are not in git.
+ * A phone that will not draw the SVG gets the same mark as a picture; when that is missing too,
+ * the name is set in type.
  */
 export function Logo({ tone = 'red', height = 26 }: { tone?: 'red' | 'white'; height?: number }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
+  const [stage, setStage] = useState<'svg' | 'webp' | 'type'>('svg');
+  if (stage === 'type') {
     return (
       <span className="display" style={{ fontSize: Math.round(height * 0.8), color: tone === 'red' ? 'var(--red)' : 'var(--white)' }}>
         Coca-Cola
@@ -169,12 +170,12 @@ export function Logo({ tone = 'red', height = 26 }: { tone?: 'red' | 'white'; he
   }
   return (
     <img
-      src={`/brand/logo-${tone}.svg`}
+      src={`/brand/logo-${tone}.${stage}`}
       alt="Coca-Cola"
       height={height}
       width={Math.round((height * 2000) / 627)}
       style={{ display: 'block', flexShrink: 0 }}
-      onError={() => setFailed(true)}
+      onError={() => setStage(stage === 'svg' ? 'webp' : 'type')}
     />
   );
 }
@@ -196,6 +197,61 @@ export function keepBrand(text: string): ReactNode {
 
 /** The product's own name, without the brand in front of it: the logo already says "Coca-Cola". */
 export const hubName = (brandName: string): string => brandName.replace(/^coca[-\s]?cola\s*/i, '').trim() || 'Creators Hub';
+
+/**
+ * The top of Home and of the Tasks tab: the Hub's name large, the brand as a small line above it,
+ * and the coin balance, which opens Rewards.
+ */
+export function HubHeader({ brandName, balance }: { brandName: string; balance: number }) {
+  const coins = `${balance.toLocaleString('en-US')} ${Math.abs(balance) === 1 ? 'coin' : 'coins'}`;
+  return (
+    <header className="hubhead">
+      <div className="hubhead__name">
+        <Logo height={15} />
+        <span className="display">{hubName(brandName)}</span>
+      </div>
+      <Link to="/wallet" className="chip chip--line chip--lg nums" aria-label={`${coins}, open rewards`}>
+        <Icon name="coin" size={18} />
+        <span>{coins}</span>
+      </Link>
+    </header>
+  );
+}
+
+/**
+ * The creator's photo inside a ring that fills as the rating nears the next level, with the
+ * rating and the next threshold on a badge. The photo is the Instagram picture the Hub keeps;
+ * only without one the first letter of the name stands in.
+ */
+export function ProfileRing({ src, name, progress, badge, label }: { src: string | null; name: string; progress: number; badge: string | null; label: string }) {
+  const radius = 54;
+  const around = 2 * Math.PI * radius;
+  const filled = Math.max(0, Math.min(1, progress)) * around;
+  return (
+    <span className="ring">
+      <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label={label}>
+        <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--line-soft)" strokeWidth="10" />
+        {filled > 0 && (
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            fill="none"
+            stroke="var(--red)"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={`${filled.toFixed(1)} ${around.toFixed(1)}`}
+            transform="rotate(-90 60 60)"
+          />
+        )}
+      </svg>
+      <span className="ring__photo">
+        <Avatar src={src} name={name} size={90} />
+      </span>
+      {badge && <span className="ring__badge nums">{badge}</span>}
+    </span>
+  );
+}
 
 /** The creator's Instagram picture, or their initial when we have none. */
 export function Avatar({ src, name, size, light }: { src: string | null; name: string; size: number; light?: boolean }) {

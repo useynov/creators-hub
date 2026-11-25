@@ -16,6 +16,8 @@ const { idle } = await import('./background.js');
 
 const db = openDb(':memory:');
 syncContent(db);
+// These tests are about joining and review, not about opening dates: every seed task is open.
+db.prepare('UPDATE tasks SET starts_at = ? WHERE starts_at IS NOT NULL').run(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 const bot = createBot(db);
 
 // Telegram is replaced by a recorder: every outgoing call is kept and answered with a plausible result.

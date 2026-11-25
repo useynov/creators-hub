@@ -48,7 +48,9 @@ This is **version 2**. What changed, how to see which version is running and how
 | Look at the Hub with sample creators | `/sampledata on` loads 20 made-up creators with work and reports, `/sampledata off` removes them. Owners only. Remove before real creators join |
 | Add or edit tasks | The admin site, Tasks. Tasks from `content/seed.json` are a starting set: once edited on the site, the file no longer overwrites them |
 | Add or edit shop items and their photos | The admin site, Shop. Items from `content/seed.json` only fill an empty shop: once edited on the site, the file no longer overwrites them |
-| Add or edit events, news | Edit `content/seed.json` and redeploy |
+| Post a story (the news at the top of the creators' Home) | The admin site, Stories: a photo or a flat colour, a headline, a short text, one button into the app, a last day. No bot message is sent |
+| Announce a task before it opens | Give it a Start date on the admin site. Until then creators see it under Soon, cannot join, and can ask the bot to remind them when it opens |
+| Add or edit events | Edit `content/seed.json` and redeploy |
 
 Send `/help` to the bot as an admin for the full command list.
 
@@ -129,7 +131,7 @@ Run a single instance. The bot uses long polling, so two copies would fight over
 
 ## Content
 
-`content/seed.json` is the source of truth for events and news, and a starting set for tasks and shop items. On every start rows are added or updated by `id`; a task or a shop item that was edited on the admin site is left alone. Anything removed from the file is hidden, never deleted, so a creator's history stays intact.
+`content/seed.json` is the source of truth for events, and a starting set for tasks and shop items. Its `news` are no longer shown in the app: stories took their place. On every start rows are added or updated by `id`; a task or a shop item that was edited on the admin site is left alone. Anything removed from the file is hidden, never deleted, so a creator's history stays intact.
 
 A task:
 
@@ -168,9 +170,9 @@ pip install fonttools brotli potracer pillow numpy
 python3 scripts/brand-fonts-logo.py "/path/to/TCCC_Unity_Font_Family" "/path/to/coca-cola-logo.png" content/brand
 ```
 
-It writes five `.woff2` files and `logo-red.svg`, `logo-white.svg`.
+It writes five `.woff2` files, `logo-red.svg` and `logo-white.svg`, and the same two marks as `.webp` pictures for a phone that will not draw the SVG.
 
-Copy `content/brand/` to the server, next to the code, before building the image. If the folder or a file is missing nothing breaks: photo blocks turn flat, the text is set in Onest, and the name is set in type instead of the logo.
+Copy `content/brand/` to the server, next to the code, before building the image. **Every file must be readable by the user who runs `docker build` (`chmod 644`)**: a file the build cannot read ends up empty in the image. The server logs `[brand] ... empty or unreadable` at start when that happens, and answers 404 for an empty file. If the folder or a file is missing nothing breaks: photo blocks turn flat, the text is set in Onest, and the name is set in type instead of the logo.
 
 TCCC Unity has Latin letters only. Cyrillic and the tenge sign are shown in Onest.
 
