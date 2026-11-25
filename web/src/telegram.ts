@@ -3,6 +3,7 @@
 
 interface TelegramWebApp {
   initData: string;
+  initDataUnsafe?: { user?: { photo_url?: string } };
   ready(): void;
   expand(): void;
   close(): void;
@@ -30,6 +31,13 @@ const atLeast = (version: string): boolean => Boolean(tg?.isVersionAtLeast?.(ver
 
 export const initData = tg?.initData ?? '';
 export const inTelegram = Boolean(initData);
+
+/**
+ * The creator's own Telegram photo, when Telegram shares it. Shown only to the creator, and only
+ * until the Hub has their Instagram avatar. It is not checked by the server, so it is never stored.
+ */
+const ownPhoto = tg?.initDataUnsafe?.user?.photo_url;
+export const telegramPhoto = ownPhoto?.startsWith('https://') ? ownPhoto : null;
 
 export function start(): void {
   tg?.ready();

@@ -28,7 +28,7 @@ import { Submit } from './screens/Submit';
 import { Task } from './screens/Task';
 import { Tasks } from './screens/Tasks';
 import { Wallet } from './screens/Wallet';
-import { start } from './telegram';
+import { start, telegramPhoto } from './telegram';
 
 /** Shown when the API says this Telegram account is not on the invite list. */
 function NotInvited() {
@@ -93,6 +93,8 @@ function Shell() {
     () =>
       data && {
         ...data,
+        // No Instagram avatar yet: the creator sees their own Telegram photo instead of a letter.
+        me: data.me.avatarUrl || !telegramPhoto ? data.me : { ...data.me, avatarUrl: telegramPhoto },
         refresh: () => mutate(),
         botLink: data.settings.botUsername ? `https://t.me/${data.settings.botUsername}` : null,
       },
