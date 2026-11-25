@@ -63,10 +63,17 @@ const ADMIN_HELP = [
   '/demo on|off: demo mode, where everyone on the invite list gets the team\'s rights (owners only)',
   '/allowage ID: let someone refused for age answer the question again, after a typo in the date (owners only)',
   '/startover: remove your own creator account, to walk the creator\'s path again from the first screen (owners only, in private)',
+  '/clear: empty your private chat with me (Telegram allows the last 48 hours only)',
   '/id: show this chat ID and your user ID',
   '',
   'Reply to a creator\'s message to answer them. Scan an event pass with your phone camera to check a creator in.',
 ].join('\n');
+
+/** /clear: how far back the bot looks (batches of 100 message numbers), and how often one person may sweep. */
+const CLEAR_BATCHES = 20;
+const CLEAR_COOLDOWN_MS = 20_000;
+/** The "Cleared" note removes itself after this long, so the chat ends up empty. */
+export const CLEAR_NOTE_MS = Number(process.env.CLEAR_NOTE_MS ?? 6000);
 
 export function createBot(db: DB): Bot {
   const bot = new Bot(config.botToken);
@@ -158,6 +165,31 @@ export function createBot(db: DB): Bot {
   });
 
   bot.command('id', (ctx) => ctx.reply(`Chat ID: <code>${ctx.chat.id}</code>\nYour user ID: <code>${ctx.from?.id}</code>`, HTML));
+
+  // /clear empties the private chat with the bot, for anyone, in their own chat only.
+  // Telegram's rules set the limits: a bot can delete its own and the person's messages in a
+  // private chat, but only those from the last 48 hours, and it cannot read the history. So the
+  // bot walks back from this message over the latest message numbers and asks Telegram to delete
+  // each batch; numbers that are older, or belong to another chat, are skipped by Telegram.
+  const lastClear = new Map<number, number>();
+  bot.command('clear', async (ctx) => {
+    if (!ctx.from) return;
+    if (ctx.chat.type !== 'private') return ctx.reply('/clear works only in a private chat with me.');
+    const chatId = ctx.chat.id;
+    const top = ctx.msg.message_id;
+    // One sweep is up to 20 calls to Telegram: no more than one every 20 seconds per person.
+    const recent = Date.now() - (lastClear.get(ctx.from.id) ?? 0) < CLEAR_COOLDOWN_MS;
+    lastClear.set(ctx.from.id, Date.now());
+    for (let batch = 0; batch < (recent ? 1 : CLEAR_BATCHES); batch += 1) {
+      const first = top - batch * 100;
+      if (first < 1) break;
+      const ids = Array.from({ length: Math.min(100, first) }, (_, index) => first - index);
+      await ctx.api.deleteMessages(chatId, ids).catch((error: Error) => console.warn('[bot] /clear batch failed:', error.message));
+    }
+    const note = await ctx.reply('Cleared. Telegram lets me remove only the last 48 hours, so anything older stays. This note goes away in a few seconds.');
+    const timer = setTimeout(() => void ctx.api.deleteMessage(chatId, note.message_id).catch(() => undefined), CLEAR_NOTE_MS);
+    timer.unref?.();
+  });
 
   // --- Team commands -----------------------------------------------------
 
@@ -652,7 +684,10 @@ export function createBot(db: DB): Bot {
 
 /** One-time bot setup: the command list and the "Open app" menu button. */
 export async function configureBot(bot: Bot): Promise<void> {
-  await bot.api.setMyCommands([{ command: 'start', description: 'Open the Hub' }]);
+  await bot.api.setMyCommands([
+    { command: 'start', description: 'Open the Hub' },
+    { command: 'clear', description: 'Clear this chat' },
+  ]);
   if (config.webappUrl.startsWith('https://')) {
     await bot.api.setChatMenuButton({
       menu_button: { type: 'web_app', text: 'Open app', web_app: { url: config.webappUrl } },

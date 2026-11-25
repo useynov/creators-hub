@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.1.0 (25 November 2026)
+
+**`/clear`: empty the chat with the bot.** Anyone can send it in their private chat with the bot; it is also in the bot's command menu.
+
+- The bot deletes its own messages and yours, then a short "Cleared" note that removes itself after a few seconds.
+- **Telegram's limit:** a bot can delete only messages from the last 48 hours. Older ones stay; Telegram's own "Clear history" removes those.
+- A bot cannot read a chat's history, so it walks back over the latest 2,000 message numbers. With many creators writing at once that may not reach back a full 48 hours. One full sweep per person every 20 seconds.
+- In a group it does nothing but say so. It never touches another chat.
+
+**Data.** No change. Going back: image `creators-hub:rollback-v4.0.0-20261125`.
+
 ## 4.0.0 (25 November 2026)
 
 A new Home, a new Tasks tab and the Hub's own stories, built from the design canvas "For the build".
