@@ -315,6 +315,36 @@ CREATE TABLE IF NOT EXISTS submissions (
   finished_at TEXT
 );
 CREATE INDEX IF NOT EXISTS submissions_entry ON submissions(entry_id, id);
+CREATE TABLE IF NOT EXISTS task_reminders (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  task_id TEXT NOT NULL REFERENCES tasks(id),
+  created_at TEXT NOT NULL,
+  notified_at TEXT,
+  PRIMARY KEY (user_id, task_id)
+);
+CREATE TABLE IF NOT EXISTS hub_stories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  label TEXT NOT NULL,
+  kicker TEXT,
+  headline TEXT NOT NULL,
+  body TEXT,
+  image_url TEXT,
+  tone TEXT NOT NULL DEFAULT 'dark',
+  button_label TEXT,
+  button_path TEXT,
+  ends_on TEXT,
+  status TEXT NOT NULL DEFAULT 'draft',
+  created_by INTEGER,
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  published_at TEXT
+);
+CREATE TABLE IF NOT EXISTS hub_story_views (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  story_id INTEGER NOT NULL REFERENCES hub_stories(id),
+  seen_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, story_id)
+);
 CREATE TABLE IF NOT EXISTS media_copies (
   remote_url TEXT PRIMARY KEY,
   url TEXT,
@@ -322,6 +352,30 @@ CREATE TABLE IF NOT EXISTS media_copies (
   tried_at TEXT NOT NULL
 );
 `;
+
+/** A story of the Hub's own news channel, posted by the team. Not a creator's Instagram story. */
+export interface HubStoryRow {
+  id: number;
+  /** The word under the circle on Home. */
+  label: string;
+  /** The small line over the headline, e.g. "Event · 26 Dec · Almaty". */
+  kicker: string | null;
+  headline: string;
+  body: string | null;
+  image_url: string | null;
+  /** The background when there is no photo. */
+  tone: 'dark' | 'red';
+  button_label: string | null;
+  /** A screen of the mini app, e.g. /events/creators-ny-party. */
+  button_path: string | null;
+  /** The last day it is shown (hub time zone). null: until the team hides it. */
+  ends_on: string | null;
+  status: 'draft' | 'live';
+  created_by: number | null;
+  created_at: string;
+  updated_at: string | null;
+  published_at: string | null;
+}
 
 export interface UserRow {
   id: number;

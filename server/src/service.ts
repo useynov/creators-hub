@@ -14,6 +14,7 @@ import {
   type UserRow,
 } from './db.js';
 import { HubError } from './errors.js';
+import { liveStories } from './hubstories.js';
 import { creatorLine, draftKeyboard, esc, notifyAdmins, notifyUser } from './notify.js';
 import { latestSubmission, publicationsOf, publicationView, setStoryViews, startSubmission, submissionView } from './pipeline.js';
 import { cleanHandle } from './social/links.js';
@@ -25,7 +26,6 @@ import type {
   LeaderboardView,
   Level,
   Me,
-  NewsView,
   OfferView,
   PublicSettings,
   ShopView,
@@ -385,6 +385,9 @@ function entryView(entry: EntryRow): EntryView {
 const isClosed = (task: TaskRow): boolean =>
   !task.active || task.status !== 'active' || new Date(task.deadline).getTime() < Date.now();
 
+/** Announced, but its start has not come: listed under Soon, not open for joining yet. */
+const isSoon = (task: TaskRow): boolean => Boolean(task.starts_at) && new Date(task.starts_at!).getTime() > Date.now();
+
 const LOCKED_REASON = 'We could not confirm your Instagram account, so tasks are locked. Connect the account that is yours in your profile.';
 
 /** Everything about the creator that decides what they see, read once per request. */
@@ -412,6 +415,8 @@ function canSee(task: TaskRow, viewer: Viewer, entry: EntryRow | undefined): boo
 function taskView(db: DB, task: TaskRow, entry: EntryRow | undefined, viewer: Viewer): TaskView {
   const approved = entry?.status === 'approved';
   const latest = entry ? latestSubmission(db, entry.id) : undefined;
+  // Not open yet, and this creator is not in it: the brief and the steps wait for the start.
+  const waiting = !entry && isSoon(task);
   return {
     id: task.id,
     title: task.title,
@@ -425,13 +430,16 @@ function taskView(db: DB, task: TaskRow, entry: EntryRow | undefined, viewer: Vi
     closed: isClosed(task),
     reviewMode: task.review_mode,
     viewsBonus: Boolean(task.views_bonus),
-    steps: JSON.parse(task.steps) as string[],
+    steps: waiting ? [] : (JSON.parse(task.steps) as string[]),
     entry: entry ? entryView(entry) : null,
-    brief: task.brief,
+    brief: waiting ? null : task.brief,
     formats: JSON.parse(task.formats || '[]') as TaskView['formats'],
     requiredMention: task.required_mention,
     requiredHashtag: task.required_hashtag,
     startsAt: task.starts_at,
+    opensAt: waiting ? task.starts_at : null,
+    reminded: waiting && Boolean(db.prepare('SELECT 1 FROM task_reminders WHERE user_id = ? AND task_id = ?').get(viewer.user.id, task.id)),
+    openedAt: task.starts_at ?? task.created_at,
     bonusCoins: task.bonus_coins,
     maxPublications: Math.max(1, task.max_publications),
     full: task.max_participants !== null && participants(db, task.id) >= task.max_participants,
@@ -506,6 +514,7 @@ function ensureEntry(db: DB, user: UserRow, taskId: string): { task: TaskRow; en
     if (entry) return { task, entry, created: false };
     assertNotLocked(user);
     assertOpen(task);
+    if (isSoon(task)) throw new HubError('task_not_open', 'This task is not open yet. The bot can tell you when it opens.', 409);
     if (task.max_participants !== null && participants(db, task.id) >= task.max_participants) {
       throw new HubError('task_full', 'All places on this task are taken.', 409);
     }
@@ -1059,23 +1068,55 @@ export function answerOffer(db: DB, user: UserRow, offerId: number, accept: bool
   }
 }
 
+/** "Remind me": the bot tells the creator the moment a task that is not open yet opens. */
+export function remindTask(db: DB, user: UserRow, taskId: string, on: boolean): TaskView {
+  const { task } = visibleTask(db, viewerOf(db, user), taskId);
+  if (on) {
+    if (!isSoon(task) || isClosed(task)) throw new HubError('task_open', 'This task is already open.', 409);
+    db.prepare('INSERT OR IGNORE INTO task_reminders (user_id, task_id, created_at) VALUES (?, ?, ?)').run(user.id, taskId, now());
+  } else {
+    db.prepare('DELETE FROM task_reminders WHERE user_id = ? AND task_id = ? AND notified_at IS NULL').run(user.id, taskId);
+  }
+  return oneTask(db, user.id, taskId);
+}
+
+/** Runs on a timer: tells everyone who asked that a task has opened. Each reminder is sent once. */
+export function sendTaskReminders(db: DB): number {
+  const due = db
+    .prepare(
+      `SELECT m.user_id, t.id, t.title, t.reward FROM task_reminders m JOIN tasks t ON t.id = m.task_id
+       WHERE m.notified_at IS NULL AND t.active = 1 AND t.status = 'active' AND t.starts_at IS NOT NULL AND t.starts_at <= ? AND t.deadline > ?`,
+    )
+    .all(now(), now()) as Array<{ user_id: number; id: string; title: string; reward: number }>;
+  for (const row of due) {
+    db.prepare('UPDATE task_reminders SET notified_at = ? WHERE user_id = ? AND task_id = ?').run(now(), row.user_id, row.id);
+    void notifyUser(row.user_id, `<b>Open now:</b> ${esc(row.title)}. +${row.reward} ${row.reward === 1 ? 'coin' : 'coins'}.`, {
+      text: 'Open the task',
+      path: `/tasks/${row.id}`,
+    });
+  }
+  return due.length;
+}
+
+/** How many open tasks Home shows before "All tasks". */
+const HOME_TASKS = 3;
+/** How many events Home shows under "Coming up". */
+const HOME_EVENTS = 2;
+
 export function home(db: DB, userId: number): HomeView {
   const tasks = listTasks(db, userId).filter((task) => !task.closed);
-  const needsAction = ['joined', 'draft_approved', 'needs_changes', 'draft_changes'];
   const fresh = tasks.filter((task) => !task.entry);
-  const nextTask = tasks.find((task) => task.entry && needsAction.includes(task.entry.status)) ?? fresh[0] ?? null;
-
-  const news = db
-    .prepare('SELECT id, title, summary, date, url, path, cover_url AS coverUrl FROM news WHERE active = 1 ORDER BY sort ASC LIMIT 1')
-    .get() as
-    | NewsView
-    | undefined;
-  const events = listEvents(db, userId).upcoming;
+  // Open: can be joined today. A full task stays in the Tasks tab, Home has no room for a dead end.
+  const open = fresh.filter((task) => !task.opensAt && !task.full);
+  const fix = tasks.filter((task) => task.entry && ['needs_changes', 'draft_changes'].includes(task.entry.status));
+  const events = listEvents(db, userId).upcoming.filter((event) => event.date);
   return {
-    nextTask,
-    newCount: fresh.length,
-    nextEvent: events.find((event) => event.date) ?? events[0] ?? null,
-    news: news ?? null,
+    stories: liveStories(db, userId),
+    openTasks: open.slice(0, HOME_TASKS),
+    openCount: open.length,
+    soonCount: fresh.filter((task) => task.opensAt).length,
+    needsFix: { count: fix.length, taskId: fix[0]?.id ?? null },
+    events: events.slice(0, HOME_EVENTS),
     offer: currentOffer(db, userId),
   };
 }

@@ -7,6 +7,7 @@ import { registerAdminRoutes } from './admin/routes.js';
 import { validateInitData, type TelegramUser } from './auth.js';
 import { config } from './config.js';
 import type { DB, UserRow } from './db.js';
+import { liveStories, markStorySeen, previewStory } from './hubstories.js';
 import { readMedia, saveMedia } from './media.js';
 import { seedPreview } from './preview.js';
 import {
@@ -26,6 +27,7 @@ import {
   parseViews,
   publicSettings,
   remindMe,
+  remindTask,
   requestCashout,
   requestDraftUpload,
   rsvp,
@@ -174,6 +176,9 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   app.get('/api/tasks', (c) => c.json(listTasks(db, c.var.user.id)));
   app.get('/api/tasks/:id', (c) => c.json(oneTask(db, c.var.user.id, c.req.param('id'))));
   app.post('/api/tasks/:id/join', (c) => c.json(joinTask(db, c.var.user, c.req.param('id'))));
+  // "Remind me" on a task that is not open yet, and its undo.
+  app.post('/api/tasks/:id/remind', (c) => c.json(remindTask(db, c.var.user, c.req.param('id'), true)));
+  app.delete('/api/tasks/:id/remind', (c) => c.json(remindTask(db, c.var.user, c.req.param('id'), false)));
   app.post('/api/tasks/:id/submit', async (c) => c.json(await submitLinks(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft', async (c) => c.json(submitDraftLink(db, c.var.user, c.req.param('id'), await body(c))));
   app.post('/api/tasks/:id/draft-upload', (c) => {
@@ -255,6 +260,21 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
   app.post('/api/events/:id/remind', (c) => {
     remindMe(db, c.var.user.id, c.req.param('id'));
     return c.json(listEvents(db, c.var.user.id));
+  });
+
+  // The Hub's own stories (its news channel on Home). A team member may open one that is not up yet.
+  const hubStoryId = (raw: string | undefined): number => {
+    const id = Number(raw);
+    if (!Number.isSafeInteger(id) || id <= 0) throw new HubError('story_not_found', 'This story does not exist.', 404);
+    return id;
+  };
+  app.get('/api/hub-stories', (c) => {
+    const preview = c.req.query('preview');
+    return c.json(preview ? previewStory(db, c.var.user.id, hubStoryId(preview)) : liveStories(db, c.var.user.id));
+  });
+  app.post('/api/hub-stories/:id/seen', (c) => {
+    markStorySeen(db, c.var.user.id, hubStoryId(c.req.param('id')));
+    return c.json({ ok: true });
   });
 
   app.get('/api/leaderboard', (c) =>

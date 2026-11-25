@@ -643,3 +643,53 @@ export interface TeamRow {
   lastSeenAt: string | null;
   isMe: boolean;
 }
+
+// --- Stories: the Hub's news channel on the creators' Home ---------------------------------
+
+export interface StoryAdmin {
+  id: number;
+  /** The word under the circle on Home. */
+  label: string;
+  kicker: string | null;
+  headline: string;
+  body: string | null;
+  imageUrl: string | null;
+  tone: 'dark' | 'red';
+  buttonLabel: string | null;
+  buttonPath: string | null;
+  /** The last day it is shown, YYYY-MM-DD. null: until hidden by hand. */
+  endsOn: string | null;
+  /** draft: creators never saw it or it was taken down. live: up now. ended: its last day has passed. */
+  state: 'draft' | 'live' | 'ended';
+  /** How many creators opened it. */
+  seenBy: number;
+  publishedAt: string | null;
+  updatedAt: string | null;
+}
+
+/** A screen of the creator app that a story's button can open. */
+export interface StoryTarget {
+  path: string;
+  title: string;
+  group: 'screen' | 'task' | 'event' | 'shop';
+}
+
+export interface StoriesList {
+  stories: StoryAdmin[];
+  targets: StoryTarget[];
+  /** Today in the hub's time zone, for the end-date field. */
+  today: string;
+}
+
+/** What the editor sends. `imageUrl` is the address returned by the upload. */
+export interface StoryInput {
+  label: string;
+  kicker: string | null;
+  headline: string;
+  body: string | null;
+  imageUrl: string | null;
+  tone: 'dark' | 'red';
+  buttonLabel: string | null;
+  buttonPath: string | null;
+  endsOn: string | null;
+}

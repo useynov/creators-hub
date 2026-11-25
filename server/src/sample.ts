@@ -179,7 +179,7 @@ export async function removeSampleData(db: DB): Promise<number> {
     db.prepare(`DELETE FROM publications WHERE ${users}`).run();
     db.prepare(`DELETE FROM submissions WHERE ${users}`).run();
     db.prepare(`DELETE FROM entries WHERE ${users}`).run();
-    for (const table of ['ledger', 'orders', 'cashouts', 'rsvps', 'reminders', 'offers', 'support_threads', 'user_tags', 'social_profiles', 'social_lookups']) {
+    for (const table of ['ledger', 'orders', 'cashouts', 'rsvps', 'reminders', 'offers', 'support_threads', 'task_reminders', 'hub_story_views', 'user_tags', 'social_profiles', 'social_lookups']) {
       db.prepare(`DELETE FROM ${table} WHERE ${users}`).run();
     }
     db.prepare(`DELETE FROM invites WHERE ${SAMPLE_IDS_SQL('telegram_id')}`).run();
@@ -189,7 +189,10 @@ export async function removeSampleData(db: DB): Promise<number> {
     for (const id of tasks) {
       const real = db.prepare('SELECT 1 FROM entries WHERE task_id = ? LIMIT 1').get(id);
       if (real) db.prepare(`UPDATE tasks SET status = 'closed', active = 0, audience = '{"mode":"all"}', updated_at = ? WHERE id = ?`).run(now(), id);
-      else db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+      else {
+        db.prepare('DELETE FROM task_reminders WHERE task_id = ?').run(id);
+        db.prepare('DELETE FROM tasks WHERE id = ?').run(id);
+      }
     }
     db.prepare('DELETE FROM meta WHERE key = ?').run(META_KEY);
     return count;

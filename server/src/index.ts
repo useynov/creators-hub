@@ -5,7 +5,7 @@ import { openDb, syncContent } from './db.js';
 import { createApp } from './http.js';
 import { startJobs } from './jobs.js';
 import { setApi } from './notify.js';
-import { sendEventReminders } from './service.js';
+import { sendEventReminders, sendTaskReminders } from './service.js';
 
 const db = openDb(config.dbPath);
 syncContent(db);
@@ -43,10 +43,20 @@ const reminders = setInterval(() => {
   }
 }, 15 * 60 * 1000);
 
+// "Remind me" on a task that opens later: the message should come close to the opening.
+const taskReminders = setInterval(() => {
+  try {
+    sendTaskReminders(db);
+  } catch (error) {
+    console.error('[jobs] task reminders failed:', error);
+  }
+}, 2 * 60 * 1000);
+
 const stopJobs = startJobs(db);
 
 async function shutdown(): Promise<void> {
   clearInterval(reminders);
+  clearInterval(taskReminders);
   stopJobs();
   await stopBot?.();
   server.close();

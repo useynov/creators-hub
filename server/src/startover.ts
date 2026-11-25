@@ -91,6 +91,8 @@ export async function startOver(db: DB, userId: number): Promise<StartOverCount 
       'reminders',
       'offers',
       'support_threads',
+      'task_reminders',
+      'hub_story_views',
       'user_tags',
       'social_profiles',
       'social_lookups',
