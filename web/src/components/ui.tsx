@@ -170,7 +170,7 @@ export function Logo({ tone = 'red', height = 26 }: { tone?: 'red' | 'white'; he
   }
   return (
     <img
-      src={`/brand/logo-${tone}.${stage}`}
+      src={`/brand/logo-${tone}.${stage}?v=2`}
       alt="Coca-Cola"
       height={height}
       width={Math.round((height * 2000) / 627)}
