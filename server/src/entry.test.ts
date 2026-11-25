@@ -332,3 +332,23 @@ test('brand assets: only photo, font and logo names are served, and a missing fi
     assert.ok(!/^(image|font)\//.test(other.headers.get('content-type') ?? ''), path);
   }
 });
+
+test('brand assets: an empty file is a broken copy and answers 404, so the app falls back', async () => {
+  const { mkdirSync, rmSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { config } = await import('./config.js');
+  mkdirSync(config.brandDir, { recursive: true });
+  const empty = join(config.brandDir, 'empty-copy-test.svg');
+  const full = join(config.brandDir, 'full-copy-test.svg');
+  writeFileSync(empty, '');
+  writeFileSync(full, '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  try {
+    assert.equal((await app.request('/brand/empty-copy-test.svg')).status, 404);
+    const served = await app.request('/brand/full-copy-test.svg');
+    assert.equal(served.status, 200);
+    assert.equal(served.headers.get('content-type'), 'image/svg+xml');
+  } finally {
+    rmSync(empty, { force: true });
+    rmSync(full, { force: true });
+  }
+});

@@ -172,7 +172,7 @@ python3 scripts/brand-fonts-logo.py "/path/to/TCCC_Unity_Font_Family" "/path/to/
 
 It writes five `.woff2` files, `logo-red.svg` and `logo-white.svg`, and the same two marks as `.webp` pictures for a phone that will not draw the SVG.
 
-Copy `content/brand/` to the server, next to the code, before building the image. If the folder or a file is missing nothing breaks: photo blocks turn flat, the text is set in Onest, and the name is set in type instead of the logo.
+Copy `content/brand/` to the server, next to the code, before building the image. **Every file must be readable by the user who runs `docker build` (`chmod 644`)**: a file the build cannot read ends up empty in the image. The server logs `[brand] ... empty or unreadable` at start when that happens, and answers 404 for an empty file. If the folder or a file is missing nothing breaks: photo blocks turn flat, the text is set in Onest, and the name is set in type instead of the logo.
 
 TCCC Unity has Latin letters only. Cyrillic and the tenge sign are shown in Onest.
 

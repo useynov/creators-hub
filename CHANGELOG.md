@@ -31,7 +31,7 @@ A new Home, a new Tasks tab and the Hub's own stories, built from the design can
 - `/startover`, the sample data and the age refusal also clear reminders and opened stories.
 
 **Fixes**
-- **The Coca-Cola script on phones.** On at least one iPhone the logo showed as plain type. The SVG now states its size, and the app tries the same mark as a picture before it falls back to type. Run `scripts/brand-fonts-logo.py` again and copy the four logo files to the server.
+- **TCCC Unity and the Coca-Cola script were never live.** Since 3.1.0 the five font files and the two logo files sat on the server readable only by root, so the image build copied them as empty files. Every phone showed Onest and "Coca-Cola" in plain type. The files are readable now, the server answers 404 for an empty brand file (so the fallback is deliberate, not an accident) and says so in its log at start. The SVG also states its size, and the app tries the same mark as a picture before it falls back to type.
 - A story could be skipped when the one before it ran out. Found in testing, fixed before release.
 
 **Data.** Three tables are added on start: `task_reminders`, `hub_stories`, `hub_story_views`. Nothing is removed or changed. Going back: image `creators-hub:rollback-v3.5.0-20261125`; 3.5.0 runs on the same database and simply ignores the new tables, but `/startover` of 3.5.0 will fail for an owner who has set a reminder or opened a story.

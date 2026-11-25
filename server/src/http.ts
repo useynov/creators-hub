@@ -93,6 +93,9 @@ export function createApp(db: DB, botUsername: () => string | null): Hono<Env> {
     try {
       const name = c.req.param('file');
       const data = await readFile(join(config.brandDir, name));
+      // An empty file is a broken copy (it happened: files the build could not read arrived
+      // empty). Answer "missing", so the app falls back instead of drawing nothing.
+      if (!data.length) return c.notFound();
       return c.body(new Uint8Array(data), 200, {
         'Content-Type': BRAND_TYPES[name.slice(name.lastIndexOf('.') + 1)]!,
         'Cache-Control': 'public, max-age=86400',
