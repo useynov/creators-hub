@@ -4,6 +4,7 @@
 import type { Hono } from 'hono';
 import { config, settings } from '../config.js';
 import { now, type DB, type TeamMemberRow } from '../db.js';
+import { syncMenu } from '../menus.js';
 import { esc, notifyUser } from '../notify.js';
 import { findUser } from '../service.js';
 import { audit } from './audit.js';
@@ -64,6 +65,8 @@ export function addMember(db: DB, actorId: number, ref: string, role: TeamRole):
     now(),
   );
   audit(db, actorId, 'team.add', user.id, role);
+  // Their "/" list in the bot now shows the commands of the new role.
+  void syncMenu(db, user.id);
   void notifyUser(
     user.id,
     `You now have access to the ${esc(settings.brandName)} admin site as ${ROLE_WORD[role]}. Send /admin to me to sign in.`,
@@ -87,6 +90,7 @@ export function changeRole(db: DB, actorId: number, telegramId: number, role: Te
     endSessionsOf(db, telegramId);
     audit(db, actorId, 'team.role', telegramId, `${member.role} → ${role}`);
   })();
+  void syncMenu(db, telegramId);
 }
 
 export function removeMember(db: DB, actorId: number, telegramId: number): void {
@@ -96,6 +100,7 @@ export function removeMember(db: DB, actorId: number, telegramId: number): void 
     endSessionsOf(db, telegramId);
     audit(db, actorId, 'team.remove', telegramId);
   })();
+  void syncMenu(db, telegramId);
 }
 
 export function teamRoutes(api: Hono<AdminEnv>, db: DB): void {

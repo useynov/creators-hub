@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.3.0 (25 November 2026)
+
+**Type "/" in the bot and see every command you may use.**
+
+- **Creators** see what is theirs: `/start` and `/clear`.
+- **Each person on the team** sees the full list for their role in their private chat with the bot: review, tasks, invites, account checks, the admin sign-in. Owners also see coins by hand, levels, paid offers, sample data, the age refusal and `/startover`. A Viewer sees `/start`, `/admin` and `/clear`.
+- **The team group**, when one is set, sees the team's commands that work in a group.
+- The list follows the role: it changes when someone is added to the team, changes role or is removed on the admin site, and when demo mode is switched. Someone added before they ever opened the bot gets theirs with their first message.
+- **How Telegram behaves:** tapping a command in the list sends it at once. A command that needs details (a username, a task) then answers with an example, and nothing happens until it is sent with them.
+- The list is only a shortcut. Who may run a command is still checked when it arrives.
+
+**Data.** One line in `meta` (`menu_chats`) remembers who has a list of their own. Going back: image `creators-hub:rollback-v4.2.0-20261125`. The team's own lists then stay in Telegram as they are; every command in them exists in 4.2.0 too, so nothing breaks.
+
 ## 4.2.0 (25 November 2026)
 
 **Tasks tab: Open, Mine, Done.** It always opens on Open.
